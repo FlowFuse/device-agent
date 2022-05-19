@@ -10,7 +10,8 @@ const { Launcher } = require('./lib/launcher.js');
     const cmdLineArgs = [
         { name: 'config', alias: 'c', type: String, defaultValue: 'device.yml' },
         { name: 'userDir', alias: 'u', type: String, defaultValue: 'var/project' },
-        { name: 'interval', alias: 'i', type: Number, defaultValue: 30 }
+        { name: 'interval', alias: 'i', type: Number, defaultValue: 30 },
+        { name: 'project', alias: 'p', type: String, defaultOption: true }
     ]
 
     const options = commandLineArgs(cmdLineArgs)
@@ -47,8 +48,9 @@ const { Launcher } = require('./lib/launcher.js');
          * downloading the latest project state
          */
 
-        const project = JSON.parse(fs.readFileSync('project.json'))
+        const project = JSON.parse(fs.readFileSync(config.project))
         const launcher = new Launcher(config, project)
+        await launcher.writeNodes()
         await launcher.writeFlow()
         await launcher.writeCredentials()
         await launcher.writeSettings()
