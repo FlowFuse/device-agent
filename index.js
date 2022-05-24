@@ -3,8 +3,8 @@ const fs = require('fs')
 const path = require('path')
 const yaml = require('yaml')
 const commandLineArgs = require('command-line-args')
-const { Launcher } = require('./lib/launcher.js');
-// const { Pinger } = require('./lib/pinger.js')
+const { Launcher } = require('./lib/launcher.js')
+const { Pinger } = require('./lib/pinger.js');
 
 (async () => {
     const cmdLineArgs = [
@@ -41,22 +41,14 @@ const { Launcher } = require('./lib/launcher.js');
             ...yaml.parse(fs.readFileSync(configPath, 'utf8')),
             ...options
         }
-        console.log(config)
-        // const pinger = new Pinger(config)
 
-        /* all the following needs moving to something triggered by
-         * downloading the latest project state
-         */
+        const packageJSON = require('./package.json')
+        config.deviceAgentVersion = packageJSON.version
 
-        const project = JSON.parse(fs.readFileSync(config.project))
-        const launcher = new Launcher(config, project)
-        await launcher.writeNodes()
-        await launcher.writeFlow()
-        await launcher.writeCredentials()
-        await launcher.writeSettings()
-        await launcher.start()
+        // console.log(config)
+        const pinger = new Pinger(config)
 
-        // process.on('exit', launcher.stop)
-        process.on('SIGINT', launcher.stop)
+        process.on('exit', pinger.stop.bind(pinger))
+        process.on('SIGINT', pinger.stop.bind(pinger))
     }
 })()
