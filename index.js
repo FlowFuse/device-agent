@@ -3,15 +3,14 @@ const fs = require('fs')
 const path = require('path')
 const yaml = require('yaml')
 const commandLineArgs = require('command-line-args')
-const { Launcher } = require('./lib/launcher.js')
 const { Pinger } = require('./lib/pinger.js');
 
 (async () => {
     const cmdLineArgs = [
         { name: 'config', alias: 'c', type: String, defaultValue: 'device.yml' },
         { name: 'userDir', alias: 'u', type: String, defaultValue: 'var/project' },
-        { name: 'interval', alias: 'i', type: Number, defaultValue: 30 },
-        { name: 'project', alias: 'p', type: String, defaultOption: true }
+        { name: 'interval', alias: 'i', type: Number, defaultValue: 30 }
+        // { name: 'project', alias: 'p', type: String, defaultOption: true }
     ]
 
     const options = commandLineArgs(cmdLineArgs)
