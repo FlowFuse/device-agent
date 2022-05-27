@@ -3,6 +3,7 @@ const settings = require('./settings.json')
 module.exports = {
     flowFile: 'flows.json',
     uiHost: '127.0.0.1',
+    uiPort: settings.port,
     httpAdminRoute: false,
     disableEditor: true,
     externalModules: {

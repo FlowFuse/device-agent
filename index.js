@@ -9,8 +9,8 @@ const { Pinger } = require('./lib/pinger.js');
     const cmdLineArgs = [
         { name: 'config', alias: 'c', type: String, defaultValue: 'device.yml' },
         { name: 'userDir', alias: 'u', type: String, defaultValue: 'var/project' },
-        { name: 'interval', alias: 'i', type: Number, defaultValue: 30 }
-        // { name: 'project', alias: 'p', type: String, defaultOption: true }
+        { name: 'interval', alias: 'i', type: Number, defaultValue: 30 },
+        { name: 'port', alias: 'p', type: Number }
     ]
 
     const options = commandLineArgs(cmdLineArgs)
@@ -42,6 +42,10 @@ const { Pinger } = require('./lib/pinger.js');
             ...options
         }
 
+        if (!config.port) {
+            config.port = 1880
+        }
+
         const packageJSON = require('./package.json')
         config.deviceAgentVersion = packageJSON.version
 
@@ -50,5 +54,8 @@ const { Pinger } = require('./lib/pinger.js');
 
         process.on('exit', pinger.stop.bind(pinger))
         process.on('SIGINT', pinger.stop.bind(pinger))
+    } else {
+        console.log('No config file passed')
+        process.exit(1)
     }
 })()

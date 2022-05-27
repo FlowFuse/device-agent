@@ -22,6 +22,7 @@ deviceId: E1xp0zLgy4
 credentialSecret: 54ba15afe43da81c463b88b12ab029090d1da593b33726a4a0b581395c26a1ad
 forgeURL: http://localhost:3000
 period: 60
+port: 1880
 ```
 
 - `deviceId` Identifies the device to the FlowForge Platform
@@ -35,6 +36,13 @@ that can be downloaded at this time.
 Optional extra parameters
 
 - `period` Check in interval in seconds. Defaults to 60 if not set
+- `port` What port Node-RED to listen on. Defaults to 1880
 
 
 `-u var/project` is the userDir to use to host the project (default is `var/project`)
+
+### Commmand line arguments
+
+ - `-c` Config file
+ - `-u` Path to userDir
+ - `-p` Overide any port in the config file
