@@ -6,20 +6,20 @@ const fsp = fs.promises
 const path = require('path')
 
 describe('Edge Launcher', function () {
-    this.timeout(10000)
+    this.timeout(15000)
     const config = {
         userDir: path.join(__dirname, '../..', 'testUserDir')
     }
 
     this.beforeAll(async function () {
         console.log(config.userDir)
+        fs.rmSync(config.userDir, { recursive: true, force: true })
         fs.mkdirSync(config.userDir)
     })
 
     this.afterAll(async function() {
-        fs.rmSync(config.userDir, { recursive: true, force: true})
+        fs.rmSync(config.userDir, { recursive: true, force: true })
     })
-
 
     it('Create Snapshot Flow/Creds Files', async function() {
         const launcher = new Launcher(config, setup.snapshot)
