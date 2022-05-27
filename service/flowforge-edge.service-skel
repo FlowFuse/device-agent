@@ -1,0 +1,31 @@
+# systemd service file to start FlowForge
+
+[Unit]
+Description=FlowForge Edge Agent
+Wants=network.target
+Documentation=https://flowforge.com/docs
+
+[Service]
+Type=simple
+# Run as normal pi user - change to the user name you wish to run FlowForge as
+User=pi
+Group=pi
+WorkingDirectory=/opt/flowforge-edge
+
+# define an optional environment file in FlowForge install directory to set custom variables externally
+EnvironmentFile=-/opt/flowforge/environment
+# uncomment next line if you need to wait for time sync before starting
+#ExecStartPre=/bin/bash -c '/bin/journalctl -b -u systemd-timesyncd | /bin/grep -q "systemd-timesyncd.* Synchronized to time server"'
+
+ExecStart=/opt/flowforge-edge/bin/flowforge-edge-agent
+# Use SIGINT to stop
+KillSignal=SIGINT
+# Auto restart on crash
+Restart=on-failure
+RestartSec=20
+# Tag things in the log
+SyslogIdentifier=FlowForge
+#StandardOutput=syslog
+
+[Install]
+WantedBy=multi-user.target
