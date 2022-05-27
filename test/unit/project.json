@@ -1,0 +1,138 @@
+{
+    "id": "aaaabbbbcccc",
+    "flows": [
+        {
+            "id": "adc4e3930e0a9071",
+            "type": "tab",
+            "label": "Flow 1",
+            "disabled": false,
+            "info": "",
+            "env": []
+        },
+        {
+            "id": "e7ece99c22e84b1c",
+            "type": "inject",
+            "z": "adc4e3930e0a9071",
+            "name": "",
+            "props": [
+                {
+                    "p": "payload"
+                },
+                {
+                    "p": "topic",
+                    "vt": "str"
+                }
+            ],
+            "repeat": "",
+            "crontab": "",
+            "once": false,
+            "onceDelay": 0.1,
+            "topic": "",
+            "payload": "",
+            "payloadType": "date",
+            "x": 140,
+            "y": 60,
+            "wires": [
+                [
+                    "5c5d940e2575e2a4"
+                ]
+            ]
+        },
+        {
+            "id": "5c5d940e2575e2a4",
+            "type": "http request",
+            "z": "adc4e3930e0a9071",
+            "name": "",
+            "method": "GET",
+            "ret": "txt",
+            "paytoqs": "ignore",
+            "url": "http://localhost:1880/test",
+            "tls": "",
+            "persist": false,
+            "proxy": "",
+            "authType": "basic",
+            "senderr": false,
+            "x": 290,
+            "y": 60,
+            "wires": [
+                [
+                    "189e5eb3435b642b"
+                ]
+            ]
+        },
+        {
+            "id": "54636a79a0f39563",
+            "type": "http in",
+            "z": "adc4e3930e0a9071",
+            "name": "",
+            "url": "/test",
+            "method": "get",
+            "upload": false,
+            "swaggerDoc": "",
+            "x": 140,
+            "y": 120,
+            "wires": [
+                [
+                    "fc887a9eadc0ba23"
+                ]
+            ]
+        },
+        {
+            "id": "d25b24804605b738",
+            "type": "http response",
+            "z": "adc4e3930e0a9071",
+            "name": "",
+            "statusCode": "",
+            "headers": {},
+            "x": 410,
+            "y": 120,
+            "wires": []
+        },
+        {
+            "id": "189e5eb3435b642b",
+            "type": "debug",
+            "z": "adc4e3930e0a9071",
+            "name": "",
+            "active": true,
+            "tosidebar": true,
+            "console": false,
+            "tostatus": false,
+            "complete": "false",
+            "statusVal": "",
+            "statusType": "auto",
+            "x": 450,
+            "y": 60,
+            "wires": []
+        },
+        {
+            "id": "fc887a9eadc0ba23",
+            "type": "function",
+            "z": "adc4e3930e0a9071",
+            "name": "",
+            "func": "var auth;\nfor (var i=0; i<msg.req.rawHeaders.length; i++) {\n    if (msg.req.rawHeaders[i] === 'Authorization') {\n        auth = msg.req.rawHeaders[i+1].split(' ')[1]\n        break;\n    }\n}\nmsg.payload = Buffer.from(auth, 'base64').toString('utf8')\nreturn msg;",
+            "outputs": 1,
+            "noerr": 0,
+            "initialize": "",
+            "finalize": "",
+            "libs": [],
+            "x": 280,
+            "y": 120,
+            "wires": [
+                [
+                    "d25b24804605b738"
+                ]
+            ]
+        }
+    ],
+    "credentials": {
+        "$": "f7459538f9c2dcccf8b5093ac485aa53S0dg6E7mCgF0i+0kO7XPpVXDNe2HIZtd3arNFIAoZGnVYivJxXWYBLNuCgMlaL/Op+4TqQ=="
+    },
+    "settings":{},
+    "env:": {
+        "FOO": "BAR"
+    },
+    "modules": {
+        "node-red": "2.2.2",
+        "node-red-node-random": "0.4.0"
+    }
+}
