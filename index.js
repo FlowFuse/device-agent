@@ -28,6 +28,7 @@ const { Pinger } = require('./lib/pinger.js');
                 options.userDir = path.join(__dirname, options.userDir)
             }
             if (!fs.existsSync(options.userDir)) {
+                console.log(`creating userDir ${options.userDir}`)
                 fs.mkdirSync(options.userDir, true)
             }
         }
