@@ -1,48 +1,99 @@
-# FlowForge Edge Device Agent
+# FlowForge Device Agent
 
-An agent to pull Project Snapshots from a FlowForge Deployment and start a Node-RED Instance to run that Snapshot
+This module provides an agent that runs Node-RED projects deployed from the
+FlowForge platform.
+
+## Prerequisites
+
+ - NodeJS v16
+ - A FlowForge platform instance to connect to
+
+The agent does not support running on Windows.
 
 ## Install
 
+The agent can be installed as a global npm module. This will ensure the agent
+command is on the path:
+
 ```
-npm install -g @flowforge/flowforge-edge-agent
+npm install -g @flowforge/flowforge-device-agent
 ```
+
+## Configuration
+
+The agent configuration is provided in a `device.yml` file within its working
+directory.
+
+
+### Configuration directory
+
+By default the agent uses `/opt/flowforge-device` as its working directory. 
+This can be overridden with the `-d/--dir` option.
+
+The directory must exist and be accessible to the user that will be
+running the agent.
+
+```
+sudo mkdir /opt/flowforge-device
+sudo chown -R $USER /opt/flowforge-device
+```
+
+### `device.yml`
+
+When the device is registered on the FlowForge platform, a group of configuration
+details are provided. These can be copied from the platform, or downloaded directly
+as a yml file.
+
+This file should be copied into the working directory as `device.yml`.
+
+A different config file can be specified with the `-c/--config` option.
+
+The file must contain the following options (these are the ones provided by 
+FlowForge)
+
+Required options   | Description
+-------------------|---------------
+`deviceId`         | The id for the device on the FlowForge platform
+`token`            | Access Token to connect to the FF platform
+`credentialSecret` | Key to decrypt the flow credentials
+`forgeURL`         | The base url of the FlowForge platform
+
+The following options can be added:
+
+Extra options | Description
+--------------|---------------
+`interval`    | How often, in seconds, the agent checks in with the platform. Default: 60s
+`port`        | The port to listen on. Default: 1880
 
 ## Running
 
-```
-flowforge-edge-agent -c device.yml -u /var/project
-```
+If the agent was installed as a global npm module, the command 
+`flowforge-device-agent` will be on the path.
 
-Where `-c device.yml` is a file with the following stucture
+If the default working directory and config file are being used, then the agent
+can be started with:
 
-```yaml
-token: ffd_gVza18zyXayiZv4M7bH4S6mwwuqwyTPad9gr4ATOcXY
-deviceId: E1xp0zLgy4
-credentialSecret: 54ba15afe43da81c463b88b12ab029090d1da593b33726a4a0b581395c26a1ad
-forgeURL: http://localhost:3000
-period: 60
-port: 1880
+```
+$ flowforge-device-agent
 ```
 
-- `deviceId` Identifies the device to the FlowForge Platform
-- `token` Token to authenticate with FlowForge
-- `credentialSecret` Used to decrypt credentials included in Project Snapshot
-- `forgeURL` Where to find the FlowForge Platform
+For information about the available command-line arguments, run with `-h`:
 
-These 4 items are provided when the Device is registered in FlowForge and included in the credentials file 
-that can be downloaded at this time.
+```
+Options
 
-Optional extra parameters
+  -c, --config file     Device configuration file. Default: device.yml
+  -d, --dir dir         Where the agent should store its state. Default: /opt/flowforge-device
+  -i, --interval secs
+  -p, --port number
 
-- `period` Check in interval in seconds. Defaults to 60 if not set
-- `port` What port Node-RED to listen on. Defaults to 1880
+Global Options
 
+  -h, --help       print out helpful usage information
+  --version        print out version information
+  -v, --verbose    turn on debugging output
+```
 
-`-u var/project` is the userDir to use to host the project (default is `var/project`)
+## Running as a service
 
-### Commmand line arguments
-
- - `-c` Config file
- - `-u` Path to userDir
- - `-p` Overide any port in the config file
+An example service file is provided [here](https://github.com/flowforge/flowforge-device-agent/tree/main/service).

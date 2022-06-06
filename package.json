@@ -1,29 +1,29 @@
 {
-  "name": "flowforge-device-agent",
-  "version": "0.0.1",
-  "description": "A Edge Agent for running FlowForge Projects",
-  "main": "index.js",
-  "scripts": {
-    "test": "mocha test/unit/**/*_spec.js"
-  },
-  "bin": {
-    "flowforge-edge-agent": "./index.js"
-  },
-  "keywords": [
-    "flowforge",
-    "node-red"
-  ],
-  "author": "FlowForge Inc.",
-  "license": "Apache-2.0",
-  "dependencies": {
-    "command-line-args": "^5.2.1",
-    "eslint": "^8.15.0",
-    "eslint-config-standard": "^17.0.0",
-    "got": "^11.8.3",
-    "yaml": "^2.1.0"
-  },
-  "devDependencies": {
-    "mocha": "^10.0.0",
-    "should": "^13.2.3"
-  }
+    "name": "@flowforge/flowforge-device-agent",
+    "version": "0.0.1",
+    "description": "A Edge Agent for running FlowForge Projects",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "test": "mocha test/unit/**/*_spec.js"
+    },
+    "bin": {
+        "flowforge-device-agent": "./index.js"
+    },
+    "keywords": [
+        "flowforge",
+        "node-red"
+    ],
+    "author": "FlowForge Inc.",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "command-line-args": "^5.2.1",
+        "command-line-usage": "^6.1.3",
+        "got": "^11.8.3",
+        "yaml": "^2.1.0"
+    },
+    "devDependencies": {
+        "mocha": "^10.0.0",
+        "should": "^13.2.3"
+    }
 }
