@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 const commandLineArgs = require('command-line-args')
-const { Pinger } = require('./lib/pinger.js')
+const { Agent } = require('./lib/agent.js')
 const { initLogger, info, debug } = require('./lib/log')
 let options
 
 try {
-    options = commandLineArgs(require('./lib/args'))
+    options = commandLineArgs(require('./lib/cli/args'))
     options = options._all
 } catch (err) {
     console.log(err.toString())
@@ -17,7 +17,7 @@ if (options.version) {
     process.exit(0)
 }
 if (options.help) {
-    console.log(require('./lib/usage').usage())
+    console.log(require('./lib/cli/usage').usage())
     process.exit(0)
 }
 
@@ -30,12 +30,20 @@ try {
     info(`Device: ${configuration.deviceId}`)
     info(`ForgeURL: ${configuration.forgeURL}`)
 
-    debug(configuration)
+    debug({
+        ...configuration,
+        ...{
+            // Obscure any token/password type things from the log
+            token: configuration.token ? '*******' : undefined,
+            brokerPassword: configuration.brokerPassword ? '*******' : undefined,
+            credentialSecret: configuration.credentialSecret ? '*******' : undefined
+        }
+    })
 
-    const pinger = Pinger(configuration)
+    const agent = Agent(configuration)
     // process.on('exit', (code) => { console.log('EXIT', code); pinger.stop() })
-    process.on('SIGINT', () => { pinger.stop() })
-    pinger.start()
+    process.on('SIGINT', () => { agent.stop() })
+    agent.start()
 } catch (err) {
     console.log(err.message)
     process.exit(-1)

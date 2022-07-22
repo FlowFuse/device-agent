@@ -1,3 +1,3 @@
 module.exports = {
-    snapshot: require('./project.json')
+    snapshot: require('./resources/project.json')
 }
