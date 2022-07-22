@@ -63,9 +63,9 @@ by the platform if MQTT comms are enabled.
 
 MQTT options   | Description
 ---------------|---------------
-brokerURL      | The url for the platform broker
-brokerUsername | The username to connect with - `device:<teamId>:<deviceId>`
-brokerPassword | The password to connect with
+`brokerURL`      | The url for the platform broker
+`brokerUsername` | The username to connect with - `device:<teamId>:<deviceId>`
+`brokerPassword` | The password to connect with
 
 The following options can be added:
 
