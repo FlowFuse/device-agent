@@ -261,6 +261,22 @@ describe('Agent', function () {
             testLauncher.stop.firstCall.calledWith(true).should.be.true()
             agent.updating.should.be.false()
         })
+        it('sets project if changed whilst snapshot is null', async function () {
+            const agent = createHTTPAgent()
+            agent.currentProject = null
+            agent.currentSnapshot = null
+            agent.currentSettings = null
+
+            await agent.setState({ project: 'projectId', snapshot: null })
+
+            // Saved config still includes project
+            validateConfig(agent, 'projectId', null, null)
+            // Launcher has been stopped
+            should.not.exist(agent.launcher)
+            agent.updating.should.be.false()
+        })
+
+
         it('starts the launcher without update if needed', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
