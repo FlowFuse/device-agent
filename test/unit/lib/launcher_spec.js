@@ -2,10 +2,9 @@ const should = require('should')
 const { Launcher } = require('../../../lib/launcher')
 const setup = require('../setup')
 const fs = require('fs/promises')
-const { existsSync } = require('fs')
 const path = require('path')
 const os = require('os')
-const logger = require('../../../lib/log')
+
 describe('Launcher', function () {
     this.timeout(15000)
 
@@ -18,15 +17,15 @@ describe('Launcher', function () {
     }
 
     beforeEach(async function () {
-        config.dir = await fs.mkdtemp(path.join(os.tmpdir(),'ff-launcher-'))
+        config.dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ff-launcher-'))
         await fs.mkdir(path.join(config.dir, 'project'))
     })
 
-    afterEach(async function() {
+    afterEach(async function () {
         await fs.rm(config.dir, { recursive: true, force: true })
     })
 
-    it('Create Snapshot Flow/Creds Files', async function() {
+    it('Create Snapshot Flow/Creds Files', async function () {
         const launcher = Launcher(config, setup.snapshot)
         await launcher.writeFlow()
         await launcher.writeCredentials()
@@ -49,8 +48,8 @@ describe('Launcher', function () {
         const launcher = Launcher(config, setup.snapshot)
         await launcher.writePackage()
         const pkgFile = await fs.readFile(path.join(config.dir, 'project', 'package.json'))
-        const package = JSON.parse(pkgFile)
-        package.dependencies.should.have.property('node-red','2.2.2')
-        package.dependencies.should.have.property('node-red-node-random','0.4.0')
+        const pkg = JSON.parse(pkgFile)
+        pkg.dependencies.should.have.property('node-red', '2.2.2')
+        pkg.dependencies.should.have.property('node-red-node-random', '0.4.0')
     })
 })

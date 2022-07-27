@@ -58,6 +58,15 @@ Required options   | Description
 `credentialSecret` | Key to decrypt the flow credentials
 `forgeURL`         | The base url of the FlowForge platform
 
+To enable MQTT connectivity, the following options are required. They are provided
+by the platform if MQTT comms are enabled.
+
+MQTT options   | Description
+---------------|---------------
+`brokerURL`      | The url for the platform broker
+`brokerUsername` | The username to connect with - `device:<teamId>:<deviceId>`
+`brokerPassword` | The password to connect with
+
 The following options can be added:
 
 Extra options | Description
