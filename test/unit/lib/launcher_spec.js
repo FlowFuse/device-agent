@@ -26,7 +26,7 @@ describe('Launcher', function () {
     })
 
     it('Create Snapshot Flow/Creds Files', async function () {
-        const launcher = Launcher(config, setup.snapshot)
+        const launcher = Launcher(config, 'projectId', setup.snapshot)
         await launcher.writeFlow()
         await launcher.writeCredentials()
         const flow = await fs.readFile(path.join(config.dir, 'project', 'flows.json'))
@@ -35,17 +35,41 @@ describe('Launcher', function () {
         should(JSON.parse(creds)).eqls(setup.snapshot.credentials)
     })
 
-    it('Write Settings', async function () {
-        const launcher = Launcher(config, setup.snapshot)
+    it('Write Settings - without broker', async function () {
+        const launcher = Launcher(config, 'PROJECTID', setup.snapshot)
         await launcher.writeSettings()
         const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
         const settings = JSON.parse(setFile)
         settings.should.have.property('port', 1880)
         settings.should.have.property('credentialSecret', 'secret')
+        settings.should.have.property('flowforge')
+        settings.flowforge.should.have.property('projectID', 'PROJECTID')
+        settings.flowforge.should.not.have.property('projectLink')
+    })
+    it('Write Settings - with broker', async function () {
+        const launcher = Launcher({
+            ...config,
+            brokerURL: 'BURL',
+            brokerUsername: 'BUSER:TEAMID:deviceid',
+            brokerPassword: 'BPASS'
+        }, 'PROJECTID', setup.snapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('port', 1880)
+        settings.should.have.property('credentialSecret', 'secret')
+        settings.should.have.property('flowforge')
+        settings.flowforge.should.have.property('projectID', 'PROJECTID')
+        settings.flowforge.should.have.property('projectLink')
+        settings.flowforge.should.have.property('teamID', 'TEAMID')
+        settings.flowforge.projectLink.should.have.property('broker')
+        settings.flowforge.projectLink.broker.should.have.property('url', 'BURL')
+        settings.flowforge.projectLink.broker.should.have.property('username', 'BUSER:TEAMID:deviceid')
+        settings.flowforge.projectLink.broker.should.have.property('password', 'BPASS')
     })
 
     it('Write package.json', async function () {
-        const launcher = Launcher(config, setup.snapshot)
+        const launcher = Launcher(config, 'projectId', setup.snapshot)
         await launcher.writePackage()
         const pkgFile = await fs.readFile(path.join(config.dir, 'project', 'package.json'))
         const pkg = JSON.parse(pkgFile)
