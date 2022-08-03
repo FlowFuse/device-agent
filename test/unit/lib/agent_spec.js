@@ -276,7 +276,6 @@ describe('Agent', function () {
             agent.updating.should.be.false()
         })
 
-
         it('starts the launcher without update if needed', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
