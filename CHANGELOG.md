@@ -1,3 +1,8 @@
+#### 0.2.0: Release
+
+  - Add project-node support (#24) @knolleary
+  - Add MQTT connectivity support (#22) @knolleary
+
 #### 0.1.0: Release
 
  - First pass Device Environment Vars (#16) @hardillb
