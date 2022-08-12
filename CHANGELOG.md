@@ -1,3 +1,6 @@
+#### 0.2.1: Maintanence Release
+  - Remove .config files when a new snapshot is deployed to device to avoid old nodes being re-installed.
+
 #### 0.2.0: Release
 
   - Add project-node support (#24) @knolleary
