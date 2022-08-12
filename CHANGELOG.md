@@ -1,3 +1,8 @@
+#### 0.2.1: Maintanence Release
+
+ - Clean up .config.nodes.json (#28) @hardillb
+ - Add support for relative paths (#26) @hardillb
+
 #### 0.2.0: Release
 
   - Add project-node support (#24) @knolleary
