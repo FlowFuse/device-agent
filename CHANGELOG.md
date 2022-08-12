@@ -1,5 +1,7 @@
 #### 0.2.1: Maintanence Release
-  - Remove .config files when a new snapshot is deployed to device to avoid old nodes being re-installed.
+
+ - Clean up .config.nodes.json (#28) @hardillb
+ - Add support for relative paths (#26) @hardillb
 
 #### 0.2.0: Release
 
