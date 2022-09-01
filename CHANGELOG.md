@@ -1,3 +1,9 @@
+#### 0.2.2: Maintanence Release
+
+ - Bump to v0.2.2 (#33) @hardillb
+ - Fix lint error 
+ - change log format (#31) @sammachin
+
 #### 0.2.1: Maintanence Release
 
  - Clean up .config.nodes.json (#28) @hardillb
