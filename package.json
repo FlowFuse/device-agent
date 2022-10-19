@@ -12,6 +12,8 @@
     },
     "scripts": {
         "start": "node index.js",
+        "lint": "eslint -c .eslintrc \"*.js\" \"lib/**/*.js\" \"test/**/*.js\"",
+        "lint:fix": "eslint -c .eslintrc \"*.js\" \"lib/**/*.js\" \"test/**/*.js\" --fix",
         "test": "mocha test/unit/**/*_spec.js"
     },
     "bin": {
@@ -31,7 +33,7 @@
         "yaml": "^2.1.1"
     },
     "devDependencies": {
-        "eslint": "^8.20.0",
+        "eslint": "^8.25.0",
         "eslint-config-standard": "^17.0.0",
         "eslint-plugin-node": "^11.1.0",
         "mocha": "^10.0.0",
