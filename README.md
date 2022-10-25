@@ -69,10 +69,11 @@ MQTT options   | Description
 
 The following options can be added:
 
-Extra options | Description
---------------|---------------
-`interval`    | How often, in seconds, the agent checks in with the platform. Default: 60s
-`port`        | The port to listen on. Default: 1880
+Extra options   | Description
+----------------|---------------
+`interval`      | How often, in seconds, the agent checks in with the platform. Default: 60s
+`intervalJitter`| How much, in seconds, to vary the heartbeat +/- `intervalJitter`. Default: 10s
+`port`          | The port to listen on. Default: 1880
 
 ## Running
 
