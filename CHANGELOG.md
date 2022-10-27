@@ -1,3 +1,11 @@
+#### 0.3.0: Release
+
+ - Device does not exit cleanly following new jitter timing (#41) @Steve-Mcl
+ - add jitter to mqtt and http checkin (#35) @Steve-Mcl
+ - Add NodeJS version test at startup (#39) @hardillb
+ - Update eslint and include build GH action (#38) @knolleary
+ - Align cli comment with args.js (#36) @Steve-Mcl
+
 #### 0.2.2: Maintanence Release
 
  - Bump to v0.2.2 (#33) @hardillb

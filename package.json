@@ -1,7 +1,7 @@
 {
     "name": "@flowforge/flowforge-device-agent",
-    "version": "0.2.2",
-    "description": "A Edge Agent for running FlowForge Projects",
+    "version": "0.3.0",
+    "description": "An Edge Agent for running FlowForge Projects",
     "main": "index.js",
     "repository": {
         "type": "git",
