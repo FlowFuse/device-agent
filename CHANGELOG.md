@@ -1,3 +1,7 @@
+#### 0.4.0: Release
+
+ - Add "memory" and "persistent" as context stores (#44) @Steve-Mcl
+
 #### 0.3.0: Release
 
  - Device does not exit cleanly following new jitter timing (#41) @Steve-Mcl
