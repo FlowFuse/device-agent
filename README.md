@@ -97,6 +97,7 @@ Options
   -d, --dir dir         Where the agent should store its state. Default: /opt/flowforge-device
   -i, --interval secs
   -p, --port number
+  -m, --moduleCache     use local npm module cache rather than install
 
 Global Options
 
@@ -114,9 +115,10 @@ If the device is being run on a offline network or security policies prevent the
 Device Agent from connecting to npmjs.org then it can be configured to use a pre-cached 
 set of modules.
 
-You can enable this mode by adding `moduleCache: true` to the `device.yml` file. This will 
-cause the Device Agent to load the modules from the `module_cache` directory in the Device
-Agents Configuration directory as describe above. By default this will be `/opt/flowforge-device/module_cache`
+You can enable this mode by adding `-m` to the command line adding `moduleCache: true` 
+to the `device.yml` file. This will cause the Device Agent to load the modules from the 
+`module_cache` directory in the Device Agents Configuration directory as describe above.
+By default this will be `/opt/flowforge-device/module_cache`.
 
 The easiest way to create the cache is to download the `package.json` for the Snapshot. 
 This can be found in the 3 dots menu for the Snapshot on the Project's Snapshot page.
