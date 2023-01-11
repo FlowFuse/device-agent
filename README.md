@@ -123,7 +123,7 @@ This can be found in the 3 dots menu for the Snapshot on the Project's Snapshot 
 
 Place this file in an empty directory on a machine with the same OS and architecture as 
 the device and run `npm install`. This will create a `node_modules` directory which you 
-copy to the device.
+should copy into `module_cache` director on the device.
 
 ## Running as a service
 
