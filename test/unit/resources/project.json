@@ -128,8 +128,9 @@
         "$": "f7459538f9c2dcccf8b5093ac485aa53S0dg6E7mCgF0i+0kO7XPpVXDNe2HIZtd3arNFIAoZGnVYivJxXWYBLNuCgMlaL/Op+4TqQ=="
     },
     "settings":{},
-    "env:": {
-        "FOO": "BAR"
+    "env": {
+        "FOO": "BAR",
+        "FF_PROJECT_NAME": "TEST_PROJECT"
     },
     "modules": {
         "node-red": "2.2.2",
