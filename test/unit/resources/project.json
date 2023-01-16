@@ -129,7 +129,8 @@
     },
     "settings":{},
     "env:": {
-        "FOO": "BAR"
+        "FOO": "BAR",
+        "FF_PROJECT_NAME": "TEST_PROJECT"
     },
     "modules": {
         "node-red": "2.2.2",

@@ -75,5 +75,7 @@ describe('Launcher', function () {
         const pkg = JSON.parse(pkgFile)
         pkg.dependencies.should.have.property('node-red', '2.2.2')
         pkg.dependencies.should.have.property('node-red-node-random', '0.4.0')
+        pkg.name.should.eqls('TEST_PROJECT')
+        pkg.version.should.eqls('0.0.0-aaaabbbbcccc')
     })
 })
