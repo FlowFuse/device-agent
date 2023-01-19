@@ -1,3 +1,9 @@
+#### 0.5.0: Release
+ 
+ - Add Project name, version to package.json (#49) @hardillb
+ - Ensure ws URLs with ipv6 address can connect MQTT (#51) @Steve-Mcl
+ - Support running on offline devices (#47) @hardillb
+
 #### 0.4.0: Release
 
  - Add "memory" and "persistent" as context stores (#44) @Steve-Mcl
