@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-
 const semver = require('semver')
-
 if (semver.lt(process.version, '16.0.0')) {
     console.log('FlowForge Device Agent requires at least NodeJS v16')
     process.exit(0)
@@ -28,7 +26,6 @@ if (options.help) {
     console.log(require('./lib/cli/usage').usage())
     process.exit(0)
 }
-
 
 try {
     const configuration = require('./lib/config').config(options)
