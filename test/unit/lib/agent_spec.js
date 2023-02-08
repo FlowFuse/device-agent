@@ -5,7 +5,7 @@ const path = require('path')
 const fs = require('fs/promises')
 const os = require('os')
 
-const { Agent } = require('../../../lib/agent')
+const agent = require('../../../lib/agent')
 const httpClient = require('../../../lib/http')
 const mqttClient = require('../../../lib/mqtt')
 const launcher = require('../../../lib/launcher.js')
@@ -13,15 +13,25 @@ const launcher = require('../../../lib/launcher.js')
 describe('Agent', function () {
     let configDir
 
+    function createProvisioningAgent () {
+        return agent.newAgent({
+            dir: configDir,
+            forgeURL: 'http://localhost:9000',
+            provisioningTeam: 'team1',
+            provisioningMode: true,
+            token: 'token'
+        })
+    }
+
     function createHTTPAgent () {
-        return Agent({
+        return agent.newAgent({
             dir: configDir,
             forgeURL: 'http://localhost:9000'
         })
     }
 
     function createMQTTAgent () {
-        return Agent({
+        return agent.newAgent({
             dir: configDir,
             forgeURL: 'http://localhost:9000',
             brokerURL: 'ws://localhost:9001',
@@ -57,18 +67,18 @@ describe('Agent', function () {
     beforeEach(async function () {
         configDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ff-launcher-'))
         await fs.mkdir(path.join(configDir, 'project'))
-        sinon.stub(httpClient, 'HTTPClient').returns({
+        sinon.stub(httpClient, 'newHTTPClient').returns({
             startPolling: sinon.stub(),
             stopPolling: sinon.stub(),
             getSettings: sinon.stub(),
             getSnapshot: sinon.stub()
         })
-        sinon.stub(mqttClient, 'MQTTClient').returns({
+        sinon.stub(mqttClient, 'newMQTTClient').returns({
             start: sinon.stub(),
             stop: sinon.stub(),
             setProject: sinon.stub()
         })
-        sinon.stub(launcher, 'Launcher').callsFake((config, project, settings) => {
+        sinon.stub(launcher, 'newLauncher').callsFake((config, project, settings) => {
             return {
                 start: sinon.stub().resolves(),
                 stop: sinon.stub().resolves(),
@@ -145,7 +155,7 @@ describe('Agent', function () {
             agent.should.have.property('currentState', 'unknown')
             await agent.start()
             agent.should.have.property('currentState', 'stopped')
-            agent.should.not.have.property('mqttClient')
+            agent.should.have.property('mqttClient').and.be.null()
             agent.httpClient.startPolling.callCount.should.equal(1)
         })
         it('uses mqtt if broker config provided', async function () {
@@ -158,7 +168,7 @@ describe('Agent', function () {
             // In MQTT mode we stay in unknown state until the platform confirms
             // what state we should be in
             agent.should.have.property('currentState', 'unknown')
-            agent.should.have.property('mqttClient')
+            agent.should.have.property('mqttClient').and.be.an.Object()
             agent.mqttClient.start.callCount.should.equal(1)
             agent.mqttClient.setProject.callCount.should.equal(1)
             agent.mqttClient.setProject.firstCall.calledWith('projectId').should.be.true()
@@ -168,7 +178,7 @@ describe('Agent', function () {
     describe('stop', function () {
         it('stops the agent and all components - http only', async function () {
             const agent = createHTTPAgent()
-            agent.launcher = launcher.Launcher()
+            agent.launcher = launcher.newLauncher()
             agent.httpClient.stopPolling.callCount.should.equal(0)
             await agent.start()
             await agent.stop()
@@ -177,7 +187,7 @@ describe('Agent', function () {
         })
         it('stops the agent and all components - mqtt enabled', async function () {
             const agent = createMQTTAgent()
-            agent.launcher = launcher.Launcher()
+            agent.launcher = launcher.newLauncher()
             agent.httpClient.stopPolling.callCount.should.equal(0)
             await agent.start()
             await agent.stop()
@@ -246,7 +256,7 @@ describe('Agent', function () {
             agent.currentProject = 'projectId'
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
-            const testLauncher = launcher.Launcher()
+            const testLauncher = launcher.newLauncher()
             agent.launcher = testLauncher
             await writeConfig(agent, 'projectId', 'snapshotId', 'settingsId')
 
@@ -298,7 +308,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
-            const testLauncher = launcher.Launcher()
+            const testLauncher = launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'newSnapshotId' })
@@ -323,7 +333,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
-            const testLauncher = launcher.Launcher()
+            const testLauncher = launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'newSnapshotId' })
@@ -348,7 +358,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
-            const testLauncher = launcher.Launcher()
+            const testLauncher = launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'settingsId' })
             agent.httpClient.getSnapshot.resolves({ })
@@ -369,7 +379,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = null
 
-            const testLauncher = launcher.Launcher()
+            const testLauncher = launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'should-not-be-called' })
@@ -392,7 +402,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
-            const testLauncher = launcher.Launcher()
+            const testLauncher = launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'should-not-be-called' })
@@ -434,7 +444,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
-            const testLauncher = launcher.Launcher()
+            const testLauncher = launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'settingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'newSnapshotId' })
