@@ -459,4 +459,31 @@ describe('Agent', function () {
             agent.httpClient.getSettings.called.should.be.false()
         })
     })
+
+    describe('provisioning', function () {
+        it('Starts the agent in provisioning mode', async function () {
+            const agent = createProvisioningAgent()
+            agent.httpClient.getSettings.resolves({ })
+            agent.httpClient.getSnapshot.resolves({ })
+            await agent.start()
+            agent.should.have.property('currentState', 'provisioning')
+            agent.httpClient.startPolling.called.should.be.true()
+            should.not.exist(agent.launcher)
+            agent.should.have.property('currentProject', null)
+            agent.should.have.property('currentSnapshot', null)
+            agent.should.have.property('currentSettings', null)
+        })
+        it('Downloads new credentials and starts the launcher', async function () {
+            this.skip() // TODO: Implement this test
+            // const agent = createProvisioningAgent()
+            // agent.httpClient.getSettings.resolves({ })
+            // agent.httpClient.getSnapshot.resolves({ })
+            // await agent.start()
+            // validateConfig(agent, 'newProject', 'newSnapshotId', 'settingsId')
+            // should.exist(agent.launcher)
+            // agent.launcher.writeConfiguration.called.should.be.true()
+            // agent.launcher.start.called.should.be.true()
+            // agent.httpClient.getSettings.called.should.be.false()
+        })
+    })
 })
