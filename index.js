@@ -2,12 +2,15 @@
 const semver = require('semver')
 if (semver.lt(process.version, '16.0.0')) {
     console.log('FlowForge Device Agent requires at least NodeJS v16')
-    process.exit(0)
+    quit()
 }
 
 const commandLineArgs = require('command-line-args')
-const { Agent } = require('./lib/agent.js')
-const { initLogger, info, debug } = require('./lib/log')
+const { info } = require('./lib/log')
+const path = require('path')
+const fs = require('fs')
+const { AgentManager } = require('./lib/AgentManager')
+
 let options
 
 try {
@@ -16,41 +19,59 @@ try {
 } catch (err) {
     console.log(err.toString())
     console.log('Run with -h for help')
-    process.exit(0)
+    quit()
 }
 if (options.version) {
     console.log(require('./package.json').version)
-    process.exit(0)
+    quit()
 }
 if (options.help) {
     console.log(require('./lib/cli/usage').usage())
-    process.exit(0)
+    quit()
 }
 
-try {
-    const configuration = require('./lib/config').config(options)
-    initLogger(configuration)
+if (!path.isAbsolute(options.dir)) {
+    options.dir = path.join(process.cwd(), options.dir)
+}
 
-    info('FlowForge Device Agent')
-    info(`Version: ${configuration.version}`)
-    info(`Device: ${configuration.deviceId}`)
-    info(`ForgeURL: ${configuration.forgeURL}`)
+// Require dir to be created
+if (!fs.existsSync(options.dir)) {
+    const quitMsg = `Cannot find dir '${options.dir}'.
+Please ensure it exists and is writable, or set a different path with -d`
+    quit(quitMsg, 9) // Exit Code 9, Invalid Argument
+}
 
-    debug({
-        ...configuration,
-        ...{
-            // Obscure any token/password type things from the log
-            token: configuration.token ? '*******' : undefined,
-            brokerPassword: configuration.brokerPassword ? '*******' : undefined,
-            credentialSecret: configuration.credentialSecret ? '*******' : undefined
-        }
-    })
+// Locate the config file. Either the path exactly as specified,
+// or relative to dir
+let deviceFile = options.config
+if (!fs.existsSync(deviceFile)) {
+    deviceFile = path.join(options.dir, deviceFile)
+    if (!fs.existsSync(deviceFile)) {
+        const quitMsg = `Cannot find config file '${options.config}'
+Tried:
+- ${options.config}
+- ${deviceFile}`
+        quit(quitMsg, 9) // Exit Code 9, Invalid Argument
+    }
+}
 
-    const agent = Agent(configuration)
-    // process.on('exit', (code) => { console.log('EXIT', code); pinger.stop() })
-    process.on('SIGINT', () => { agent.stop() })
-    agent.start()
-} catch (err) {
-    console.log(err.message)
-    process.exit(-1)
+// Continue setting up the agent/agentManager
+options.deviceFile = deviceFile
+delete options.config
+
+info('FlowForge Device Agent')
+info('----------------------')
+
+AgentManager.init(options)
+
+process.on('SIGINT', quit)
+process.on('SIGTERM', quit)
+process.on('SIGQUIT', quit)
+
+AgentManager.startAgent()
+
+async function quit (msg, errCode = 0) {
+    if (AgentManager) { await AgentManager.close() }
+    if (msg) { console.log(msg) }
+    process.exit(errCode)
 }
