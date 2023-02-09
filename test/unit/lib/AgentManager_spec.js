@@ -14,12 +14,26 @@ describe('Test the AgentManager', function () {
     beforeEach(async function () {
         configDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ff-launcher-'))
         await fs.mkdir(path.join(configDir, 'project'))
-        stubAgent()
+        try {
+            sinon.stub(agent, 'newAgent').callsFake(function () {
+                return {
+                    start: sinon.stub().returns('started'),
+                    stop: sinon.stub(),
+                    dummy: sinon.stub().returns('for ensuring the sandbox is used once')
+                }
+            })
+        } catch (error) {
+            console.log(error)
+        }
+        agent.newAgent().dummy()
     })
     afterEach(async function () {
-        await fs.rm(configDir, { recursive: true, force: true })
         await AgentManager.close()
+        configDir && await fs.rm(configDir, { recursive: true, force: true })
         sinon.restore()
+    })
+    after(function () {
+        sinon.reset()
     })
     it('Create and init the Agent Manager', function () {
         AgentManager.init({})
@@ -78,10 +92,3 @@ describe('Test the AgentManager', function () {
         AgentManager.agent.start.calledOnce.should.be.true()
     })
 })
-
-function stubAgent () {
-    agent.newAgent = sinon.stub().returns({
-        start: sinon.stub().returns('started'),
-        stop: sinon.stub()
-    })
-}
