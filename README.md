@@ -38,7 +38,7 @@ sudo mkdir /opt/flowforge-device
 sudo chown -R $USER /opt/flowforge-device
 ```
 
-### `device.yml`
+### `device.yml` - for a single device
 
 When the device is registered on the FlowForge platform, a group of configuration
 details are provided. These can be copied from the platform, or downloaded directly
@@ -75,6 +75,34 @@ Extra options   | Description
 `intervalJitter`| How much, in seconds, to vary the heartbeat +/- `intervalJitter`. Default: 10s
 `port`          | The port to listen on. Default: 1880
 `moduleCache`   | If the device can not access npmjs.org then use the node modules cache in `module_cache` directory. Default `false`
+
+
+### `device.yml` - for provisioning
+
+When a device should be auto registered on the FlowForge platform, a group of provisioning
+configuration details are provided. These can be copied from the platform, or downloaded directly
+as a yml file.
+
+This file should be copied into the working directory as `device.yml`.
+
+A different config file can be specified with the `-c/--config` option.
+
+The file must contain the following options (these are the ones provided by 
+FlowForge)
+
+Required options    | Description
+--------------------|---------------
+`provisioningName`  | The name of the token
+`provisioningTeam`  | The team this device will be registered to
+`provisioningToken` | Provisioning Token to connect to the FF platform
+`forgeURL`          | The base url of the FlowForge platform
+
+The following options can be added:
+
+Extra options   | Description
+----------------|---------------
+`interval`      | How often, in seconds, the agent checks in with the platform. Default: 60s
+`intervalJitter`| How much, in seconds, to vary the heartbeat +/- `intervalJitter`. Default: 10s
 
 ## Running
 
