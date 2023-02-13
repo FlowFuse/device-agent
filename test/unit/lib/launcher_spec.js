@@ -1,5 +1,5 @@
 const should = require('should')
-const { Launcher } = require('../../../lib/launcher')
+const { newLauncher } = require('../../../lib/launcher')
 const setup = require('../setup')
 const fs = require('fs/promises')
 const path = require('path')
@@ -26,7 +26,7 @@ describe('Launcher', function () {
     })
 
     it('Create Snapshot Flow/Creds Files', async function () {
-        const launcher = Launcher(config, 'projectId', setup.snapshot)
+        const launcher = newLauncher(config, 'projectId', setup.snapshot)
         await launcher.writeFlow()
         await launcher.writeCredentials()
         const flow = await fs.readFile(path.join(config.dir, 'project', 'flows.json'))
@@ -36,7 +36,7 @@ describe('Launcher', function () {
     })
 
     it('Write Settings - without broker', async function () {
-        const launcher = Launcher(config, 'PROJECTID', setup.snapshot)
+        const launcher = newLauncher(config, 'PROJECTID', setup.snapshot)
         await launcher.writeSettings()
         const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
         const settings = JSON.parse(setFile)
@@ -47,7 +47,7 @@ describe('Launcher', function () {
         settings.flowforge.should.not.have.property('projectLink')
     })
     it('Write Settings - with broker', async function () {
-        const launcher = Launcher({
+        const launcher = newLauncher({
             ...config,
             brokerURL: 'BURL',
             brokerUsername: 'BUSER:TEAMID:deviceid',
@@ -69,7 +69,7 @@ describe('Launcher', function () {
     })
 
     it('Write package.json', async function () {
-        const launcher = Launcher(config, 'projectId', setup.snapshot)
+        const launcher = newLauncher(config, 'projectId', setup.snapshot)
         await launcher.writePackage()
         const pkgFile = await fs.readFile(path.join(config.dir, 'project', 'package.json'))
         const pkg = JSON.parse(pkgFile)
