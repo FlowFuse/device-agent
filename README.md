@@ -80,8 +80,9 @@ Extra options   | Description
 ### `device.yml` - for provisioning
 
 When a device should be auto registered on the FlowForge platform, a group of provisioning
-configuration details are provided. These can be copied from the platform, or downloaded directly
-as a yml file.
+configuration details are required. These are generated for you in FlowForge
+**Team Settings** under the **Devices** tab when you create a provisioning token.
+These can be copied from the platform, or downloaded directly as a yml file.
 
 This file should be copied into the working directory as `device.yml`.
 
