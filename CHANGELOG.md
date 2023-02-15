@@ -1,3 +1,8 @@
+#### 0.6.0: Release
+
+ - Auto Device Provisioning (#56) @Steve-Mcl
+ - Move nodejs version check (#55) @hardillb
+
 #### 0.5.0: Release
  
  - Add Project name, version to package.json (#49) @hardillb
