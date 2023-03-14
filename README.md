@@ -1,6 +1,6 @@
 # FlowForge Device Agent
 
-This module provides an agent that runs Node-RED projects deployed from the
+This module provides an agent that runs Node-RED instances deployed from the
 FlowForge platform.
 
 ## Prerequisites
@@ -138,7 +138,7 @@ Global Options
 ## Running with no access to npmjs.org
 
 By default the Device Agent will try and download the correct version of Node-RED and 
-any nodes required to run the Project Snapshot that is assigned to run on the device.
+any nodes required to run the Instance Snapshot that is assigned to run on the device.
 
 If the device is being run on an offline network or security policies prevent the 
 Device Agent from connecting to npmjs.org then it can be configured to use a pre-cached 
@@ -155,7 +155,7 @@ To create a suitable module cache, you will need to install the modules on a loc
 access to npmjs.org, ensuring you use the same OS and Architecture as your target
 device, and then copy the modules on to your device.
 
-1. From the Project Snapshot page, select the snapshot you want to deploy and select the option to download its `package.json` file.
+1. From the Instance Snapshot page, select the snapshot you want to deploy and select the option to download its `package.json` file.
 2. Place this file in an empty directory on your local device.
 3. Run `npm install` to install the modules. This will create a `node_modules` directory.
 4. On your target device, create a directory called `module_cache` inside the Device Agent Configuration directory.
