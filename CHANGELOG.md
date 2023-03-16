@@ -1,3 +1,7 @@
+#### 0.6.1: Release
+
+ - Docs: update 'project' terminology to 'instances' (#59) @knolleary
+
 #### 0.6.0: Release
 
  - Auto Device Provisioning (#56) @Steve-Mcl
