@@ -1,6 +1,6 @@
 {
     "name": "@flowforge/flowforge-device-agent",
-    "version": "0.6.0",
+    "version": "0.6.1",
     "description": "An Edge Agent for running Node-RED instances deployed from the FlowForge Platform",
     "main": "index.js",
     "repository": {
