@@ -1,7 +1,7 @@
 {
     "name": "@flowforge/flowforge-device-agent",
     "version": "0.6.0",
-    "description": "An Edge Agent for running FlowForge Projects",
+    "description": "An Edge Agent for running Node-RED instances deployed from the FlowForge Platform",
     "main": "index.js",
     "repository": {
         "type": "git",
@@ -28,7 +28,7 @@
     "dependencies": {
         "command-line-args": "^5.2.1",
         "command-line-usage": "^6.1.3",
-        "got": "^11.8.5",
+        "got": "^11.8.6",
         "mqtt": "^4.3.7",
         "semver": "^7.3.8",
         "yaml": "^2.1.1"
