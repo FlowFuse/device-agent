@@ -64,14 +64,18 @@ info('----------------------')
 
 AgentManager.init(options)
 
-process.on('SIGINT', quit)
-process.on('SIGTERM', quit)
-process.on('SIGQUIT', quit)
+process.on('SIGINT', closeAgentAndQuit)
+process.on('SIGTERM', closeAgentAndQuit)
+process.on('SIGQUIT', closeAgentAndQuit)
 
 AgentManager.startAgent()
 
-async function quit (msg, errCode = 0) {
+async function closeAgentAndQuit (msg, errCode = 0) {
     if (AgentManager) { await AgentManager.close() }
+    quit(msg, errCode)
+}
+
+function quit (msg, errCode = 0) {
     if (msg) { console.log(msg) }
     process.exit(errCode)
 }
