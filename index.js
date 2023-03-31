@@ -15,6 +15,7 @@ let options
 
 try {
     options = commandLineArgs(require('./lib/cli/args'))
+    console.log(options)
     options = options._all
 } catch (err) {
     console.log(err.toString())

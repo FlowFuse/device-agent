@@ -1,3 +1,10 @@
+#### 0.6.2: Release
+
+ - Ensure cli usage errors are reported properly (#67) @knolleary
+ - Remove/recreate symlink to module_cache if exists (#63) @hardillb
+ - Ensure settings are pulled for first snapshot (#65) @hardillb
+ - Allow the agent to start if initial checkin fails (#64) @knolleary
+
 #### 0.6.1: Release
 
  - Docs: update 'project' terminology to 'instances' (#59) @knolleary
