@@ -1,3 +1,7 @@
+#### 0.7.0: Release
+
+ - Device Remote logging (#66) @hardillb
+
 #### 0.6.2: Release
 
  - Ensure cli usage errors are reported properly (#67) @knolleary
