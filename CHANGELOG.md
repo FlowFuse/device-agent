@@ -1,5 +1,6 @@
 #### 0.7.0: Release
 
+ - Do not setup checkin timeout if an update has already arrived (#70) @knolleary
  - Device Remote logging (#66) @hardillb
 
 #### 0.6.2: Release
