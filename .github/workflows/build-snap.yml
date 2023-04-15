@@ -1,0 +1,27 @@
+name: snapbuild-device-agent
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform:
+        - amd64
+        - arm64
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        path: snap
+    - uses: docker/setup-qemu-action@v2
+      with:
+        platforms: ${{ matrix.platform }}
+    - uses: diddlesnaps/snapcraft-multiarch-action@v1
+      id: snapcraft
+      with:
+        architecture: ${{ matrix.platform }}
+        path: snap
+    - uses: actions/upload-artifact@v3
+      with:
+        name: snap
+        path: ${{ steps.snapcraft.outputs.snap }}

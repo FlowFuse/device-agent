@@ -1,0 +1,71 @@
+name: flowforge-device-agent
+adopt-info: flowforge-device-agent
+summary: An agent to start FlowForge Projects on remote devices
+description: The FlowForge platform can be used to manage Node-RED instances running on remote Devices. A Device runs a software agent that connects back to the platform to receive updates.
+base: core20
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: amd64
+  - build-on: arm64
+
+apps:
+  device-agent:
+    command: bin/start
+    plugs:
+      - network
+      - network-bind
+      - home
+      - removable-media
+  npm:
+    command: bin/npm
+    plugs:
+      - home
+      - network
+
+parts:
+  node: # We dump in a specific version of node/npm from upstream.
+    plugin: dump
+    source:
+      - on amd64: https://nodejs.org/dist/v16.19.0/node-v16.19.0-linux-x64.tar.gz
+      - on arm64: https://nodejs.org/dist/v16.19.0/node-v16.19.0-linux-arm64.tar.gz
+  flowforge-device-agent:
+    after: [node]
+    plugin: nil # We use the nil plugin so we can fully override the build with whatever we need to do
+    source: .
+    build-environment:
+    # AUDITING CONTROL
+      - AUDIT_ENABLED: "1"  #0|1
+      - AUDIT_LEVEL: "high" #low|moderate|high|critical
+
+    build-packages:
+      - libatomic1
+      - build-essential
+    override-build: |
+      PATH=$PATH:../npm/bin
+      
+      # setup npm
+      npm config set unsafe-perm True
+      
+      # clean cache
+      npm cache verify
+
+      # install flowforge-device-agent
+      npm install --no-audit --no-fund --prefix $SNAPCRAFT_PART_INSTALL/lib @flowforge/flowforge-device-agent
+      
+      # create package.json
+      cd $SNAPCRAFT_PART_INSTALL/lib
+      npm init --yes
+
+      #set snap version
+      VER=$(npm show @flowforge/flowforge-device-agent version)
+      echo "VERSION $(npm show @flowforge/flowforge-device-agent version)"
+      snapcraftctl set-version $VER
+
+  settings:
+    plugin: dump
+    source: snap/local/settings
+    organize:
+      start.sh: "bin/start"
+      device.yml: "config/device.yml"
