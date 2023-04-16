@@ -30,4 +30,4 @@ while getopts "i:p:m:" opt; do
   esac
 done
 
-"$SNAP"/bin/node "$SNAP"/lib/node_modules/.bin/flowforge-device-agent -d "$snap_user_data" -c "$writable_config" -i "$interval" -p "$port" -m $moduleCache
+"$SNAP"/bin/node "$SNAP"/lib/node_modules/.bin/flowforge-device-agent -d "$snap_user_data" -c "$writable_config" -i $interval -p $port -m $moduleCache
