@@ -1,14 +1,18 @@
-name: snapbuild-device-agent
+name: snapbuild
+
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         platform:
-        - amd64
-        - arm64
+          - amd64
     steps:
     - uses: actions/checkout@v3
       with:
@@ -21,7 +25,3 @@ jobs:
       with:
         architecture: ${{ matrix.platform }}
         path: snap
-    - uses: actions/upload-artifact@v3
-      with:
-        name: snap
-        path: ${{ steps.snapcraft.outputs.snap }}
