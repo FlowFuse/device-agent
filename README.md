@@ -164,3 +164,6 @@ device, and then copy the modules on to your device.
 ## Running as a service
 
 An example service file is provided [here](https://github.com/flowforge/flowforge-device-agent/tree/main/service).
+
+## Running as SNAP
+[![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-white.svg)](https://snapcraft.io/flowforge-device-agent)

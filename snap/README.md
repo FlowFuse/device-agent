@@ -16,7 +16,7 @@ sudo snap install flowforge-device-agent
 
 ## Configuration
 
-1. The agent's configuration is provided in a `device.yml` file. The Snap package ensures that a writable directory exists in `$SNAP_USER_DATA/flowforge-device`
+1. The agent's configuration is provided in a `device.yml` file. The Snap package ensures that a writable directory exists in `$SNAP_USER_DATA/flowforge-device` or rather `~/snap/flowforge-device-agent/current/flowforge-device`
 2. Copy the `device.yml` file provided by the FlowForge platform to the writable directory at `$SNAP_USER_DATA/flowforge-device/device.yml` or modify the template.
 
 ## Usage

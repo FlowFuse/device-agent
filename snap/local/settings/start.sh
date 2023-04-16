@@ -16,18 +16,16 @@ if [ ! -f "$writable_config" ]; then
 fi
 
 # Define default values for optional arguments
-interval=60
-port=1881
-moduleCache=false
+interval="60"
+port="1881"
 
 # Parse optional arguments
 while getopts "i:p:m:" opt; do
   case $opt in
-    i) interval=$OPTARG;;
-    p) port=$OPTARG;;
-    m) moduleCache=$OPTARG;;
-    *) echo "Usage: $0 [-i interval] [-p port] [-m true|false]"; exit 1;;
+    i) interval="$OPTARG";;
+    p) port="$OPTARG";;
+    *) echo "Usage: $0 [-i interval] [-p port]"; exit 1;;
   esac
 done
 
-"$SNAP"/bin/node "$SNAP"/lib/node_modules/.bin/flowforge-device-agent -d "$snap_user_data" -c "$writable_config" -i $interval -p $port -m $moduleCache
+"$SNAP"/bin/node "$SNAP"/lib/node_modules/.bin/flowforge-device-agent -d "$snap_user_data" -c "$writable_config" -i "$interval" -p "$port"
