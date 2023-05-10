@@ -31,9 +31,12 @@
         "got": "^11.8.6",
         "mqtt": "^4.3.7",
         "semver": "^7.3.8",
+        "ws": "^8.13.0",
         "yaml": "^2.1.1"
     },
     "devDependencies": {
+        "aedes": "^0.49.0",
+        "aedes-server-factory": "^0.2.1",
         "eslint": "^8.25.0",
         "eslint-config-standard": "^17.0.0",
         "eslint-plugin-node": "^11.1.0",
