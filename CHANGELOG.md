@@ -1,3 +1,12 @@
+#### 0.8.0: Release
+
+ - Set editor header.title to device name if not otherwise set (#88) @knolleary
+ - Add verbose logging of proxy requests and shift to 127.0.0.1 (#87) @knolleary
+ - Increase the timeout to create WS connection to Forge (#86) @hardillb
+ - Bump to 0.8.0 (#85) @knolleary
+ - Remote device access, editing and snapshotting with Auth enabled (#77) @Steve-Mcl
+ - Ensure log body is a string (#80) @hardillb
+
 #### 0.7.0: Release
 
  - Do not setup checkin timeout if an update has already arrived (#70) @knolleary
