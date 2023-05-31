@@ -71,7 +71,7 @@ if (options.webmin) {
     }
     const opts = {
         port: options.webminPort || 1879,
-        host: options.webminHost || '::',
+        host: options.webminHost || '0.0.0.0',
         credentials: {
             username: options.webminUser,
             password: options.webminPass

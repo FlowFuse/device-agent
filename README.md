@@ -138,7 +138,7 @@ Options
 Web Admin Options
 
   -w, --webmin            Start the admin web server (optional, does not run by default)
-  --webmin-host string    Web admin server host. Default: (::) (listen on all interfaces)
+  --webmin-host string    Web admin server host. Default: (0.0.0.0) (listen on all interfaces)
   --webmin-port number    Web admin server port. Default: 1879
   --webmin-user string    Web admin username. Required if --webmin is specified
   --webmin-pass string    Web admin password. Required if --webmin is specified
@@ -188,8 +188,8 @@ is not enabled by default.  The web admin permits the user to view the current
 status of the agent and the Node-RED instances it is running.  It also permits
 the user to download a device configuration or a provisioning configuration file.
 
-To enable the web admin, use the `-w/--webmin` option. This will start a web server
-on the specified host and port. The default host is `::` and the default port is `1879`.
+To enable the web admin, use the `-w/--webmin` option. This will start a web server on
+the specified host and port. The default host is `0.0.0.0` and the default port is `1879`.
 
 When enabling the web admin, a username and password must be provided with the
 `--webmin-user` and `--webmin-pass` options.
