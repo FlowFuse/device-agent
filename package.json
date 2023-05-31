@@ -39,6 +39,7 @@
         "aedes-server-factory": "^0.2.1",
         "eslint": "^8.25.0",
         "eslint-config-standard": "^17.0.0",
+        "eslint-plugin-html": "^7.1.0",
         "eslint-plugin-node": "^11.1.0",
         "mocha": "^10.0.0",
         "should": "^13.2.3",
