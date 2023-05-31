@@ -117,6 +117,10 @@
             font-size: 2.25rem;
             line-height: 3rem
         }
+        #web-server-status {
+            font-size: 3rem;
+            color: #ed4e4e;
+        }
         .section-header h1 {
             font-size: min(6vmin, 26px);
             min-width: 420px;
@@ -369,274 +373,279 @@
                     </div>
                 </div>
             </div>
+            <h2 id="web-server-status" class="text-center hidden">Web server offline</h2>
         </main>
     </div>
 
     <script>
-        function main() {
-            const fileSelect = document.getElementById('file-upload')
-            const fileUploadForm = document.getElementById('file-upload-form')
-            const fileData = document.getElementById('file-data')
-            const fileDropTarget = document.getElementById('file-drop-target')
-            const submitButton = document.getElementById('submit-button')
-            const uploadButton = document.getElementById('file-upload-btn')
+            function main () {
+                const fileSelect = document.getElementById('file-upload')
+                const fileData = document.getElementById('file-data')
+                const fileDropTarget = document.getElementById('file-drop-target')
+                const submitButton = document.getElementById('submit-button')
+                const uploadButton = document.getElementById('file-upload-btn')
 
-            function InitDropLoader() {
-                // hand the file upload input to the file drop target handler
-                fileSelect.addEventListener('change', fileSelectHandler, false);
+                function InitDropLoader () {
+                    // hand the file upload input to the file drop target handler
+                    fileSelect.addEventListener('change', fileSelectHandler, false)
 
-                // Is XHR2 available?
-                var xhr = new XMLHttpRequest();
-                if (xhr.upload) {
-                    // File Drop
-                    fileDropTarget.addEventListener('drop', fileSelectHandler, false);
-                    fileData.addEventListener('drop', fileSelectHandler, false);
+                    // Is XHR2 available?
+                    const xhr = new XMLHttpRequest()
+                    if (xhr.upload) {
+                        // File Drop
+                        fileDropTarget.addEventListener('drop', fileSelectHandler, false)
+                        fileData.addEventListener('drop', fileSelectHandler, false)
 
-                    document.addEventListener('dragover', (e) => {
-                        const validDropPoints = ['file-drop-target', 'file-data'];
-                        const items = e.dataTransfer.items;
-                        if (items.length > 1 || items.length === 0 || !validDropPoints.includes(e.target.id)) {
-                            e.dataTransfer.dropEffect = 'none';
-                            e.preventDefault();
-                            return true;
-                        }
-                        e.dataTransfer.dropEffect = 'copy';
+                        document.addEventListener('dragover', (e) => {
+                            const validDropPoints = ['file-drop-target', 'file-data']
+                            const items = e.dataTransfer.items
+                            if (items.length > 1 || items.length === 0 || !validDropPoints.includes(e.target.id)) {
+                                e.dataTransfer.dropEffect = 'none'
+                                e.preventDefault()
+                                return true
+                            }
+                            e.dataTransfer.dropEffect = 'copy'
+                            return false
+                        }, false)
+                        document.addEventListener('drop', (e) => {
+                            e.preventDefault()
+                            return true
+                        }, false)
+                    }
+                }
+
+                /** @param {DragEvent} e */
+                function fileSelectHandler (e) {
+                    /** @type {FileList} */
+                    const files = e.target.files || e.dataTransfer.files
+
+                    // only accept one file
+                    if (files.length !== 1) {
+                        alert('Please select a single file.')
+                        // cancel the drop
+                        e.stopPropagation()
+                        e.preventDefault()
                         return false
-                    }, false);
-                    document.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        return true;
-                    }, false);
-                }
-            }
-
-            /** @param {DragEvent} e */
-            function fileSelectHandler(e) {
-                /** @type {FileList} */
-                const files = e.target.files || e.dataTransfer.files;
-
-                // only accept one file
-                if (files.length !== 1) {
-                    alert('Please select a single file.')
-                    //cancel the drop 
-                    e.stopPropagation()
-                    e.preventDefault()
-                    return false;
-                }
-
-                // the file to process
-                const file = files[0]
-
-                // get the file type
-                let fType = file.type;
-
-                // if the file type is empty, try to determine it from the file name
-                if (fType === '') {
-                    const ext = file.name.split('.').pop()
-                    if (ext === 'yml' || ext === 'yaml') {
-                        fType = 'text/yaml'
-                    } else if (ext === 'txt') {
-                        fType = 'text/plain'
                     }
-                }
 
-                // ensure file is of correct type
-                if (fType !== 'text/plain' && fType !== 'text/yaml') {
-                    alert('Invalid file type. Please select a .txt or .yml file.')
-                    e.stopPropagation()
-                    e.preventDefault()
-                    return false;
-                }
+                    // the file to process
+                    const file = files[0]
 
-                e.stopPropagation()
-                e.preventDefault()
-                
+                    // get the file type
+                    let fType = file.type
 
-                // clear the text area and load the file
-                fileData.innerText = ''
-                const reader = new FileReader()
-                reader.onload = function (event) {
-                    fileData.value = event.target.result.replace(/\\n/g, '\n').replace(/\t/g, '    ');
-                    fileSelect.value = '' // clear the file selector
-                }
-                reader.readAsText(file);
-                updateTextareaWrapping()
-                return true;
-            }
-
-            /** submit button handler */
-            function submitHandler() {
-                const xhrSubmitConfig = new XMLHttpRequest();
-                xhrSubmitConfig.timeout = 5000; // Set timeout to 5 seconds (5000 milliseconds)
-                xhrSubmitConfig.ontimeout = function () { alert("Request timed out!"); }
-                xhrSubmitConfig.onreadystatechange = function () {
-                    if (xhrSubmitConfig.readyState == XMLHttpRequest.DONE) {
-                        if (xhrSubmitConfig.status == 200) {
-                            fileData.value = '';
-                            alert('Configuration saved. The device agent will now reload with this new configuration.');
-                        } else {
-                            const data = typeof xhrSubmitConfig.response === "object" ? xhrSubmitConfig.response : JSON.parse(xhrSubmitConfig.responseText || '{}');
-                            const message = data.error || 'There was a problem with the request.';
-                            alert(message);
+                    // if the file type is empty, try to determine it from the file name
+                    if (fType === '') {
+                        const ext = file.name.split('.').pop()
+                        if (ext === 'yml' || ext === 'yaml') {
+                            fType = 'text/yaml'
+                        } else if (ext === 'txt') {
+                            fType = 'text/plain'
                         }
                     }
+
+                    // ensure file is of correct type
+                    if (fType !== 'text/plain' && fType !== 'text/yaml') {
+                        alert('Invalid file type. Please select a .txt or .yml file.')
+                        e.stopPropagation()
+                        e.preventDefault()
+                        return false
+                    }
+
+                    e.stopPropagation()
+                    e.preventDefault()
+
+                    // clear the text area and load the file
+                    fileData.innerText = ''
+                    const reader = new FileReader()
+                    reader.onload = function (event) {
+                        fileData.value = event.target.result.replace(/\\n/g, '\n').replace(/\t/g, '    ')
+                        fileSelect.value = '' // clear the file selector
+                    }
+                    reader.readAsText(file)
+                    updateTextareaWrapping()
+                    return true
                 }
-                xhrSubmitConfig.open("POST", "submit");
-                xhrSubmitConfig.setRequestHeader("Content-type","application/json");
-                xhrSubmitConfig.setRequestHeader('Accept','application/json');
-                xhrSubmitConfig.responseType = 'json';
-                const data = {config: fileData.value};
-                xhrSubmitConfig.send(encodeURIComponent(JSON.stringify(data)));
-                statusPoll()
-                return false; // prevent page refresh
-            }
 
-            /** update the link to the forge */
-            function updateLinkToForge(forgeURL, target) {
-                const linkToForge = document.getElementById('link-to-forge');
-                if (linkToForge) {
-                    linkToForge.href = forgeURL;
-                    linkToForge.target = target;
-                }
-            }
-
-            /** add/remove wrapping to the text area to show/hide line breaks in the placeholder text */
-            function updateTextareaWrapping () {
-                fileData.style.whiteSpace = fileData.value.length > 0 ? 'nowrap' : '';
-            }
-
-            submitButton.addEventListener('click', submitHandler, false);
-
-            if (window.File && window.FileList && window.FileReader) {
-                fileData.placeholder = 'Enter the device or a provisioning configuration yaml. \nYou can load a file, drop a file or paste text in directly. \nClick Apply to update and reload the device.'
-                InitDropLoader();
-            } else {
-                fileData.placeholder = 'Enter the device configuration.'
-                uploadButton.style.display = 'none';
-            }
-
-            // listen for changes to the text area and wrap/nowrap the text as 
-            // needed to show line breaks in the placeholder text
-            'change input cut paste focus blur'.split(' ').map(evName => {
-                fileData.addEventListener(evName, updateTextareaWrapping, false)
-            })
-
-            // Status updates
-            const statusPollInterval = 5000
-            let statusPollTimer, statusPollTimeoutCount
-            function statusPoll () {
-                const statusElement = document.getElementById('status');
-                statusPollTimeoutCount = 0
-                const xhrStatus = new XMLHttpRequest()
-                xhrStatus.timeout = statusPollInterval - 200; // Set timeout to statusPollInterval less 200ms for grace
-                xhrStatus.ontimeout = function () { 
-                    statusPollTimeoutCount++
-                    console.warn("Status Poll timed out!"); 
-                }
-                xhrStatus.onreadystatechange = function () {
-                    if (xhrStatus.readyState == XMLHttpRequest.DONE) {
-                        if (xhrStatus.status == 200) {
-                            const data = xhrStatus.response || {};
-                            const status = data.status || {};
-                            const deviceClock = status.deviceClock ? new Date(status.deviceClock) : 'unknown';
-                            const config = status.config || {};
-
-                            // Get the table container element
-                            // const tableContainer = document.getElementById('status-table-container');
-                            
-                            // Create the table element
-                            // const table = document.createElement('div');
-                            // statusTable.classList.add('table');
-                            const statusTable = document.getElementById('status-table');
-                            const configTable = document.getElementById('config-table');
-                            const tempTable = document.createElement('div'); // for building the tables before adding to the DOM
-
-                            const addRow = (table, key, value, classes, skipIfNull, defaultForNull = 'unknown') => {
-                                const {headerClass, rowClass, cellClass} = Object.assign({}, classes, { rowClass: 'table-row', cellClass: 'table-cell' })
-                                if (skipIfNull && (value === null || value === undefined)) {
-                                    return;
-                                }
-                                if (value === null || value === undefined) {
-                                    value = defaultForNull;
-                                }
-                                const row = document.createElement('div');
-                                row.classList.add(rowClass);
-                                if (headerClass) {
-                                    row.classList.add(headerClass);
-                                }
-                                const keyCell = document.createElement('div');
-                                keyCell.classList.add(cellClass, 'col-1');
-                                keyCell.textContent = key;
-                                const valueCell = document.createElement('div');
-                                valueCell.classList.add(cellClass, 'col-2');
-                                valueCell.textContent = value;
-                                row.appendChild(keyCell);
-                                row.appendChild(valueCell);
-                                table.appendChild(row);
-                            }
-                            
-
-                            // ** status table ** //
-                            tempTable.innerHTML = '';
-                            // Create the header row
-                            addRow(tempTable, 'Status', 'Value', { headerClass: 'table-header' });
-                            // add the status & version rows
-                            addRow(tempTable, 'Agent Status', status.state);
-                            addRow(tempTable, 'Developer Mode', status.mode === 'developer' ? 'true' : undefined, null, true);
-                            addRow(tempTable, 'Snapshot Name', status.snapshotName, null, false, 'none');
-                            addRow(tempTable, 'Snapshot Desc', status.snapshotDesc, null, true);
-                            addRow(tempTable, 'Agent Version', status.version);
-                            addRow(tempTable, 'Device Clock', deviceClock);
-                            statusTable.innerHTML = tempTable.innerHTML;
-
-                            // ** config table ** //
-                            tempTable.innerHTML = '';
-                            // add the config header row
-                            addRow(tempTable, 'Configuration', 'Value', { headerClass: 'table-header'});
-                            // add the config rows
-                            addRow(tempTable, 'Device ID', config.deviceId || 'unknown');
-                            addRow(tempTable, 'Forge URL', config.forgeURL || 'unknown');
-                            addRow(tempTable, 'Working Directory', config.dir || 'unknown');
-                            addRow(tempTable, 'Device File', config.deviceFile || 'unknown');
-                            addRow(tempTable, 'Port', config.port || 'unknown');
-                            if (config.provisioningMode) {
-                                addRow(tempTable, 'Provisioning Mode', config.provisioningMode);
-                                addRow(tempTable, 'Provisioning Name', config.provisioningName);
-                                addRow(tempTable, 'Provisioning Team', config.provisioningTeam);
-                            }
-                            configTable.innerHTML = tempTable.innerHTML;
-                            tempTable.innerHTML = '';
-
-                            //update the hyperlink to the forge
-                            if (config.forgeURL) {
-                                updateLinkToForge(config.forgeURL, '_forge')
+                /** submit button handler */
+                function submitHandler () {
+                    const xhrSubmitConfig = new XMLHttpRequest()
+                    xhrSubmitConfig.timeout = 5000 // Set timeout to 5 seconds (5000 milliseconds)
+                    xhrSubmitConfig.ontimeout = function () { alert('Request timed out!') }
+                    xhrSubmitConfig.onreadystatechange = function () {
+                        if (xhrSubmitConfig.readyState === XMLHttpRequest.DONE) {
+                            if (xhrSubmitConfig.status === 200) {
+                                fileData.value = ''
+                                alert('Configuration saved. The device agent will now reload with this new configuration.')
                             } else {
-                                updateLinkToForge('/', '_self')
+                                const data = typeof xhrSubmitConfig.response === 'object' ? xhrSubmitConfig.response : JSON.parse(xhrSubmitConfig.responseText || '{}')
+                                const message = data.error || 'There was a problem with the request.'
+                                alert(message)
                             }
-
                         }
                     }
+                    xhrSubmitConfig.open('POST', 'submit')
+                    xhrSubmitConfig.setRequestHeader('Content-type', 'application/json')
+                    xhrSubmitConfig.setRequestHeader('Accept', 'application/json')
+                    xhrSubmitConfig.timeout = 5000 // Set timeout to 5 seconds (5000 milliseconds)
+                    xhrSubmitConfig.responseType = 'json'
+                    const data = { config: fileData.value }
+                    xhrSubmitConfig.send(encodeURIComponent(JSON.stringify(data)))
+                    statusPoll()
+                    return false // prevent page refresh
                 }
-                xhrStatus.open("GET", "status");
-                xhrStatus.setRequestHeader("Content-type","application/json");
-                xhrStatus.setRequestHeader("Accept","application/json");
-                xhrStatus.responseType = 'json';
-                xhrStatus.send();
-            }
-            statusPollTimer = setInterval(() => {
-                if (statusPollTimeoutCount > 3) {
-                    statusElement.value = 'Web Server is offline'
-                    clearInterval(pollTimer)
+
+                /** update the link to the forge */
+                function updateLinkToForge (forgeURL, target) {
+                    const linkToForge = document.getElementById('link-to-forge')
+                    if (linkToForge) {
+                        linkToForge.href = forgeURL
+                        linkToForge.target = target
+                    }
+                }
+
+                /** add/remove wrapping to the text area to show/hide line breaks in the placeholder text */
+                function updateTextareaWrapping () {
+                    fileData.style.whiteSpace = fileData.value.length > 0 ? 'nowrap' : ''
+                }
+
+                submitButton.addEventListener('click', submitHandler, false)
+
+                if (window.File && window.FileList && window.FileReader) {
+                    fileData.placeholder = 'Enter the device or a provisioning configuration yaml. \nYou can load a file, drop a file or paste text in directly. \nClick Apply to update and reload the device.'
+                    InitDropLoader()
                 } else {
-                    statusPoll();
+                    fileData.placeholder = 'Enter the device configuration.'
+                    uploadButton.style.display = 'none'
                 }
-            }, statusPollInterval);
 
-             // start polling the status endpoint
-            statusPoll()
+                // listen for changes to the text area and wrap/nowrap the text as
+                // needed to show line breaks in the placeholder text
+                'change input cut paste focus blur'.split(' ').forEach(evName => {
+                    fileData.addEventListener(evName, updateTextareaWrapping, false)
+                })
 
-        }
-        main();
+                // status updates
+                const statusPollInterval = 5000
+                let statusPollTimeoutCount = 0
+                let statusPollTimer = null
+                function statusPoll () {
+                    const showOfflineMessage = () => {
+                        const webServerStatus = document.getElementById('web-server-status')
+                        if (webServerStatus) {
+                            webServerStatus.classList.remove('hidden')
+                        }
+                    }
+                    const xhrStatus = new XMLHttpRequest()
+
+                    xhrStatus.ontimeout = function () {
+                        if (statusPollTimeoutCount < 3) {
+                            statusPollTimeoutCount++
+                            return
+                        }
+                        clearInterval(statusPollTimer)
+                        showOfflineMessage()
+                    }
+                    xhrStatus.onerror = function () {
+                        if (statusPollTimeoutCount < 3) {
+                            statusPollTimeoutCount++
+                            return
+                        }
+                        clearInterval(statusPollTimer)
+                        showOfflineMessage()
+                    }
+                    xhrStatus.onreadystatechange = function () {
+                        if (xhrStatus.readyState === XMLHttpRequest.DONE) {
+                            if (xhrStatus.status === 200) {
+                                const data = xhrStatus.response || {}
+                                const status = data.status || {}
+                                const deviceClock = status.deviceClock ? new Date(status.deviceClock) : 'unknown'
+                                const config = status.config || {}
+                                const statusTable = document.getElementById('status-table')
+                                const configTable = document.getElementById('config-table')
+                                const tempTable = document.createElement('div') // for building the tables before adding to the DOM
+
+                                const addRow = (table, key, value, classes, skipIfNull, defaultForNull = 'unknown') => {
+                                    const { headerClass, rowClass, cellClass } = Object.assign({}, classes, { rowClass: 'table-row', cellClass: 'table-cell' })
+                                    if (skipIfNull && (value === null || value === undefined)) {
+                                        return
+                                    }
+                                    if (value === null || value === undefined) {
+                                        value = defaultForNull
+                                    }
+                                    const row = document.createElement('div')
+                                    row.classList.add(rowClass)
+                                    if (headerClass) {
+                                        row.classList.add(headerClass)
+                                    }
+                                    const keyCell = document.createElement('div')
+                                    keyCell.classList.add(cellClass, 'col-1')
+                                    keyCell.textContent = key
+                                    const valueCell = document.createElement('div')
+                                    valueCell.classList.add(cellClass, 'col-2')
+                                    valueCell.textContent = value
+                                    row.appendChild(keyCell)
+                                    row.appendChild(valueCell)
+                                    table.appendChild(row)
+                                }
+
+                                // ** status table ** //
+                                tempTable.innerHTML = ''
+                                // Create the header row
+                                addRow(tempTable, 'Status', 'Value', { headerClass: 'table-header' })
+                                // add the status & version rows
+                                addRow(tempTable, 'Agent Status', status.state)
+                                addRow(tempTable, 'Developer Mode', status.mode === 'developer' ? 'true' : undefined, null, true)
+                                addRow(tempTable, 'Snapshot Name', status.snapshotName, null, false, 'none')
+                                addRow(tempTable, 'Snapshot Desc', status.snapshotDesc, null, true)
+                                addRow(tempTable, 'Agent Version', status.version)
+                                addRow(tempTable, 'Device Clock', deviceClock)
+                                statusTable.innerHTML = tempTable.innerHTML
+
+                                // ** config table ** //
+                                tempTable.innerHTML = ''
+                                // add the config header row
+                                addRow(tempTable, 'Configuration', 'Value', { headerClass: 'table-header' })
+                                // add the config rows
+                                addRow(tempTable, 'Device ID', config.deviceId || 'unknown')
+                                addRow(tempTable, 'Forge URL', config.forgeURL || 'unknown')
+                                addRow(tempTable, 'Working Directory', config.dir || 'unknown')
+                                addRow(tempTable, 'Device File', config.deviceFile || 'unknown')
+                                addRow(tempTable, 'Port', config.port || 'unknown')
+                                if (config.provisioningMode) {
+                                    addRow(tempTable, 'Provisioning Mode', config.provisioningMode)
+                                    addRow(tempTable, 'Provisioning Name', config.provisioningName)
+                                    addRow(tempTable, 'Provisioning Team', config.provisioningTeam)
+                                }
+                                configTable.innerHTML = tempTable.innerHTML
+                                tempTable.innerHTML = ''
+
+                                // update the hyperlink to the forge
+                                if (config.forgeURL) {
+                                    updateLinkToForge(config.forgeURL, '_forge')
+                                } else {
+                                    updateLinkToForge('/', '_self')
+                                }
+                            }
+                        }
+                    }
+                    xhrStatus.open('GET', 'status')
+                    xhrStatus.setRequestHeader('Content-type', 'application/json')
+                    xhrStatus.setRequestHeader('Accept', 'application/json')
+                    xhrStatus.responseType = 'json'
+                    xhrStatus.timeout = statusPollInterval - 200 // Set timeout to statusPollInterval less 200ms for grace
+                    xhrStatus.send()
+                }
+
+                // start the status poll
+                statusPollTimer = setInterval(() => {
+                    statusPoll()
+                }, statusPollInterval)
+
+                // initial poll for status
+                statusPoll()
+            }
+            main()
     </script>
 </body>
 
