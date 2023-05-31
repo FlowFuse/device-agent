@@ -114,24 +114,26 @@ const routes = [
             // send json response with status
             res.writeHead(200, { 'Content-Type': 'application/json' })
             const agent = req.$router.server.agentManager?.agent || {}
+            const agentLoaded = !!req.$router.server.agentManager?.agent
+            const options = req.$router.server.agentManager?.options || {}
             const config = agent.config || {}
             const env = agent.currentSettings?.env || {}
             const status = {
-                state: agent.currentState,
+                state: agentLoaded ? agent.currentState : 'stopped',
                 name: env.FF_DEVICE_NAME,
                 type: env.FF_DEVICE_TYPE,
                 mode: agent.currentMode,
-                version: config.version,
-                snapshotName: agent.currentSnapshot?.name || 'None',
+                version: options.version,
+                snapshotName: agent.currentSnapshot?.name,
                 snapshotDesc: agent.currentSnapshot?.description || undefined,
                 deviceClock: Date.now(),
                 // curated config view
                 config: {
                     deviceId: config.deviceId,
                     forgeURL: config.forgeURL,
-                    dir: config.dir,
-                    deviceFile: config.deviceFile,
-                    port: config.port,
+                    dir: options.dir,
+                    deviceFile: options.deviceFile,
+                    port: options.port,
                     provisioningMode: config.provisioningMode,
                     provisioningName: config.provisioningName,
                     provisioningTeam: config.provisioningTeam
@@ -152,8 +154,7 @@ const routes = [
             req.on('data', function (data) {
                 body += data
             })
-            req.on('end', function (a1, a2) {
-                console.log('end', a1, a2)
+            req.on('end', function () {
                 // decode data sent by xhr.send('{ "config": "???" }')
                 const bodyData = decodeURIComponent(body)
                 const parsedBody = JSON.parse(bodyData)

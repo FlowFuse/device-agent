@@ -607,9 +607,10 @@
                                 // add the config header row
                                 addRow(tempTable, 'Configuration', 'Value', { headerClass: 'table-header' })
                                 // add the config rows
-                                addRow(tempTable, 'Device ID', config.deviceId || 'unknown')
-                                addRow(tempTable, 'Forge URL', config.forgeURL || 'unknown')
-                                addRow(tempTable, 'Working Directory', config.dir || 'unknown')
+                                addRow(tempTable, 'Device ID', config.deviceId || 'not set')
+                                addRow(tempTable, 'Device Name', status.name || 'not set')
+                                addRow(tempTable, 'Forge URL', config.forgeURL || 'not set')
+                                addRow(tempTable, 'Working Directory', config.dir || 'not set')
                                 addRow(tempTable, 'Device File', config.deviceFile || 'unknown')
                                 addRow(tempTable, 'Port', config.port || 'unknown')
                                 if (config.provisioningMode) {

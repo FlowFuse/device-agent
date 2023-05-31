@@ -58,6 +58,12 @@ if (fs.existsSync(deviceFile1)) {
     options.deviceFile = deviceFile2
 }
 
+// If the config file is not found, set the `deviceFile` to the default value
+// ready for when the config file is created.
+if (!configFound) {
+    options.deviceFile = deviceFile2 // deviceFile2 is the default value
+}
+
 delete options.config
 AgentManager.init(options)
 
