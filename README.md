@@ -8,8 +8,6 @@ FlowForge platform.
  - NodeJS v16
  - A FlowForge platform instance to connect to
 
-The agent does not support running on Windows.
-
 ## Install
 
 The agent can be installed as a global npm module. This will ensure the agent
@@ -33,10 +31,19 @@ This can be overridden with the `-d/--dir` option.
 The directory must exist and be accessible to the user that will be
 running the agent.
 
+#### linux/macOS
+
 ```
 sudo mkdir /opt/flowforge-device
 sudo chown -R $USER /opt/flowforge-device
 ```
+
+#### windows (run elevated)
+
+```
+mkdir c:\opt\flowforge-device
+```
+
 
 ### `device.yml` - for a single device
 
@@ -126,7 +133,16 @@ Options
   -d, --dir dir         Where the agent should store its state. Default: /opt/flowforge-device
   -i, --interval secs
   -p, --port number
-  -m, --moduleCache     use local npm module cache rather than install
+  -m, --moduleCache     Use local npm module cache rather than install
+
+Web Admin Options
+
+  -w, --webmin            Start the admin web server (optional, does not run by default)
+  --webmin-host string    Web admin server host. Default: (::) (listen on all interfaces)
+  --webmin-port number    Web admin server port. Default: 1879
+  --webmin-user string    Web admin username. Required if --webmin is specified
+  --webmin-pass string    Web admin password. Required if --webmin is specified
+  --webmin-runtime mins   Time the web admin server is permitted to run. Default: 10
 
 Global Options
 
@@ -164,3 +180,20 @@ device, and then copy the modules on to your device.
 ## Running as a service
 
 An example service file is provided [here](https://github.com/flowforge/flowforge-device-agent/tree/main/service).
+
+## Running the agent with the web admin enabled
+
+The agent can be run with a web admin interface. This is an optional feature and
+is not enabled by default.  The web admin permits the user to view the current
+status of the agent and the Node-RED instances it is running.  It also permits
+the user to download a device configuration or a provisioning configuration file.
+
+To enable the web admin, use the `-w/--webmin` option. This will start a web server
+on the specified host and port. The default host is `::` and the default port is `1879`.
+
+When enabling the web admin, a username and password must be provided with the
+`--webmin-user` and `--webmin-pass` options.
+
+The web admin will only be available for the duration specified by the `--webmin-runtime`. By
+default this is 10 minutes. After this time, the web admin will be disabled.  You can set this
+to `0` to disable the timeout. This is not recommended.
