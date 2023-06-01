@@ -38,8 +38,7 @@ const routes = [
             if (!isAuthorized(req)) {
                 return respondWith401AuthRequired(res)
             }
-            // this.token = generateToken(32)
-            // res.setHeader('authorization', this.token)
+
             // redirect to home page
             res.writeHead(302, { Location: '/home' })
             res.end()
@@ -56,7 +55,6 @@ const routes = [
                 res.end()
                 return
             }
-            // res.setHeader('authorization', this.token)
 
             res.writeHead(200, { 'Content-Type': 'text/html' })
             const homePage = path.join(__dirname, 'home.html')
@@ -291,16 +289,6 @@ function isAuthorized (req) {
     const [username, password] = decoded.split(':')
     return (method === 'Basic' && username === credentials.username && password === credentials.password)
 }
-
-// function generateToken (length, prefix) {
-//     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-//     const charsLength = chars.length
-//     let token = prefix || ''
-//     for (let i = 0; i < length; i++) {
-//         token += chars.charAt(Math.floor(Math.random() * charsLength))
-//     }
-//     return token
-// }
 
 /**
  * Determines the encoding for a given content type
