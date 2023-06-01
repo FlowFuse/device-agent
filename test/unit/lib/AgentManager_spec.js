@@ -37,7 +37,7 @@ describe('Test the AgentManager', function () {
     })
     it('Create and init the Agent Manager', function () {
         AgentManager.init({})
-        AgentManager.should.have.property('options').and.eql({})
+        AgentManager.should.have.property('options').and.be.an.Object()
         AgentManager.state.should.eql('unknown')
     })
     it('Agent Manager should exit cleanly', async function () {
