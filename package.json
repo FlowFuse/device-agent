@@ -12,9 +12,12 @@
     },
     "scripts": {
         "start": "node index.js",
-        "lint": "eslint -c .eslintrc \"*.js\" \"lib/**/*.js\" \"test/**/*.js\"",
-        "lint:fix": "eslint -c .eslintrc \"*.js\" \"lib/**/*.js\" \"test/**/*.js\" --fix",
-        "test": "mocha test/unit/**/*_spec.js"
+        "dev": "nodemon index.js",
+        "lint": "eslint -c .eslintrc \"*.js\" \"lib/**/*.js\" \"frontend/**/*.js\" \"frontend/**/*.html\" \"test/**/*.js\"",
+        "lint:fix": "eslint -c .eslintrc \"*.js\" \"lib/**/*.js\" \"frontend/**/*.js\" \"frontend/**/*.html\" \"test/**/*.js\" --fix",
+        "test": "npm run test:lib && npm run test:frontend",
+        "test:lib": "mocha test/unit/lib/**/*_spec.js",
+        "test:frontend": "mocha test/unit/frontend/**/*.spec.js"
     },
     "bin": {
         "flowforge-device-agent": "./index.js"
