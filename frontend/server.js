@@ -94,7 +94,7 @@ class WebServer {
         this.runtimeTimer && clearTimeout(this.runtimeTimer)
         // promisify the server close method
         const close = (server) => new Promise((resolve, reject) => {
-            if (!server) {
+            if (!server || !server.close) {
                 resolve()
                 return
             }
