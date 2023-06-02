@@ -86,7 +86,7 @@ describe('Device Agent Web Server', () => {
             mode
         }))
     }
-    it('by default, web-admin UI is not enabled', async () => {
+    it('by default, Web UI is not enabled', async () => {
         http.createServer.reset()
         const app = startApp([
             ['--dir', configDir],
@@ -99,7 +99,7 @@ describe('Device Agent Web Server', () => {
         http.createServer.called.should.be.false()
         app.webServer.listening.should.be.false()
     })
-    it('quits if config is bad AND web-admin is not enabled', async () => {
+    it('quits if config is bad AND UI is not enabled', async () => {
         const onExit = sinon.stub()
         await writeAppConfig(configDir, 'projectId', 'snapshotId', 'settingsId', 'developer')
         const deviceFile = path.join(configDir, 'device.yml')
@@ -115,7 +115,7 @@ describe('Device Agent Web Server', () => {
         // ensure the app exited with an error
         onExit.calledOnceWith(sinon.match(/Config file missing required options:.*forgeURL/s), 9).should.be.true()
     })
-    it('quits if config is missing AND web-admin not enabled', async () => {
+    it('quits if config is missing AND UI not enabled', async () => {
         const onExit = sinon.stub()
         const app = startApp([
             ['--dir', configDir],
