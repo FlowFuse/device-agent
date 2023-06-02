@@ -13,20 +13,6 @@ describe('Device Agent Web Server Routes (API)', function () {
     /** @type {string} the config directory for the agent */
     let configDir
 
-    // /**
-    //  * Starts the app with the specified CLI args
-    //  * @param {Array<String[]>} args - an array of arrays, each containing a single or pair of CLI args
-    //  * @returns App
-    //  */
-    // function startApp (args, options = {}) {
-    //     process.argv = process.argv.slice(0, 2)
-    //     // http.createServer.reset()
-    //     for (const arg of args) {
-    //         process.argv.push(...arg)
-    //     }
-    //     const app = App.main(options)
-    //     return app
-    // }
 
     const got = Got.extend({
         prefixUrl: 'http://localhost:1879',
