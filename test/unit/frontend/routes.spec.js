@@ -13,7 +13,6 @@ describe('Device Agent Web Server Routes (API)', function () {
     /** @type {string} the config directory for the agent */
     let configDir
 
-
     const got = Got.extend({
         prefixUrl: 'http://localhost:1879',
         throwHttpErrors: false
