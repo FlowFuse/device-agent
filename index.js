@@ -73,32 +73,32 @@ function main (testOptions) {
     info('FlowForge Device Agent')
     info('----------------------')
 
-    if (options.webmin) {
-        info('Starting Config Web Server')
-        if (!options.webminUser || !options.webminPass) {
-            quit('Config Web Server cannot run without a username and password. These are set via with --webmin-user and --webmin-pass', 2)
+    if (options.ui) {
+        info('Starting Web UI')
+        if (!options.uiUser || !options.uiPass) {
+            quit('Web UI cannot run without a username and password. These are set via with --ui-user and --ui-pass', 2)
         }
-        const webminRuntime = Number(options.webminRuntime)
-        if (isNaN(webminRuntime) || webminRuntime === Infinity || webminRuntime < 0) {
-            quit('Config Web Server runtime must be 0 or greater', 2)
+        const uiRuntime = Number(options.uiRuntime)
+        if (isNaN(uiRuntime) || uiRuntime === Infinity || uiRuntime < 0) {
+            quit('Web UI runtime must be 0 or greater', 2)
         }
         const opts = {
-            port: options.webminPort || 1879,
-            host: options.webminHost || '0.0.0.0',
+            port: options.uiPort || 1879,
+            host: options.uiHost || '0.0.0.0',
             credentials: {
-                username: options.webminUser,
-                password: options.webminPass
+                username: options.uiUser,
+                password: options.uiPass
             },
-            runtime: webminRuntime,
+            runtime: uiRuntime,
             dir: options.dir,
             config: options.config,
             deviceFile: options.deviceFile
         }
         webServer.initialize(AgentManager, opts)
         webServer.start().then(() => {
-            info('Config Web Server started')
+            info('Web UI started on port ' + opts.port)
         }).catch((err) => {
-            info(`Config Web Server failed to start: ${err.message}`)
+            info(`Web UI failed to start: ${err.message}`)
         })
     }
 
@@ -111,9 +111,9 @@ function main (testOptions) {
 
     if (isValidDeviceConfig) {
         AgentManager.startAgent()
-    } else if (configFound && options.webmin === true) {
+    } else if (configFound && options.ui === true) {
         info(`Invalid config file '${options.deviceFile}'.`)
-    } else if (!configFound && options.webmin === true) {
+    } else if (!configFound && options.ui === true) {
         info(`No config file found at '${deviceFile1}' or '${deviceFile2}'`)
     } else {
         if (configFound) {

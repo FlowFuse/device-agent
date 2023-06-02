@@ -27,7 +27,7 @@ class WebServer {
                 if (this.onErrorHandler) {
                     this.onErrorHandler(error)
                 } else {
-                    info('Config Web Server error:', error.message)
+                    info('Web UI error:', error.message)
                 }
             })
 
@@ -35,7 +35,7 @@ class WebServer {
                 if (this.onListeningHandler) {
                     this.onListeningHandler(null)
                 } else {
-                    info('Config Web Server listening on port ' + this.server.address()?.port || this.options.port)
+                    info('Web UI listening on port ' + this.server.address()?.port || this.options.port)
                 }
             })
 
@@ -43,7 +43,7 @@ class WebServer {
                 if (this.onCloseHandler) {
                     this.onCloseHandler()
                 } else {
-                    info('Config Web Server closed')
+                    info('Web UI closed')
                 }
             })
 

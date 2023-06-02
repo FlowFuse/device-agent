@@ -135,14 +135,14 @@ Options
   -p, --port number
   -m, --moduleCache     Use local npm module cache rather than install
 
-Web Admin Options
+Web UI Options
 
-  -w, --webmin            Start the admin web server (optional, does not run by default)
-  --webmin-host string    Web admin server host. Default: (0.0.0.0) (listen on all interfaces)
-  --webmin-port number    Web admin server port. Default: 1879
-  --webmin-user string    Web admin username. Required if --webmin is specified
-  --webmin-pass string    Web admin password. Required if --webmin is specified
-  --webmin-runtime mins   Time the web admin server is permitted to run. Default: 10
+  -w, --ui            Start the Web UI Server (optional, does not run by default)
+  --ui-host string    Web UI server host. Default: (0.0.0.0) (listen on all interfaces)
+  --ui-port number    Web UI server port. Default: 1879
+  --ui-user string    Web UI username. Required if --ui is specified
+  --ui-pass string    Web UI password. Required if --ui is specified
+  --ui-runtime mins   Time the Web UI server is permitted to run. Default: 10
 
 Global Options
 
@@ -181,19 +181,20 @@ device, and then copy the modules on to your device.
 
 An example service file is provided [here](https://github.com/flowforge/flowforge-device-agent/tree/main/service).
 
-## Running the agent with the web admin enabled
+## Running the agent with the Web UI enabled
 
-The agent can be run with a web admin interface. This is an optional feature and
-is not enabled by default.  The web admin permits the user to view the current
-status of the agent and the Node-RED instances it is running.  It also permits
+The agent can be run with a Web UI interface. This is an optional feature and
+is not enabled by default.  The UI permits the user to view the current status of 
+the agent and the Node-RED instances it is running.  It also permits
 the user to download a device configuration or a provisioning configuration file.
 
-To enable the web admin, use the `-w/--webmin` option. This will start a web server on
+To enable the UI, use the `-w/--ui` option. This will start a web server on
 the specified host and port. The default host is `0.0.0.0` and the default port is `1879`.
 
-When enabling the web admin, a username and password must be provided with the
-`--webmin-user` and `--webmin-pass` options.
+When enabling the UI, a username and password must be provided with the
+`--ui-user` and `--ui-pass` options.
 
-The web admin will only be available for the duration specified by the `--webmin-runtime`. By
-default this is 10 minutes. After this time, the web admin will be disabled.  You can set this
-to `0` to disable the timeout. This is not recommended.
+The UI will only be available for the duration specified by the `--ui-runtime`. By
+default this is 10 minutes. After this time, the web server will be disabled. The 
+application must be restarted to re-enable the UI. You can set this to `0` to 
+disable the timeout. This is not recommended.

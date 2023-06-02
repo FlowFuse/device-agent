@@ -461,6 +461,7 @@
                     reader.onload = function (event) {
                         fileData.value = event.target.result.replace(/\\n/g, '\n').replace(/\t/g, '    ')
                         fileSelect.value = '' // clear the file selector
+                        updateTextareaWrapping()
                     }
                     reader.readAsText(file)
                     updateTextareaWrapping()

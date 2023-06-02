@@ -57,7 +57,7 @@ describe('Device Agent Web Server Routes (API)', function () {
             deviceFile: path.join(configDir, 'device.yml')
         })
         webServer.start().then(() => {
-            // Config Web Server started'
+            // UI Web Server started'
         }).catch((err) => {
             should.fail(err)
         })

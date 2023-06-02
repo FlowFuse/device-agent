@@ -93,7 +93,7 @@ describe('Device Agent Web Server', () => {
             ['--config', 'device-wont-exist.yml']
         ])
         // check the CLI flag - should be false
-        app.options.webmin.should.be.false()
+        app.options.ui.should.be.false()
         WebServer.prototype.initialize.called.should.be.false()
         WebServer.prototype.start.called.should.be.false()
         http.createServer.called.should.be.false()
@@ -111,7 +111,7 @@ describe('Device Agent Web Server', () => {
             ['--config', 'device.yml']
         ], { onExit })
         // check the CLI flag - should be false
-        app.options.webmin.should.be.false()
+        app.options.ui.should.be.false()
         // ensure the app exited with an error
         onExit.calledOnceWith(sinon.match(/Config file missing required options:.*forgeURL/s), 9).should.be.true()
     })
@@ -122,14 +122,14 @@ describe('Device Agent Web Server', () => {
             ['--config', 'device-wont-exist.yml']
         ], { onExit })
         // check the CLI flag - should be false
-        app.options.webmin.should.be.false()
+        app.options.ui.should.be.false()
         // ensure the app exited with an error
         onExit.calledOnceWith(sinon.match(/No config file found.*device-wont-exist.yml/s), 2).should.be.true()
     })
     it('fails to run web server if user or pass is not specified', async () => {
         const app = startApp([
-            ['--webmin'],
-            ['--webmin-user', 'admin']
+            ['--ui'],
+            ['--ui-user', 'admin']
         ])
 
         const called1 = http.createServer.called
@@ -137,7 +137,7 @@ describe('Device Agent Web Server', () => {
         const called2 = http.createServer.called
         console.log(called1, called2)
 
-        app.options.webmin.should.be.true()
+        app.options.ui.should.be.true()
         WebServer.prototype.initialize.called.should.be.true()
         WebServer.prototype.start.called.should.be.true()
 
@@ -153,53 +153,59 @@ describe('Device Agent Web Server', () => {
     })
     it('starts web server if a user and pass are specified', async () => {
         const app = startApp([
-            ['--webmin'],
-            ['--webmin-user', 'admin'],
-            ['--webmin-pass', 'admin']
+            ['--ui'],
+            ['--ui-user', 'admin'],
+            ['--ui-pass', 'admin']
         ])
-        app.options.webmin.should.be.true()
+        app.options.ui.should.be.true()
         WebServer.prototype.initialize.called.should.be.true()
         WebServer.prototype.start.called.should.be.true()
         http.createServer.called.should.be.true()
+        // explicit clean up to permit test runner to exit
+        app.AgentManager?.close()
+        app.webServer?.stop()
     })
 
-    it('omitted webmin CLI options have correct defaults', async () => {
+    it('omitted ui CLI options have correct defaults', async () => {
         const app = startApp([])
-        app.options.webmin.should.be.false()
-        app.options.webminPort.should.be.eql(1879)
-        app.options.webminHost.should.be.eql('0.0.0.0')
-        app.options.webminRuntime.should.be.eql(10)
-        app.options.should.not.have.a.property('webminUser')
-        app.options.should.not.have.a.property('webminPass')
+        app.options.ui.should.be.false()
+        app.options.uiPort.should.be.eql(1879)
+        app.options.uiHost.should.be.eql('0.0.0.0')
+        app.options.uiRuntime.should.be.eql(10)
+        app.options.should.not.have.a.property('uiUser')
+        app.options.should.not.have.a.property('uiPass')
     })
-    it('webmin CLI options are set correctly', async () => {
+    it('ui CLI options are set correctly', async () => {
         const app = startApp([
-            ['--webmin'],
-            ['--webmin-port', '1234'],
-            ['--webmin-host', '127.0.0.1'],
-            ['--webmin-runtime', '5'],
-            ['--webmin-user', 'admin-is-ma-name'],
-            ['--webmin-pass', 'admin-is-ma-pass']
+            ['--ui'],
+            ['--ui-port', '1234'],
+            ['--ui-host', '127.0.0.1'],
+            ['--ui-runtime', '5'],
+            ['--ui-user', 'admin-is-ma-name'],
+            ['--ui-pass', 'admin-is-ma-pass']
         ])
-        app.options.webmin.should.be.true()
-        app.options.webminPort.should.be.eql(1234)
-        app.options.webminHost.should.be.eql('127.0.0.1')
-        app.options.webminRuntime.should.be.eql(5)
-        app.options.webminUser.should.be.eql('admin-is-ma-name')
-        app.options.webminPass.should.be.eql('admin-is-ma-pass')
+        app.options.ui.should.be.true()
+        app.options.uiPort.should.be.eql(1234)
+        app.options.uiHost.should.be.eql('127.0.0.1')
+        app.options.uiRuntime.should.be.eql(5)
+        app.options.uiUser.should.be.eql('admin-is-ma-name')
+        app.options.uiPass.should.be.eql('admin-is-ma-pass')
+        // explicit clean up to permit test runner to exit
+        app.AgentManager?.close()
+        app.webServer?.stop()
     })
-    it('webmin CLI rejects invalid webmin-runtime value', async () => {
+    it('ui CLI rejects invalid ui-runtime value', async () => {
         const onExit = sinon.stub()
         const app = startApp([
-            ['--webmin'],
-            ['--webmin-user', 'admin'],
-            ['--webmin-pass', 'admin-pass'],
-            ['--webmin-runtime', 'abc']
+            ['--ui'],
+            ['--ui-user', 'admin'],
+            ['--ui-pass', 'admin-pass'],
+            ['--ui-runtime', 'abc']
         ], { onExit })
-        app.options.webmin.should.be.true()
+        app.options.ui.should.be.true()
         // sleep for 50ms to permit the app to call quit with params
         await new Promise((resolve) => setTimeout(resolve, 50))
-        onExit.calledWith('Config Web Server runtime must be 0 or greater', 2).should.be.true()
+        onExit.calledWith('Web UI runtime must be 0 or greater', 2).should.be.true()
         // explicit clean up to permit test runner to exit
         app.AgentManager?.close()
         app.webServer?.stop()
@@ -208,12 +214,12 @@ describe('Device Agent Web Server', () => {
         // spy on the class methods WebServer.stop - need to know that it was called
         const wsStopSpy = sinon.spy(WebServer.prototype, 'stop')
         const app = startApp([
-            ['--webmin'],
-            ['--webmin-user', 'admin'],
-            ['--webmin-pass', 'admin-pass'],
-            ['--webmin-runtime', '0.0014'] // 0.0014 mins = 84ms
+            ['--ui'],
+            ['--ui-user', 'admin'],
+            ['--ui-pass', 'admin-pass'],
+            ['--ui-runtime', '0.0014'] // 0.0014 mins = 84ms
         ])
-        app.options.webmin.should.be.true()
+        app.options.ui.should.be.true()
         WebServer.prototype.initialize.called.should.be.true()
         WebServer.prototype.start.called.should.be.true()
         wsStopSpy.called.should.be.false()
