@@ -13,6 +13,8 @@ const App = require('../../../index.js')
 describe('Device Agent Web Server', () => {
     /** @type {string} the config directory for the agent */
     let configDir
+    /** @type {App[]} */
+    const allApps = [] // used to track all apps so they can be cleaned up at the end of the test run
 
     beforeEach(async function () {
         // stub the console logging so that we don't get console output
@@ -61,8 +63,19 @@ describe('Device Agent Web Server', () => {
             process.argv.push(...arg)
         }
         const app = App.main(options)
+        allApps.push(app)
         return app
     }
+
+    after(async function () {
+        for (let index = 0; index < allApps.length; index++) {
+            const app = allApps[index]
+            await app?.AgentManager?.close()
+            await app?.webServer?.stop()
+            allApps[index] = null
+        }
+        allApps.length = 0
+    })
 
     async function writeAppConfig (workingDir, project, snapshot, settings, mode) {
         const filepath = path.join(workingDir, 'flowforge-project.json')
@@ -184,7 +197,12 @@ describe('Device Agent Web Server', () => {
             ['--webmin-runtime', 'abc']
         ], { onExit })
         app.options.webmin.should.be.true()
-        onExit.calledOnceWith('Config Web Server runtime must be 0 or greater', 2).should.be.true()
+        // sleep for 50ms to permit the app to call quit with params
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        onExit.calledWith('Config Web Server runtime must be 0 or greater', 2).should.be.true()
+        // explicit clean up to permit test runner to exit
+        app.AgentManager?.close()
+        app.webServer?.stop()
     })
     it('server auto closes after runtime expires', async () => {
         // spy on the class methods WebServer.stop - need to know that it was called
