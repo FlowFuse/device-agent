@@ -64,18 +64,6 @@ describe('Device Agent Web Server Routes (API)', function () {
         sinon.restore()
     })
 
-    // beforeEach(function () {
-    //     // stub the logger so that we don't get console output
-    //     sinon.stub(logging, 'info')
-    //     sinon.stub(logging, 'error')
-    //     sinon.stub(logging, 'warn')
-    //     sinon.stub(logging, 'debug')
-    //     sinon.stub(logging, 'log')
-    // })
-    // afterEach(function () {
-    //     sinon.restore()
-    // })
-
     it('all endpoints (except assets) return 401 if not authorized', async () => {
         (await got.get('')).statusCode.should.be.eql(401);
         (await got.get('status')).statusCode.should.be.eql(401);
