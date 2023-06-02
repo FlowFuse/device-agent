@@ -58,7 +58,6 @@ describe('Device Agent Web Server', () => {
      */
     function startApp (args, options = {}) {
         process.argv = process.argv.slice(0, 2)
-        // http.createServer.reset()
         for (const arg of args) {
             process.argv.push(...arg)
         }
