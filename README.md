@@ -183,10 +183,9 @@ An example service file is provided [here](https://github.com/flowforge/flowforg
 
 ## Running the agent with the Web UI enabled
 
-The agent can be run with a Web UI interface. This is an optional feature and
-is not enabled by default.  The UI permits the user to view the current status of 
-the agent and the Node-RED instances it is running.  It also permits
-the user to download a device configuration or a provisioning configuration file.
+The Device Agents Web UI is provided to enable the user to download a device
+configuration or a provisioning configuration file. This is an optional feature and
+is not enabled by default.
 
 To enable the UI, use the `-w/--ui` option. This will start a web server on
 the specified host and port. The default host is `0.0.0.0` and the default port is `1879`.
