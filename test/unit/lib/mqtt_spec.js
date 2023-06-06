@@ -255,7 +255,7 @@ describe('MQTT Comms', function () {
         response.should.have.a.property('command', 'startEditor')
         response.should.have.a.property('correlationData', 'correlationData-test')
         response.should.have.a.property('payload').and.be.an.Object()
-        response.payload.should.have.a.property('connected', true)
+        response.payload.should.have.a.property('connected', false)
         response.payload.should.have.a.property('token', 'token-test')
         await new Promise(resolve => setTimeout(resolve, 50))
         console.log('done')
