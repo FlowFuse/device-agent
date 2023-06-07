@@ -8,6 +8,7 @@
     "extends": [
         "standard"
     ],
+    "plugins": [ "eslint-plugin-html" ],
     "parserOptions": {
          "ecmaVersion": 13
     },

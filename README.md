@@ -8,8 +8,6 @@ FlowForge platform.
  - NodeJS v16
  - A FlowForge platform instance to connect to
 
-The agent does not support running on Windows.
-
 ## Install
 
 The agent can be installed as a global npm module. This will ensure the agent
@@ -33,10 +31,19 @@ This can be overridden with the `-d/--dir` option.
 The directory must exist and be accessible to the user that will be
 running the agent.
 
+#### linux/macOS
+
 ```
 sudo mkdir /opt/flowforge-device
 sudo chown -R $USER /opt/flowforge-device
 ```
+
+#### windows (run elevated)
+
+```
+mkdir c:\opt\flowforge-device
+```
+
 
 ### `device.yml` - for a single device
 
@@ -126,7 +133,16 @@ Options
   -d, --dir dir         Where the agent should store its state. Default: /opt/flowforge-device
   -i, --interval secs
   -p, --port number
-  -m, --moduleCache     use local npm module cache rather than install
+  -m, --moduleCache     Use local npm module cache rather than install
+
+Web UI Options
+
+  -w, --ui            Start the Web UI Server (optional, does not run by default)
+  --ui-host string    Web UI server host. Default: (0.0.0.0) (listen on all interfaces)
+  --ui-port number    Web UI server port. Default: 1879
+  --ui-user string    Web UI username. Required if --ui is specified
+  --ui-pass string    Web UI password. Required if --ui is specified
+  --ui-runtime mins   Time the Web UI server is permitted to run. Default: 10
 
 Global Options
 
@@ -164,3 +180,20 @@ device, and then copy the modules on to your device.
 ## Running as a service
 
 An example service file is provided [here](https://github.com/flowforge/flowforge-device-agent/tree/main/service).
+
+## Running the agent with the Web UI enabled
+
+The Device Agents Web UI is provided to enable the user to download a device
+configuration or a provisioning configuration file. This is an optional feature and
+is not enabled by default.
+
+To enable the UI, use the `-w/--ui` option. This will start a web server on
+the specified host and port. The default host is `0.0.0.0` and the default port is `1879`.
+
+When enabling the UI, a username and password must be provided with the
+`--ui-user` and `--ui-pass` options.
+
+The UI will only be available for the duration specified by the `--ui-runtime`. By
+default this is 10 minutes. After this time, the web server will be disabled. The 
+application must be restarted to re-enable the UI. You can set this to `0` to 
+disable the timeout. This is not recommended.
