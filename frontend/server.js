@@ -33,9 +33,21 @@ class WebServer {
 
             this.server.on('listening', () => {
                 if (this.onListeningHandler) {
-                    this.onListeningHandler(null)
+                    this.onListeningHandler(this.server.address())
                 } else {
-                    info('Web UI listening on port ' + this.server.address()?.port || this.options.port)
+                    const listenerAddress = Object.assign({}, this.server.address(), {
+                        address: this.options.host || 'localhost',
+                        port: this.options.port,
+                        family: ''
+                    })
+                    listenerAddress.family = listenerAddress.address.includes(':') ? 'IPv6' : 'IPv4'
+                    if (listenerAddress.address === '0.0.0.0') {
+                        listenerAddress.address = '127.0.0.1'
+                    } else if (listenerAddress.address === '::' || listenerAddress.address === '::1') {
+                        listenerAddress.address = '[::1]'
+                    }
+                    listenerAddress.hyperlink = `http://${listenerAddress.address}:${listenerAddress.port}`
+                    info(`Web UI Server now listening at ${listenerAddress.hyperlink}`)
                 }
             })
 
@@ -57,11 +69,11 @@ class WebServer {
     async start () {
         // promisify the server listen method
         const listen = (server, port, host) => new Promise((resolve, reject) => {
-            server.listen(port, host, (err, address) => {
+            server.listen(port, host, (err) => {
                 if (err) {
                     reject(err)
                 }
-                resolve(address)
+                resolve()
             })
         })
         const { port, host } = this.options

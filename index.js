@@ -95,9 +95,7 @@ function main (testOptions) {
             deviceFile: options.deviceFile
         }
         webServer.initialize(AgentManager, opts)
-        webServer.start().then(() => {
-            info('Web UI started on port ' + opts.port)
-        }).catch((err) => {
+        webServer.start().then().catch((err) => {
             info(`Web UI failed to start: ${err.message}`)
         })
     }
