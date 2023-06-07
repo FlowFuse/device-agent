@@ -573,6 +573,31 @@ describe('Agent', function () {
             agent.httpClient.getSettings.called.should.be.false()
             agent.httpClient.getSnapshot.called.should.be.false()
         })
+
+        it('Updates when in developer mode but no local project defined', async function () {
+            const agent = createHTTPAgent()
+            agent.currentProject = null
+            agent.currentSnapshot = null
+            agent.currentSettings = null
+
+            const testLauncher = launcher.newLauncher()
+            agent.launcher = testLauncher
+            agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
+            agent.httpClient.getSnapshot.resolves({ id: 'newSnapshotId' })
+
+            await agent.setState({
+                project: 'newProject',
+                settings: 'newSettingsId',
+                snapshot: 'newSnapshotId',
+                mode: 'developer'
+
+            })
+            testLauncher.stop.called.should.be.true()
+            should.exist(agent.launcher)
+            agent.launcher.should.not.eql(testLauncher)
+            agent.launcher.writeConfiguration.called.should.be.true()
+            agent.launcher.start.called.should.be.true()
+        })
     })
 
     describe('provisioning', function () {
