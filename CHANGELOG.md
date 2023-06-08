@@ -1,3 +1,10 @@
+#### 0.9.0: Release
+
+ - Update version to 0.9.0
+ - Device Agent UI (#92) @Steve-Mcl
+ - Pull latest snapshot in dev mode if started without any project config (#98) @knolleary
+ - Warn if NR is not running when trying to start editor (#96) @hardillb
+ 
 #### 0.8.0: Release
 
  - Set editor header.title to device name if not otherwise set (#88) @knolleary
