@@ -1,6 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const ConfigLoader = require('../lib/config')
+const { info, warn } = require('../lib/logging/log')
 
 const REALM = 'Basic Authentication'
 
@@ -153,12 +154,14 @@ const routes = [
                 body += data
             })
             req.on('end', function () {
+                info('Received config update from Web UI')
                 // decode data sent by xhr.send('{ "config": "???" }')
                 const bodyData = decodeURIComponent(body)
                 const parsedBody = JSON.parse(bodyData)
                 // check the supplied data is a valid config
                 const parsedConfig = ConfigLoader.parseDeviceConfig(parsedBody.config)
                 if (parsedConfig.valid === false) {
+                    warn('Invalid config provided by Web UI: ' + parsedConfig.message)
                     res.writeHead(400, { 'Content-Type': 'application/json' })
                     res.end(JSON.stringify({ error: parsedConfig.message }))
                     return
@@ -167,11 +170,13 @@ const routes = [
                 // write file to disk
                 fs.writeFile(req.$router.options.deviceFile, parsedBody.config, (err) => {
                     if (err) {
+                        warn('Failed to write config file to disk', err)
                         res.writeHead(400, { 'Content-Type': 'application/json' })
                         res.end(JSON.stringify({ error: err }))
                         return
                     }
                     // at this point, the config file has been written to disk. Reload the agent.
+                    info('Config file written to disk. Reloading agent.')
                     req.$router.server.agentManager.reloadAgent(200, (err, state) => {
                         if (err) {
                             res.writeHead(400, { 'Content-Type': 'application/json' })
