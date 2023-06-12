@@ -12,40 +12,61 @@ const outputDirectory = path.join(packageDirectory, 'theme')
 const outputSrcDirectory = path.join(outputDirectory, 'lib/theme')
 const resources = 'resources'
 const outputResourceDest = path.join(outputDirectory, resources)
-const repositoryLocal = path.join(packageDirectory, '../flowforge-nr-launcher')
+const repositoryLocalRelative = '../flowforge-nr-launcher'
+const repositoryLocal = path.join(packageDirectory, repositoryLocalRelative)
 const repositoryUser = 'flowforge'
 const repositoryName = 'flowforge-nr-launcher'
-const repositoryUrl = `https://github.com/${repositoryUser}/${repositoryName}.git'`
+const repositoryUrl = `https://github.com/${repositoryUser}/${repositoryName}`
 const repositoryPath = 'lib/theme'
+let readmeFooter = 'These files were auto generated'
 
 // Main
+console.log('################################################################################')
+console.log('###                             Update theme files.                          ###')
+console.log('################################################################################')
 await cleanUp(tempDirectory)
 await cleanUp(outputDirectory)
-let footer = 'These files were auto generated'
+console.log(`Checking local directory '${repositoryLocalRelative}' for theme files`)
 if (existsSync(repositoryLocal)) {
+    console.log('Copying theme files from local directory')
     const themeSource = path.join(repositoryLocal, repositoryPath)
     const resourceSource = path.join(repositoryLocal, resources)
     const pkg = JSON.parse(await fs.readFile(path.join(repositoryLocal, 'package.json')))
     await fs.cp(themeSource, outputSrcDirectory, { recursive: true })
     await fs.cp(resourceSource, outputResourceDest, { recursive: true })
-    footer += ` from a local install of [${repositoryUser}/${repositoryName}](${repositoryUrl}), version ${pkg.version}`
+    const hash = getGitHash(resourceSource)
+    readmeFooter += ` from a local install of [${repositoryUser}/${repositoryName}](${repositoryUrl}), version: ${pkg.version}, hash: ${hash}`
 } else {
-    const hash = await download({ repositoryUrl, branch: 'main', repositoryPath, tempDirectory, finalDirectory: outputDirectory })
+    console.log('Local install not found')
+    console.log(`Downloading files from '${repositoryUrl}'`)
+    const hash = await download({ repositoryUrl, branch: 'main', tempDirectory, finalDirectory: outputDirectory })
     // copy files, sub folders and sub folder files to the final directory
+    console.log('Copying theme files from downloaded repository')
     const themeSource = path.join(tempDirectory, repositoryPath)
     const resourceSource = path.join(tempDirectory, resources)
     await fs.mkdir(outputDirectory, { recursive: true })
     await fs.cp(themeSource, outputSrcDirectory, { recursive: true })
-    await fs.cp(resourceSource, outputResourceDest, { recursive: true })
-    await cleanUp(tempDirectory)
-    footer += ` from [${repositoryUser}/${repositoryName}](${repositoryUrl}) at commit [${hash}](${repositoryUrl}/commit/${hash})`
+    if (existsSync(resourceSource)) {
+        await fs.cp(resourceSource, outputResourceDest, { recursive: true })
+    }
+    const pkg = JSON.parse(await fs.readFile(path.join(tempDirectory, 'package.json')))
+    readmeFooter += ` from [${repositoryUser}/${repositoryName}](${repositoryUrl}), version: ${pkg.version}, [${hash}](${repositoryUrl}/commit/${hash})`
 }
-await writeReadme(outputDirectory, footer)
+await cleanUp(tempDirectory)
+console.log('Writing README.md')
+await writeReadme(outputDirectory, readmeFooter)
+console.log('Writing package.json')
 writePackageFile(outputDirectory)
-// delete the scripts folder from the final directory
-const scriptsPath = path.join(outputDirectory, 'scripts')
-await cleanUp(scriptsPath)
+
+// final clean up - remove any files that should not be in the final directory
+await cleanUp(path.join(outputSrcDirectory, 'scripts'))
+await cleanUp(path.join(outputSrcDirectory, 'README.md'))
+await cleanUp(path.join(outputSrcDirectory, 'forge-light/forge-light-theme.scss'))
+await cleanUp(path.join(outputSrcDirectory, 'forge-dark/forge-dark-theme.scss'))
+
+// done
 console.log('Theme files updated')
+console.log('################################################################################')
 
 async function writeReadme (dir, footer) {
     const readmePath = path.join(dir, 'README.md')
@@ -94,19 +115,24 @@ async function cleanUp (path) {
 }
 
 function git (cwd, ...args) {
-    return execFileSync('git', args, { cwd, encoding: 'utf8' })
+    return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: 'ignore' })
 }
 
-async function download ({ repositoryUrl, branch = 'master', repositoryPath, tempDirectory, finalDirectory }) {
+async function download ({ repositoryUrl, branch = 'master', repositoryPath = '.', tempDirectory, finalDirectory }) {
     if (!existsSync(tempDirectory)) {
         git(null, 'clone', '--filter=blob:none', '--no-checkout', repositoryUrl, tempDirectory)
-        git(tempDirectory, 'sparse-checkout', 'init', '--cone')
-        git(tempDirectory, 'sparse-checkout', 'set', repositoryPath)
+        // git(tempDirectory, 'sparse-checkout', 'init', '--cone')
+        // git(tempDirectory, 'sparse-checkout', 'set', repositoryPath)
     }
     git(tempDirectory, '-c', 'advice.detachedHead=false', 'checkout', branch)
     git(tempDirectory, 'pull', 'origin', branch)
-    const hash = git(tempDirectory, 'ls-tree', 'HEAD', repositoryPath)
-    const match = hash.match(/^\S+\s+\S+\s+(\S+)\s*/)
-    const hashId = match[1]
-    return hashId
+    return getGitHash(tempDirectory)
+}
+
+function getGitHash (dir) {
+    try {
+        return git(dir, 'rev-parse', 'HEAD').trim()
+    } catch (error) {
+        return 'unknown'
+    }
 }
