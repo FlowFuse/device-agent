@@ -13,6 +13,7 @@
     "scripts": {
         "start": "node index.js",
         "dev": "nodemon index.js",
+        "update-theme": "node ./scripts/update-theme.mjs",
         "lint": "eslint -c .eslintrc \"*.js\" \"lib/**/*.js\" \"frontend/**/*.js\" \"frontend/**/*.html\" \"test/**/*.js\"",
         "lint:fix": "eslint -c .eslintrc \"*.js\" \"lib/**/*.js\" \"frontend/**/*.js\" \"frontend/**/*.html\" \"test/**/*.js\" --fix",
         "test": "npm run test:lib && npm run test:frontend",
