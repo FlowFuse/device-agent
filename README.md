@@ -197,3 +197,18 @@ The UI will only be available for the duration specified by the `--ui-runtime`. 
 default this is 10 minutes. After this time, the web server will be disabled. The 
 application must be restarted to re-enable the UI. You can set this to `0` to 
 disable the timeout. This is not recommended.
+
+## Development
+
+### Scripts
+
+The following scripts are available:
+
+ - `npm start` - Start the agent
+ - `npm run dev` - Build the agent and watch for changes
+ - `npm run update-theme` - Update the theme files from the nr-launcher repository
+ - `npm run lint` - Run eslint
+ - `npm run lint:fix` - Run eslint and fix any issues
+ - `npm run test` - Run all unit tests
+ - `npm run test:lib` - Run the unit tests for the lib
+ - `npm run test:frontend` - Run the unit tests for the frontend
