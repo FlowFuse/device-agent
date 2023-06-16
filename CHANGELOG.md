@@ -1,3 +1,15 @@
+#### 1.9.0: Release
+
+Note: the version number jump to 1.9.0 has been done to bring the numbering
+into line with the FlowForge platform and the tags applied to the Device Agent
+docker container.
+
+ - Support httpStatic via device.yml file (#112) @knolleary
+ - Support https configuration from device.yml (#111) @knolleary
+ - Move building the docker container to this repo (#106) @hardillb
+ - Ensure device settings are updated (#104) @Steve-Mcl
+ - Add log entries for new config applied by UI (#105) @Steve-Mcl
+
 #### 0.9.0: Release
 
  - Update version to 0.9.0
