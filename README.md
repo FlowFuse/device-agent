@@ -82,6 +82,27 @@ Extra options   | Description
 `intervalJitter`| How much, in seconds, to vary the heartbeat +/- `intervalJitter`. Default: 10s
 `port`          | The port to listen on. Default: 1880
 `moduleCache`   | If the device can not access npmjs.org then use the node modules cache in `module_cache` directory. Default `false`
+`https`         | Enable HTTPS. See below for details
+
+
+#### `https` configuration
+
+The `https` configuration option can be used to enable HTTPS within Node-RED. The values
+are passed through to the [Node-RED `https` setting](https://nodered.org/docs/user-guide/runtime/configuration).
+
+The `ca`, `key` and `cert` properties can be used to provide custom certificates and keys.
+The values should be set to the contents of the certificate/key.
+
+Alternatively, the properties `caPath`, `keyPath` and `certPath` can be used instead
+to provide absolute paths to files containing the certificates/keys.
+
+```yml
+https:
+   keyPath: /opt/flowforge-device/certs/key.pem
+   certPath: /opt/flowforge-device/certs/cert.pem
+   caPath: /opt/flowforge-device/certs/ca.pem
+```
+
 
 
 ### `device.yml` - for provisioning
