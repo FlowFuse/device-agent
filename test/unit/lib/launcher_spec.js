@@ -78,4 +78,19 @@ describe('Launcher', function () {
         pkg.name.should.eqls('TEST_PROJECT')
         pkg.version.should.eqls('0.0.0-aaaabbbbcccc')
     })
+
+    it('Write Settings - with HTTPS, raw values', async function () {
+        const launcher = newLauncher({
+            ...config,
+            https: {
+                cert: '123',
+                ca: '456',
+                key: '789'
+            }
+        }, 'PROJECTID', setup.snapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('https')
+    })
 })
