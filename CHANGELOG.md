@@ -1,3 +1,11 @@
+#### 0.10.0: Release
+
+ - Support httpStatic via device.yml file (#112) @knolleary
+ - Support https configuration from device.yml (#111) @knolleary
+ - Move building the docker container to this repo (#106) @hardillb
+ - Ensure device settings are updated (#104) @Steve-Mcl
+ - Add log entries for new config applied by UI (#105) @Steve-Mcl
+
 #### 0.9.0: Release
 
  - Update version to 0.9.0
