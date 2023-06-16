@@ -54,7 +54,7 @@ jobs:
         with:
           context: docker
           file: docker/Dockerfile
-          tags: ${{ steps.meta.output.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           push: true
       - name: Publish README.md to Docker hub
         uses: peter-evans/dockerhub-description@v3

@@ -1,4 +1,4 @@
-#### 1.9.1: Release
+#### 1.9.2: Release
 
  - Fix broken build script @hardillb
 #### 1.9.0: Release
