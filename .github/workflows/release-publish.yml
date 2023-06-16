@@ -21,13 +21,13 @@ jobs:
     needs: [publish]
     runs-on: ubuntu-latest
     steps:
-      - name: wait for npm
-        uses: gr2m/await-npm-package-version-action@v1
-        with:
-          package: "@flowforge/flowforge-device-agent"
-          version: ${{ github.event.release.tag_name }}
-          timeout: 300
-          registry: https://registry.npmjs.org
+      # - name: wait for npm
+      #   uses: gr2m/await-npm-package-version-action@v1
+      #   with:
+      #     package: "@flowforge/flowforge-device-agent"
+      #     version: ${{ github.event.release.tag_name }}
+      #     timeout: 300
+      #     registry: https://registry.npmjs.org
       - name: checkout
         uses: actions/checkout@v3
       - name: Docker Meta Data
