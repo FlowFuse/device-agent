@@ -80,12 +80,20 @@ Extra options   | Description
 ----------------|---------------
 `interval`      | How often, in seconds, the agent checks in with the platform. Default: 60s
 `intervalJitter`| How much, in seconds, to vary the heartbeat +/- `intervalJitter`. Default: 10s
-`port`          | The port to listen on. Default: 1880
 `moduleCache`   | If the device can not access npmjs.org then use the node modules cache in `module_cache` directory. Default `false`
+
+
+#### Node-RED options
+
+The following options are passed through to Node-RED:
+
+Node-RED options | Description
+----------------|---------------
+`port`          | The port to listen on. Default: 1880
 `https`         | Enable HTTPS. See below for details
+`httpStatic`    | Enable serving of static content from a local path
 
-
-#### `https` configuration
+##### `https` configuration
 
 The `https` configuration option can be used to enable HTTPS within Node-RED. The values
 are passed through to the [Node-RED `https` setting](https://nodered.org/docs/user-guide/runtime/configuration).
@@ -103,7 +111,26 @@ https:
    caPath: /opt/flowforge-device/certs/ca.pem
 ```
 
+##### `httpStatic` configuration
 
+This option can be used to serve content from a local directory.
+
+If set to a path, the files in that directory will be served relative to `/`.
+
+```yml
+httpStatic: /opt/flowforge-device/static-content
+```
+
+It is also possible to configure it with a list of directories and the corresponding
+path they should be served from.
+
+```yml
+httpStatic:
+  - path: /opt/flowforge-device/static-content/images
+    root: /images
+  - path: /opt/flowforge-device/static-content/js
+    root: /js
+```
 
 ### `device.yml` - for provisioning
 
