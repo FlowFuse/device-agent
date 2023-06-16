@@ -1,3 +1,6 @@
+#### 1.9.1: Release
+
+ - Fix broken build script @hardillb
 #### 1.9.0: Release
 
 Note: the version number jump to 1.9.0 has been done to bring the numbering
