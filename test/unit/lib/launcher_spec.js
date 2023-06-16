@@ -93,4 +93,14 @@ describe('Launcher', function () {
         const settings = JSON.parse(setFile)
         settings.should.have.property('https')
     })
+    it('Write Settings - with httpStatic', async function () {
+        const launcher = newLauncher({
+            ...config,
+            httpStatic: 'static-path'
+        }, 'PROJECTID', setup.snapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('httpStatic', 'static-path')
+    })
 })
