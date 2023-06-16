@@ -61,5 +61,5 @@ jobs:
         with:
           repository: flowforge/device-agent
           username: flowforge
-          password: ${{ secret.DOCKER_HUB_PASSWORD }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
           readme-filepath: ./docker/README.md
