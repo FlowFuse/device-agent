@@ -11,6 +11,7 @@
         "url": "https://github.com/flowforge/flowforge-device-agent/issues"
     },
     "scripts": {
+        "postinstall": "node ./scripts/update-theme.mjs",
         "start": "node index.js",
         "dev": "nodemon index.js",
         "update-theme": "node ./scripts/update-theme.mjs",
