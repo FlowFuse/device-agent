@@ -7,6 +7,8 @@ ARG VERSION=latest
 RUN if [[ ! -z "$REGISTRY_TOKEN" ]]; then echo "//$REGISTRY/:_authToken=$REGISTRY_TOKEN" >> ~/.npmrc ; fi
 RUN if [[ ! -z "$REGISTRY" ]] ; then npm config set @flowforge:registry "https://$REGISTRY"; fi
 
+RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python3
+
 RUN mkdir /opt/flowforge-device
 RUN npm install -g @flowforge/flowforge-device-agent@${VERSION}
 
