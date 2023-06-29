@@ -1,8 +1,11 @@
 import * as url from 'url'
-import { existsSync } from 'fs'
-import fs from 'fs/promises'
+import { existsSync, createWriteStream, mkdirSync } from 'fs'
+import fsp from 'fs/promises'
 import path from 'path'
-import { execFileSync } from 'child_process'
+import { execSync } from 'child_process'
+import got from 'got'
+import tar from 'tar'
+import { promisify } from 'util'
 
 // setup constants
 const __dirname = url.fileURLToPath(new URL('..', import.meta.url))
@@ -16,6 +19,8 @@ const repositoryLocalRelative = '../flowforge-nr-launcher'
 const repositoryLocal = path.join(packageDirectory, repositoryLocalRelative)
 const repositoryUser = 'flowforge'
 const repositoryName = 'flowforge-nr-launcher'
+const NPMPackageName = '@flowforge/nr-launcher'
+const fileSpec = ['package/lib/theme', 'package/resources', 'package/package.json']
 const repositoryUrl = `https://github.com/${repositoryUser}/${repositoryName}`
 const repositoryPath = 'lib/theme'
 let readmeFooter = 'These files were auto generated'
@@ -31,26 +36,29 @@ if (existsSync(repositoryLocal)) {
     console.log('Copying theme files from local directory')
     const themeSource = path.join(repositoryLocal, repositoryPath)
     const resourceSource = path.join(repositoryLocal, resources)
-    const pkg = JSON.parse(await fs.readFile(path.join(repositoryLocal, 'package.json')))
-    await fs.cp(themeSource, outputSrcDirectory, { recursive: true })
-    await fs.cp(resourceSource, outputResourceDest, { recursive: true })
-    const hash = getGitHash(resourceSource)
-    readmeFooter += ` from a local install of [${repositoryUser}/${repositoryName}](${repositoryUrl}), version: ${pkg.version}, hash: ${hash}`
+    const pkg = JSON.parse(await fsp.readFile(path.join(repositoryLocal, 'package.json')))
+    await fsp.cp(themeSource, outputSrcDirectory, { recursive: true })
+    await fsp.cp(resourceSource, outputResourceDest, { recursive: true })
+    readmeFooter += ` from a local install of [${repositoryUser}/${repositoryName}](${repositoryUrl}), version: ${pkg.version}`
 } else {
     console.log('Local install not found')
-    console.log(`Downloading files from '${repositoryUrl}'`)
-    const hash = await download({ repositoryUrl, branch: 'main', tempDirectory, finalDirectory: outputDirectory })
-    // copy files, sub folders and sub folder files to the final directory
+    console.log(`Downloading files from NPM repository '${NPMPackageName}'`)
+    // create temp directory if it doesn't exist
+    ensureDirectoryExists(tempDirectory)
+
+    await downloadAndExtract({ packageName: NPMPackageName, filesToExtract: fileSpec, tempDirectory, finalDirectory: outputDirectory })
+
     console.log('Copying theme files from downloaded repository')
-    const themeSource = path.join(tempDirectory, repositoryPath)
-    const resourceSource = path.join(tempDirectory, resources)
-    await fs.mkdir(outputDirectory, { recursive: true })
-    await fs.cp(themeSource, outputSrcDirectory, { recursive: true })
+    ensureDirectoryExists(outputDirectory)
+    const packageSource = path.join(tempDirectory, 'package')
+    const themeSource = path.join(packageSource, repositoryPath)
+    const resourceSource = path.join(packageSource, resources)
+    await fsp.cp(themeSource, outputSrcDirectory, { recursive: true })
     if (existsSync(resourceSource)) {
-        await fs.cp(resourceSource, outputResourceDest, { recursive: true })
+        await fsp.cp(resourceSource, outputResourceDest, { recursive: true })
     }
-    const pkg = JSON.parse(await fs.readFile(path.join(tempDirectory, 'package.json')))
-    readmeFooter += ` from [${repositoryUser}/${repositoryName}](${repositoryUrl}), version: ${pkg.version}, [${hash}](${repositoryUrl}/commit/${hash})`
+    const pkg = JSON.parse(await fsp.readFile(path.join(packageSource, 'package.json')))
+    readmeFooter += ` from '${NPMPackageName}', version: ${pkg.version})`
 }
 await cleanUp(tempDirectory)
 console.log('Writing README.md')
@@ -79,7 +87,7 @@ async function writeReadme (dir, footer) {
         readme.push(footer)
     }
     readme.push('\n')
-    await fs.writeFile(readmePath, readme)
+    await fsp.writeFile(readmePath, readme)
 }
 
 async function writePackageFile (dir) {
@@ -101,38 +109,57 @@ async function writePackageFile (dir) {
             node: '>=16.x'
         }
     }
-    await fs.writeFile(packagePath, JSON.stringify(pkgData, null, 4))
+    await fsp.writeFile(packagePath, JSON.stringify(pkgData, null, 4))
 }
 async function cleanUp (path) {
     if (!existsSync(path)) return
     // if it is a file, delete it using fs.unlink otherwise use fs.rm
-    const stat = await fs.stat(path)
+    const stat = await fsp.stat(path)
     if (stat.isFile()) {
-        await fs.unlink(path)
+        await fsp.unlink(path)
         return
     }
-    await fs.rm(path, { recursive: true })
+    await fsp.rm(path, { recursive: true })
 }
 
-function git (cwd, ...args) {
-    return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: 'ignore' })
+async function downloadAndExtract ({ packageName, filesToExtract, tempDirectory }) {
+    const npmCMD = `npm view ${packageName} dist.tarball`
+    console.log(`Running: ${npmCMD}`)
+    const result = execSync(npmCMD)
+    const tarballURL = result.toString().trim()
+
+    const tarFilePath = path.join(tempDirectory, 'package.tgz')
+    const response = await got.stream(tarballURL)
+    await new Promise((resolve, reject) => {
+        response
+            .pipe(createWriteStream(tarFilePath))
+            .on('finish', resolve)
+            .on('error', reject)
+    })
+
+    console.log('Tar file downloaded successfully.')
+
+    await extractSpecificFiles(tarFilePath, filesToExtract, tempDirectory)
+
+    console.log('Files extracted successfully.')
 }
 
-async function download ({ repositoryUrl, branch = 'master', repositoryPath = '.', tempDirectory, finalDirectory }) {
-    if (!existsSync(tempDirectory)) {
-        git(null, 'clone', '--filter=blob:none', '--no-checkout', repositoryUrl, tempDirectory)
-        // git(tempDirectory, 'sparse-checkout', 'init', '--cone')
-        // git(tempDirectory, 'sparse-checkout', 'set', repositoryPath)
+async function extractSpecificFiles (tarFilePath, filesToExtract, destinationDir) {
+    /** @type {tar.ExtractOptions} */
+    const extractOptions = {
+        file: tarFilePath,
+        cwd: destinationDir
     }
-    git(tempDirectory, '-c', 'advice.detachedHead=false', 'checkout', branch)
-    git(tempDirectory, 'pull', 'origin', branch)
-    return getGitHash(tempDirectory)
+
+    // promisify the tar.x function
+    const tarX = tar.x
+    tarX[Symbol.toStringTag] = 'tar.x'
+    const tarXAsync = promisify(tarX)
+    await tarXAsync(extractOptions, filesToExtract)
 }
 
-function getGitHash (dir) {
-    try {
-        return git(dir, 'rev-parse', 'HEAD').trim()
-    } catch (error) {
-        return 'unknown'
+function ensureDirectoryExists (filePath) {
+    if (!existsSync(filePath)) {
+        mkdirSync(filePath, { recursive: true })
     }
 }
