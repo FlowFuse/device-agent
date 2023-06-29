@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: 16
-      - run: npm install
+      - run: npm ci
       - uses: JS-DevTools/npm-publish@v2.2.0
         with:
           token: ${{ secrets.NPM_PUBLISH_TOKEN }}
@@ -21,13 +21,13 @@ jobs:
     needs: [publish]
     runs-on: ubuntu-latest
     steps:
-      - name: wait for npm
-        uses: gr2m/await-npm-package-version-action@v1
-        with:
-          package: "@flowforge/flowforge-device-agent"
-          version: ${{ github.event.release.tag_name }}
-          timeout: 300
-          registry: https://registry.npmjs.org
+      # - name: wait for npm
+      #   uses: gr2m/await-npm-package-version-action@v1
+      #   with:
+      #     package: "@flowforge/flowforge-device-agent"
+      #     version: ${{ github.event.release.tag_name }}
+      #     timeout: 300
+      #     registry: https://registry.npmjs.org
       - name: checkout
         uses: actions/checkout@v3
       - name: Docker Meta Data
@@ -54,12 +54,13 @@ jobs:
         with:
           context: docker
           file: docker/Dockerfile
-          tags: ${{ steps.meta.output.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           push: true
+          platforms: linux/amd64, linux/arm64, linux/arm/v7
       - name: Publish README.md to Docker hub
         uses: peter-evans/dockerhub-description@v3
         with:
           repository: flowforge/device-agent
           username: flowforge
-          password: ${{ secret.DOCKER_HUB_PASSWORD }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
           readme-filepath: ./docker/README.md
