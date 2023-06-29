@@ -74,6 +74,13 @@ describe('Agent', function () {
     }
 
     beforeEach(async function () {
+        // stub the console logging so that we don't get console output
+        sinon.stub(console, 'log').callsFake((..._args) => {})
+        sinon.stub(console, 'info').callsFake((..._args) => {})
+        sinon.stub(console, 'warn').callsFake((..._args) => {})
+        sinon.stub(console, 'debug').callsFake((..._args) => {})
+        sinon.stub(console, 'error').callsFake((..._args) => {})
+
         configDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ff-launcher-'))
         await fs.mkdir(path.join(configDir, 'project'))
         sinon.stub(httpClient, 'newHTTPClient').returns({
