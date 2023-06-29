@@ -5,10 +5,11 @@ const path = require('path')
 const fs = require('fs/promises')
 const os = require('os')
 
+const utils = require('../../../lib/utils.js') // ensure we load this first for later stubbing
 const agent = require('../../../lib/agent')
 const httpClient = require('../../../lib/http')
 const mqttClient = require('../../../lib/mqtt')
-const launcher = require('../../../lib/launcher.js')
+const Launcher = require('../../../lib/launcher.js')
 
 describe('Agent', function () {
     let configDir
@@ -79,18 +80,22 @@ describe('Agent', function () {
             startPolling: sinon.stub(),
             stopPolling: sinon.stub(),
             getSettings: sinon.stub(),
-            getSnapshot: sinon.stub()
+            getSnapshot: sinon.stub().resolves({ id: 'a-snapshot-id', flows: [], modules: {} }),
+            checkIn: sinon.stub()
         })
         sinon.stub(mqttClient, 'newMQTTClient').returns({
             start: sinon.stub(),
             stop: sinon.stub(),
-            setProject: sinon.stub()
+            setProject: sinon.stub(),
+            checkIn: sinon.stub()
         })
-        sinon.stub(launcher, 'newLauncher').callsFake((config, project, settings) => {
+        sinon.stub(Launcher, 'newLauncher').callsFake((config, project, settings) => {
             return {
                 start: sinon.stub().resolves(),
                 stop: sinon.stub().resolves(),
-                writeConfiguration: sinon.stub().resolves()
+                writeConfiguration: sinon.stub().resolves(),
+                readPackage: sinon.stub().resolves({ modules: {} }),
+                readFlow: sinon.stub().resolves([])
             }
         })
     })
@@ -218,7 +223,7 @@ describe('Agent', function () {
     describe('stop', function () {
         it('stops the agent and all components - http only', async function () {
             const agent = createHTTPAgent()
-            agent.launcher = launcher.newLauncher()
+            agent.launcher = Launcher.newLauncher()
             agent.httpClient.stopPolling.callCount.should.equal(0)
             await agent.start()
             await agent.stop()
@@ -227,7 +232,7 @@ describe('Agent', function () {
         })
         it('stops the agent and all components - mqtt enabled', async function () {
             const agent = createMQTTAgent()
-            agent.launcher = launcher.newLauncher()
+            agent.launcher = Launcher.newLauncher()
             agent.httpClient.stopPolling.callCount.should.equal(0)
             await agent.start()
             await agent.stop()
@@ -347,7 +352,7 @@ describe('Agent', function () {
             agent.currentProject = 'projectId'
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
-            const testLauncher = launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher()
             agent.launcher = testLauncher
             await writeConfig(agent, 'projectId', 'snapshotId', 'settingsId')
 
@@ -399,7 +404,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
-            const testLauncher = launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'newSnapshotId' })
@@ -424,7 +429,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
-            const testLauncher = launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'newSnapshotId' })
@@ -449,7 +454,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
-            const testLauncher = launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'settingsId' })
             agent.httpClient.getSnapshot.resolves({ })
@@ -470,7 +475,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = null
 
-            const testLauncher = launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'should-not-be-called' })
@@ -493,7 +498,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
-            const testLauncher = launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'should-not-be-called' })
@@ -535,7 +540,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
-            const testLauncher = launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'settingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'newSnapshotId' })
@@ -557,7 +562,7 @@ describe('Agent', function () {
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'developer'
 
-            const testLauncher = launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'xxx' })
             agent.httpClient.getSnapshot.resolves({ id: 'xxx' })
@@ -580,7 +585,7 @@ describe('Agent', function () {
             agent.currentSnapshot = null
             agent.currentSettings = null
 
-            const testLauncher = launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher()
             agent.launcher = testLauncher
             agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
             agent.httpClient.getSnapshot.resolves({ id: 'newSnapshotId' })
@@ -597,6 +602,100 @@ describe('Agent', function () {
             agent.launcher.should.not.eql(testLauncher)
             agent.launcher.writeConfiguration.called.should.be.true()
             agent.launcher.start.called.should.be.true()
+        })
+        it('Checks in when switching to developer mode (HTTP)', async function () {
+            const agent = createHTTPAgent()
+            agent.currentProject = 'projectId'
+            agent.currentSnapshot = { id: 'snapshotId' }
+            agent.currentSettings = { hash: 'settingsId' }
+            agent.currentMode = 'autonomous'
+
+            const testLauncher = Launcher.newLauncher()
+            agent.launcher = testLauncher
+            await agent.start()
+            await agent.setState({
+                mode: 'developer'
+            })
+            for (let i = 0; i < 30; i++) {
+                if (agent.httpClient.checkIn.called) {
+                    break
+                }
+                await new Promise(resolve => setTimeout(resolve, 10))
+            }
+            // test that checkIn was called with arg 'developer'
+            agent.httpClient.checkIn.called.should.be.true('checkIn was not called following switch to developer mode')
+        })
+        it('Checks in when switching to developer mode (MQTT)', async function () {
+            const agent = createMQTTAgent()
+            agent.currentProject = 'projectId'
+            agent.currentSnapshot = { id: 'snapshotId' }
+            agent.currentSettings = { hash: 'settingsId' }
+            agent.currentMode = 'autonomous'
+
+            const testLauncher = Launcher.newLauncher()
+            agent.launcher = testLauncher
+            await agent.start()
+            await agent.setState({
+                mode: 'developer'
+            })
+            for (let i = 0; i < 30; i++) {
+                if (agent.mqttClient.checkIn.called) {
+                    break
+                }
+                await new Promise(resolve => setTimeout(resolve, 10))
+            }
+            // test that checkIn was called with arg 'developer'
+            agent.mqttClient.checkIn.called.should.be.true('checkIn was not called following switch to developer mode')
+        })
+        it('reloads latest snapshot from platform when switching off developer mode (if flows modified)', async function () {
+            sinon.stub(utils, 'compareNodeRedData').returns(false)
+            const agent = createMQTTAgent()
+            agent.currentProject = 'projectId'
+            agent.currentSnapshot = { id: 'different-snapshot-id', flows: [] }
+            agent.currentSettings = { hash: 'settingsId' }
+            this.currentState = 'unknown'
+            agent.currentMode = 'developer'
+            // spy agent.saveProject
+            sinon.spy(agent, 'saveProject')
+
+            const testLauncher = Launcher.newLauncher()
+            agent.launcher = testLauncher
+            await agent.start()
+            await agent.setState({
+                mode: 'autonomous'
+            })
+            agent.httpClient.getSnapshot.called.should.be.true('getSnapshot was not called following switch to autonomous mode')
+            utils.compareNodeRedData.called.should.be.true('compareNodeRedData was not called following switch to autonomous mode')
+            agent.saveProject.called.should.be.true('saveProject was not called following switch to autonomous mode') // always true when switching modes
+            agent.launcher.writeConfiguration.called.should.be.true('writeConfiguration was not called following switch to autonomous mode') // true because flows are changed
+            testLauncher.stop.called.should.be.true('stop was not called following switch to autonomous mode') // true because flows are changed
+            agent.launcher.start.called.should.be.true('start was not called following switch to autonomous mode') // true because flows are changed
+            agent.mqttClient.setProject.called.should.be.true('setProject was not called following switch to autonomous mode')
+            agent.currentSnapshot.should.have.property('id', 'a-snapshot-id') // stub would have returned `a-snapshot-id`, so snapshot was reloaded
+        })
+        it('does not reload latest snapshot from platform when switching off developer mode (if flows are unchanged)', async function () {
+            sinon.stub(utils, 'compareNodeRedData').returns(true)
+            const agent = createMQTTAgent()
+            sinon.spy(agent, 'saveProject')
+            agent.currentProject = 'projectId'
+            agent.currentSnapshot = { id: 'original-snapshot-id', flows: ['a flow'] }
+            agent.currentSettings = { hash: 'settingsId' }
+            this.currentState = 'unknown'
+            agent.currentMode = 'developer'
+
+            const testLauncher = Launcher.newLauncher()
+            agent.launcher = testLauncher
+            await agent.start()
+            await agent.setState({
+                mode: 'autonomous'
+            })
+            agent.httpClient.getSnapshot.called.should.be.true('getSnapshot was not called following switch to autonomous mode')
+            utils.compareNodeRedData.called.should.be.true('compareNodeRedData was not called following switch to autonomous mode')
+            agent.saveProject.called.should.be.true('saveProject was not called following switch to autonomous mode') // true because change of mode should trigger saveProject
+            testLauncher.stop.called.should.be.false('stop was called following switch to autonomous mode') // false because flows are unchanged
+            agent.launcher.writeConfiguration.called.should.be.false('writeConfiguration was called following switch to autonomous mode') // false because flows are unchanged
+            agent.launcher.start.called.should.be.false('start was called following switch to autonomous mode') // false because flows are unchanged
+            agent.currentSnapshot.should.have.property('id', 'original-snapshot-id') // stub would have returned `a-snapshot-id`, so no change to snapshot
         })
     })
 
