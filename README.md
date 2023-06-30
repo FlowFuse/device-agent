@@ -5,7 +5,7 @@ FlowForge platform.
 
 ## Prerequisites
 
- - NodeJS v16 or later
+ - NodeJS v14 or later
  - A FlowForge platform instance to connect to
 
 ## Supported Operating Systems
