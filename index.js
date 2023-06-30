@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// const semver = require('semver')
-// if (semver.lt(process.version, '16.0.0')) {
-//     console.log('FlowForge Device Agent requires at least NodeJS v16')
-//     process.exit(1)
-// }
+const semver = require('semver')
+if (semver.lt(process.version, '14.0.0')) {
+    console.log('FlowForge Device Agent requires at least NodeJS v14.x')
+    process.exit(1)
+}
 
 const TESTING = process.env.NODE_ENV === 'test'
 const commandLineArgs = require('command-line-args')
