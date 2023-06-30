@@ -5,42 +5,63 @@ FlowForge platform.
 
 ## Prerequisites
 
- - NodeJS v16
+ - NodeJS v14 or later
  - A FlowForge platform instance to connect to
 
-## Install
+## Supported Operating Systems
 
-The agent can be installed as a global npm module. This will ensure the agent
+The Device Agent can be installed on most Linux distributions, Windows, and MacOS.
+
+## Installing the Device Agent
+
+The Device Agent is published to the public npm repository as [@flowforge/flowforge-device-agent](https://www.npmjs.com/package/@flowforge/flowforge-device-agent).
+
+It can be installed as a global npm module. This will ensure the agent
 command is on the path:
 
+### Linux/MacOS
+
+```bash
+sudo npm install -g @flowforge/flowforge-device-agent
 ```
+
+### Windows
+
+```bash
 npm install -g @flowforge/flowforge-device-agent
+```
+
+Or you can chose to run the Docker container. When you do, you'll need to mount
+the `device.yml` obtained when [Registering the device](#register-the-device):
+
+```bash
+docker run --mount /path/to/device.yml:/opt/flowforge/device.yml -p 1880:1880 flowforge/device-agent:latest
 ```
 
 ## Configuration
 
-The agent configuration is provided in a `device.yml` file within its working
+The agent configuration is provided by a `device.yml` file within its working
 directory.
 
 
 ### Configuration directory
 
-By default the agent uses `/opt/flowforge-device` as its working directory. 
-This can be overridden with the `-d/--dir` option.
+By default the agent uses `/opt/flowforge-device` or `c:\opt\flowforge-device` as 
+its working directory. This can be overridden with the `-d/--dir` option.
 
 The directory must exist and be accessible to the user that will be
 running the agent.
 
-#### linux/macOS
+#### Linux/MacOS
 
-```
+```bash
 sudo mkdir /opt/flowforge-device
 sudo chown -R $USER /opt/flowforge-device
 ```
 
-#### windows (run elevated)
+#### Windows (run elevated)
 
-```
+```bash
 mkdir c:\opt\flowforge-device
 ```
 
@@ -68,8 +89,8 @@ Required options   | Description
 To enable MQTT connectivity, the following options are required. They are provided
 by the platform if MQTT comms are enabled.
 
-MQTT options   | Description
----------------|---------------
+MQTT options     | Description
+-----------------|---------------
 `brokerURL`      | The url for the platform broker
 `brokerUsername` | The username to connect with - `device:<teamId>:<deviceId>`
 `brokerPassword` | The password to connect with
@@ -88,10 +109,10 @@ Extra options   | Description
 The following options are passed through to Node-RED:
 
 Node-RED options | Description
-----------------|---------------
-`port`          | The port to listen on. Default: 1880
-`https`         | Enable HTTPS. See below for details
-`httpStatic`    | Enable serving of static content from a local path
+-----------------|---------------
+`port`           | The port to listen on. Default: 1880
+`https`          | Enable HTTPS. See below for details
+`httpStatic`     | Enable serving of static content from a local path
 
 ##### `https` configuration
 
