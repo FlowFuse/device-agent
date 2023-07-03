@@ -11,7 +11,6 @@
         "url": "https://github.com/flowforge/flowforge-device-agent/issues"
     },
     "scripts": {
-        "postinstall": "node ./scripts/update-theme.mjs",
         "start": "node index.js",
         "dev": "nodemon index.js",
         "update-theme": "node ./scripts/update-theme.mjs",
@@ -31,12 +30,12 @@
     "author": "FlowForge Inc.",
     "license": "Apache-2.0",
     "dependencies": {
+        "@flowforge/nr-theme": "^0.1.3",
         "command-line-args": "^5.2.1",
         "command-line-usage": "^6.1.3",
         "got": "^11.8.6",
         "mqtt": "^4.3.7",
         "semver": "^7.3.8",
-        "tar": "^6.1.15",
         "ws": "^8.13.0",
         "yaml": "^2.1.1"
     },
