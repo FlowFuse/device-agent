@@ -275,7 +275,6 @@ The following scripts are available:
 
  - `npm start` - Start the agent
  - `npm run dev` - Build the agent and watch for changes
- - `npm run update-theme` - Update the theme files from the nr-launcher repository
  - `npm run lint` - Run eslint
  - `npm run lint:fix` - Run eslint and fix any issues
  - `npm run test` - Run all unit tests
