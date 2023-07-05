@@ -1,6 +1,20 @@
+#### 1.9.3: Release
+
+ - Ensure device gets FF theming (#107) @Steve-Mcl
+ - Improve logs around Developer mode and pull snapshot if local device has changed (#128) @Steve-Mcl
+ - Fix starting agent in dev mode without existing snapshot locally (#131) @knolleary
+ - Add build tools to build npm deps (#122) @hardillb
+ - Ensure agent runs on Node 14 (#130) @knolleary
+ - Ensure buffered agent messages have the properly formatted ts prop (#129) @knolleary
+ - doc fix: s/yaml/yml/ (#127) @ZJvandeWeg
+ - Update device agent docs around windows support (#119) @Steve-Mcl
+ - Add package-lock.json (#121) @Pezmc
+ - Build for all platforms (#118) @hardillb
+
 #### 1.9.2: Release
 
  - Fix broken build script @hardillb
+
 #### 1.9.0: Release
 
 Note: the version number jump to 1.9.0 has been done to bring the numbering
