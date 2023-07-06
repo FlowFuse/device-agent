@@ -1,3 +1,8 @@
+#### 1.9.4: Release
+
+ - Ensure agent handles first run without currentMode set (#137) @knolleary
+ - Fix nr-theme source path (#136) @hardillb
+
 #### 1.9.3: Release
 
  - Ensure device gets FF theming (#107) @Steve-Mcl
