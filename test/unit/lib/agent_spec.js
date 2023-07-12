@@ -385,13 +385,13 @@ describe('Agent', function () {
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'developer'
             agent.config = { licensed: true }
-            await writeConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer', false)
+            await writeConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer', true)
+            await validateConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer', true)
+
+            await agent.setState({ licensed: false })
+
+            // As device is in developer mode, other state is not affected but `licensed` state is always updated
             await validateConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer', false)
-
-            await agent.setState(null) // should NOT clear state as device is in developer mode
-
-            // agent.currentState.should.equal('running')
-            await validateConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer')
             // Agent was NOT stopped
             agent.stop.callCount.should.equal(0)
             agent.updating.should.be.false()
