@@ -1,0 +1,22 @@
+{
+    "name": "@flowforge/flowforge-library-plugin",
+    "version": "0.0.1",
+    "description": "FlowForge library plugin for Node-RED",
+    "keywords": [
+        "node-red",
+        "flowforge"
+    ],
+    "author": {
+        "name": "FlowForge Inc."
+    },
+    "license": "Apache-2.0",
+    "node-red": {
+        "version": ">=2.2.0",
+        "plugins": {
+            "flowforge-library": "libraryPlugin.js"
+        }
+    },
+    "engines": {
+        "node": ">=14.x"
+    }
+}
