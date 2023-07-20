@@ -1,3 +1,7 @@
+#### 1.9.5: Release
+ 
+ - Modify editor tunnel to reconnect to platform if connection drops (#144) @knolleary
+
 #### 1.9.4: Release
 
  - Ensure agent handles first run without currentMode set (#137) @knolleary
