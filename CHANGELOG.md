@@ -1,3 +1,7 @@
+#### 1.9.6: Release
+
+ - Allow use of private CA for HTTPS certs (#150) @hardillb
+
 #### 1.9.5: Release
  
  - Modify editor tunnel to reconnect to platform if connection drops (#144) @knolleary
