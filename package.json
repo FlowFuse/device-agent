@@ -5,11 +5,6 @@
     "exports": {
         "./libraryPlugin": "./lib/plugins/libraryPlugin.js"
     },
-    "node-red": {
-        "plugins": {
-            "flowforge-library": "lib/plugins/libraryPlugin.js"
-        }
-    },
     "main": "index.js",
     "repository": {
         "type": "git",
