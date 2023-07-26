@@ -2,6 +2,9 @@
     "name": "@flowforge/flowforge-device-agent",
     "version": "1.9.6",
     "description": "An Edge Agent for running Node-RED instances deployed from the FlowForge Platform",
+    "exports": {
+        "./libraryPlugin": "./lib/plugins/libraryPlugin.js"
+    },
     "main": "index.js",
     "repository": {
         "type": "git",
