@@ -1,3 +1,8 @@
+#### 1.10.0: Release
+
+ - Use local TZ env var else use timeZone from settings (#155) @hardillb
+ - Adds FF library plugin (#141) @Steve-Mcl
+
 #### 1.9.6: Release
 
  - Allow use of private CA for HTTPS certs (#150) @hardillb
