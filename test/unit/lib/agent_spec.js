@@ -5,6 +5,7 @@ const path = require('path')
 const fs = require('fs/promises')
 const os = require('os')
 
+const logger = require('../../../lib/logging/log.js') // ensure we load this first for later stubbing
 const utils = require('../../../lib/utils.js') // ensure we load this first for later stubbing
 const agent = require('../../../lib/agent')
 const httpClient = require('../../../lib/http')
@@ -13,6 +14,11 @@ const Launcher = require('../../../lib/launcher.js')
 
 describe('Agent', function () {
     let configDir
+
+    function findInLogs (level, msg) {
+        const logs = logger.getBufferedMessages()
+        return logs.find(log => log.level === level && log.msg === msg)
+    }
 
     function createProvisioningAgent () {
         return agent.newAgent({
@@ -79,14 +85,18 @@ describe('Agent', function () {
         if (arguments.length > 4) {
             config.should.have.property('mode', mode)
         }
-        config.should.have.property('licensed')
         if (arguments.length > 5) {
+            config.should.have.property('licensed')
             config.licensed.should.equal(licensed)
         }
     }
 
     beforeEach(async function () {
+        logger.initLogger({ verbose: true })
         // stub the console logging so that we don't get console output
+        sinon.stub(logger, 'info').callsFake((..._args) => {})
+        sinon.stub(logger, 'warn').callsFake((..._args) => {})
+        sinon.stub(logger, 'debug').callsFake((..._args) => {})
         sinon.stub(console, 'log').callsFake((..._args) => {})
         sinon.stub(console, 'info').callsFake((..._args) => {})
         sinon.stub(console, 'warn').callsFake((..._args) => {})
@@ -108,8 +118,13 @@ describe('Agent', function () {
             setProject: sinon.stub(),
             checkIn: sinon.stub()
         })
-        sinon.stub(Launcher, 'newLauncher').callsFake((config, project, settings) => {
+        sinon.stub(Launcher, 'newLauncher').callsFake((config, project, snapshot, settings, mode) => {
             return {
+                config,
+                project,
+                snapshot,
+                settings,
+                mode,
                 start: sinon.stub().resolves(),
                 stop: sinon.stub().resolves(),
                 writeConfiguration: sinon.stub().resolves(),
@@ -581,7 +596,7 @@ describe('Agent', function () {
             should.exist(agent.launcher)
             agent.launcher.writeConfiguration.called.should.be.true()
             agent.launcher.start.called.should.be.true()
-            agent.httpClient.getSettings.called.should.be.false()
+            agent.httpClient.getSettings.called.should.be.true('getSettings was not called when snapshot changed') // getSettings should be called because platform will have updated settings from the new snapshot (e.g. FF_SNAPSHOT_ID will be different)
         })
         it('Updates when snapshot changed (snapshotId -> newSnapshotId)', async function () {
             const agent = createHTTPAgent()
@@ -601,8 +616,7 @@ describe('Agent', function () {
             should.exist(agent.launcher)
             agent.launcher.writeConfiguration.called.should.be.true()
             agent.launcher.start.called.should.be.true()
-            agent.httpClient.getSettings.called.should.be.false()
-            agent.httpClient.getSnapshot.called.should.be.true()
+            agent.httpClient.getSettings.called.should.be.true('getSettings was not called when snapshot changed') // getSettings should be called because platform will have updated settings from the new snapshot (e.g. FF_SNAPSHOT_ID will be different)
         })
         it('Does not update when snapshot changed if device is in developer mode', async function () {
             const agent = createHTTPAgent()
@@ -696,26 +710,124 @@ describe('Agent', function () {
             // test that checkIn was called with arg 'developer'
             agent.mqttClient.checkIn.called.should.be.true('checkIn was not called following switch to developer mode')
         })
-        it('reloads latest snapshot from platform when switching off developer mode (if flows modified)', async function () {
+        it('reloads latest snapshot from platform when switching off developer mode (if snapshot ID changed)', async function () {
             sinon.stub(utils, 'compareNodeRedData').returns(false)
+            const flows = [{ id: 'a-node-id', payload: 'i-am-original' }, {}]
+
             const agent = createMQTTAgent()
             agent.currentProject = 'projectId'
-            agent.currentSnapshot = { id: 'different-snapshot-id', flows: [] }
+            agent.currentSnapshot = { id: 'a-snapshot-id', flows }
             agent.currentSettings = { hash: 'settingsId' }
             this.currentState = 'unknown'
             agent.currentMode = 'developer'
             // spy agent.saveProject
             sinon.spy(agent, 'saveProject')
-
-            const testLauncher = Launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher(undefined, undefined, { id: 'a-DIFFERENT-snapshot-id', flows })
             agent.launcher = testLauncher
             await agent.start()
             await agent.setState({
                 mode: 'autonomous'
             })
             agent.httpClient.getSnapshot.called.should.be.true('getSnapshot was not called following switch to autonomous mode')
+
+            // check the logs for appropriate entries
+            const infoLogSnapIdChanged = findInLogs('info', 'Local snapshot ID differs from the snapshot on the forge platform')
+            const infoLogFlowsChanged = findInLogs('info', 'Local flows differ from the snapshot on the forge platform')
+            const infoLogEnvVarsChanged = findInLogs('info', 'Local environment variables differ from the snapshot on the forge platform')
+            const infoLogSomethingChanged = findInLogs('info', 'Local flows have changed. Restoring current snapshot')
+            should(infoLogSnapIdChanged).be.an.Object() // should be logged because the snapshot ID is different
+            should(infoLogFlowsChanged).not.be.an.Object() // should not be logged because the flows are the same
+            should(infoLogEnvVarsChanged).not.be.an.Object() // should not be logged because the env vars are the same
+            should(infoLogSomethingChanged).be.an.Object() // should be logged because _something_ changed and caused a reload
+
+            utils.compareNodeRedData.called.should.be.false('compareNodeRedData was called following switch to autonomous mode') // should be false because the snapshot ID check would have failed and prevented a call to compare flows
+            agent.saveProject.called.should.be.true('saveProject was not called following switch to autonomous mode') // always true when switching modes
+            testLauncher.readFlow.called.should.be.false('readFlow was called following switch to autonomous mode') // should be false as the snapshot ID check would have failed and prevented a call to readFlow
+            agent.launcher.writeConfiguration.called.should.be.true('writeConfiguration was not called following switch to autonomous mode') // true because flows are changed
+            testLauncher.stop.called.should.be.true('stop was not called following switch to autonomous mode') // true because flows are changed
+            agent.launcher.start.called.should.be.true('start was not called following switch to autonomous mode') // true because flows are changed
+            agent.mqttClient.setProject.called.should.be.true('setProject was not called following switch to autonomous mode')
+            agent.currentSnapshot.should.have.property('id', 'a-snapshot-id') // stub would have returned `a-snapshot-id`, so snapshot was reloaded
+        })
+        it('reloads latest snapshot from platform when switching off developer mode (if platform env vars are modified)', async function () {
+            sinon.stub(utils, 'compareNodeRedData').returns(false)
+            const testFlow = [{ id: 'a-node', wires: [] }, { id: 'b-node', wires: [] }]
+            const agent = createMQTTAgent()
+            agent.currentProject = 'projectId'
+            agent.currentSnapshot = { id: 'a-snapshot-id', flows: testFlow, env: { FF_SNAPSHOT_NAME: 'snapshot 1' } }
+            agent.currentSettings = { hash: 'settingsId' }
+            this.currentState = 'unknown'
+            agent.currentMode = 'developer'
+            // spy agent.saveProject
+            sinon.spy(agent, 'saveProject')
+            sinon.replace(agent.httpClient, 'getSnapshot', sinon.fake(() => {
+                return agent.currentSnapshot
+            }))
+            const launcherLocalSnapshot = { id: 'a-snapshot-id', flows: testFlow, env: { FF_SNAPSHOT_NAME: 'snapshot 2' } } // different env vars
+            const testLauncher = Launcher.newLauncher(undefined, undefined, launcherLocalSnapshot, agent.currentSettings)
+            agent.launcher = testLauncher
+            await agent.start()
+            await agent.setState({
+                mode: 'autonomous'
+            })
+            agent.httpClient.getSnapshot.called.should.be.true('getSnapshot was not called following switch to autonomous mode')
+
+            // check the logs for appropriate entries
+            const infoLogSnapIdChanged = findInLogs('info', 'Local snapshot ID differs from the snapshot on the forge platform')
+            const infoLogFlowsChanged = findInLogs('info', 'Local flows differ from the snapshot on the forge platform')
+            const infoLogEnvVarsChanged = findInLogs('info', 'Local environment variables differ from the snapshot on the forge platform')
+            const infoLogSomethingChanged = findInLogs('info', 'Local flows have changed. Restoring current snapshot')
+            should(infoLogSnapIdChanged).not.be.an.Object() // should not be logged because the snapshot ID is the same
+            should(infoLogFlowsChanged).not.be.an.Object() // should not be logged because the flows are the same
+            should(infoLogEnvVarsChanged).be.an.Object() // should be logged because the env vars are different
+            should(infoLogSomethingChanged).be.an.Object() // should be logged because _something_ changed and caused a reload
+
+            utils.compareNodeRedData.called.should.be.false('compareNodeRedData was called following switch to autonomous mode') // should be false because the env check would have inhibited a call to compare flows
+            testLauncher.readFlow.called.should.be.false('readFlow was called following switch to autonomous mode') // should be false as the env var check would have failed and prevented a call to readFlow
+            agent.saveProject.called.should.be.true('saveProject was not called following switch to autonomous mode') // always true when switching modes
+            agent.launcher.writeConfiguration.called.should.be.true('writeConfiguration was not called following switch to autonomous mode') // true because flows are changed
+            testLauncher.stop.called.should.be.true('stop was not called following switch to autonomous mode') // true because flows are changed
+            agent.launcher.start.called.should.be.true('start was not called following switch to autonomous mode') // true because flows are changed
+            agent.mqttClient.setProject.called.should.be.true('setProject was not called following switch to autonomous mode')
+            agent.currentSnapshot.should.have.property('id', 'a-snapshot-id') // stub would have returned `a-snapshot-id`, so snapshot was reloaded
+        })
+        it('reloads latest snapshot from platform when switching off developer mode (if flows modified)', async function () {
+            sinon.stub(utils, 'compareNodeRedData').returns(false)
+            const flows1 = [{ id: 'a-node-id', payload: 'i-am-original' }, {}]
+            const flows2 = [{ id: 'a-node-id', payload: 'i-am-different' }, {}]
+
+            const agent = createMQTTAgent()
+            agent.currentProject = 'projectId'
+            agent.currentSnapshot = { id: 'a-snapshot-id', flows: flows1 }
+            agent.currentSettings = { hash: 'settingsId' }
+            this.currentState = 'unknown'
+            agent.currentMode = 'developer'
+            // spy agent.saveProject
+            sinon.spy(agent, 'saveProject')
+            const testLauncher = Launcher.newLauncher(undefined, undefined, { id: 'a-snapshot-id', flows: flows2 })
+            sinon.replace(testLauncher, 'readFlow', sinon.fake(() => {
+                return flows2
+            }))
+            agent.launcher = testLauncher
+            await agent.start()
+            await agent.setState({
+                mode: 'autonomous'
+            })
+            agent.httpClient.getSnapshot.called.should.be.true('getSnapshot was not called following switch to autonomous mode')
+
+            // check the logs for appropriate entries
+            const infoLogSnapIdChanged = findInLogs('info', 'Local snapshot ID differs from the snapshot on the forge platform')
+            const infoLogFlowsChanged = findInLogs('info', 'Local flows differ from the snapshot on the forge platform')
+            const infoLogEnvVarsChanged = findInLogs('info', 'Local environment variables differ from the snapshot on the forge platform')
+            const infoLogSomethingChanged = findInLogs('info', 'Local flows have changed. Restoring current snapshot')
+            should(infoLogSnapIdChanged).not.be.an.Object() // should not be logged because the snapshot ID is the same
+            should(infoLogFlowsChanged).be.an.Object() // should be logged because the flows are different
+            should(infoLogEnvVarsChanged).not.be.an.Object() // should not be logged because the env vars are the same
+            should(infoLogSomethingChanged).be.an.Object() // should be logged because _something_ changed and caused a reload
+
             utils.compareNodeRedData.called.should.be.true('compareNodeRedData was not called following switch to autonomous mode')
             agent.saveProject.called.should.be.true('saveProject was not called following switch to autonomous mode') // always true when switching modes
+            testLauncher.readFlow.called.should.be.true('readFlow was not called following switch to autonomous mode') // true because flows are changed
             agent.launcher.writeConfiguration.called.should.be.true('writeConfiguration was not called following switch to autonomous mode') // true because flows are changed
             testLauncher.stop.called.should.be.true('stop was not called following switch to autonomous mode') // true because flows are changed
             agent.launcher.start.called.should.be.true('start was not called following switch to autonomous mode') // true because flows are changed
@@ -727,19 +839,33 @@ describe('Agent', function () {
             const agent = createMQTTAgent()
             sinon.spy(agent, 'saveProject')
             agent.currentProject = 'projectId'
-            agent.currentSnapshot = { id: 'original-snapshot-id', flows: ['a flow'] }
+            agent.currentSnapshot = { id: 'original-snapshot-id', flows: [] }
             agent.currentSettings = { hash: 'settingsId' }
             this.currentState = 'unknown'
             agent.currentMode = 'developer'
 
-            const testLauncher = Launcher.newLauncher()
+            const testLauncher = Launcher.newLauncher(agent.config, agent.currentProject, agent.currentSnapshot, agent.currentSettings, agent.currentMode)
+            sinon.replace(agent.httpClient, 'getSnapshot', sinon.fake(() => {
+                return agent.currentSnapshot
+            }))
             agent.launcher = testLauncher
             await agent.start()
             await agent.setState({
                 mode: 'autonomous'
             })
             agent.httpClient.getSnapshot.called.should.be.true('getSnapshot was not called following switch to autonomous mode')
-            utils.compareNodeRedData.called.should.be.true('compareNodeRedData was not called following switch to autonomous mode')
+
+            // check the logs for appropriate entries
+            const infoLogSnapIdChanged = findInLogs('info', 'Local snapshot ID differs from the snapshot on the forge platform')
+            const infoLogFlowsChanged = findInLogs('info', 'Local flows differ from the snapshot on the forge platform')
+            const infoLogEnvVarsChanged = findInLogs('info', 'Local environment variables differ from the snapshot on the forge platform')
+            const infoLogSomethingChanged = findInLogs('info', 'Local flows have changed. Restoring current snapshot')
+            should(infoLogSnapIdChanged).not.be.an.Object() // should not be logged (nothing changed)
+            should(infoLogFlowsChanged).not.be.an.Object() // should not be logged (nothing changed)
+            should(infoLogEnvVarsChanged).not.be.an.Object() // should not be logged (nothing changed)
+            should(infoLogSomethingChanged).not.be.an.Object() // should not be logged (nothing changed)
+
+            utils.compareNodeRedData.called.should.be.true('compareNodeRedData was not called following switch to autonomous mode') // true because flows are unchanged
             agent.saveProject.called.should.be.true('saveProject was not called following switch to autonomous mode') // true because change of mode should trigger saveProject
             testLauncher.stop.called.should.be.false('stop was called following switch to autonomous mode') // false because flows are unchanged
             agent.launcher.writeConfiguration.called.should.be.false('writeConfiguration was called following switch to autonomous mode') // false because flows are unchanged
