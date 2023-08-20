@@ -41,10 +41,18 @@ function main (testOptions) {
 
     // Require dir to be created
     if (!fs.existsSync(options.dir)) {
-        const quitMsg = `Cannot find dir '${options.dir}'.
-    Please ensure it exists and is writable, or set a different path with -d`
-        quit(quitMsg, 20) // Exit Code 20 - Invalid dir
-        // REF: https://slg.ddnss.de/list-of-common-exit-codes-for-gnu-linux/
+        try {
+            fs.mkdirSync(options.dir, { recursive: true })
+            if (!fs.existsSync(options.dir)) {
+                throw new Error('Failed to create dir')
+            }
+        } catch (err) {
+            const quitMsg = `Cannot create dir '${options.dir}'.
+                Please ensure the parent directory is writable, or set a different path with -d`
+            quit(quitMsg, 20) // Exit Code 20 - Invalid dir
+            // REF: https://slg.ddnss.de/list-of-common-exit-codes-for-gnu-linux/
+            return
+        }
     }
 
     // Locate the config file. Either the path exactly as specified,
