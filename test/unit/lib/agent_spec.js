@@ -48,46 +48,91 @@ describe('Agent', function () {
             brokerPassword: 'pass'
         })
     }
-    async function writeConfig (agent, project, snapshot, settings, mode, licensed) {
-        if (arguments.length === 1) {
-            project = agent.currentProject
-            snapshot = agent.currentSnapshot?.id || null
-            settings = agent.currentSettings?.hash || null
-            mode = agent.currentMode || null
-            licensed = typeof agent.config?.licensed === 'boolean' ? agent.config.licensed : null
+    async function writeConfig (
+        agent,
+        { application, project, snapshot, settings, mode, licensed } = { application: null, project: null, snapshot: null, settings: null, mode: null, licensed: null }
+    ) {
+        project = project || agent?.currentProject || null
+        application = application || agent?.currentApplication || null
+        snapshot = snapshot || agent?.currentSnapshot?.id || null
+        settings = settings || agent?.currentSettings?.hash || null
+        mode = mode || agent?.currentMode || null
+        if (typeof licensed !== 'boolean') {
+            licensed = typeof agent?.config?.licensed === 'boolean' ? agent.config.licensed : null
         }
+
+        const ownerType = application ? 'application' : (project ? 'project' : null)
         await fs.writeFile(agent.projectFilePath, JSON.stringify({
             snapshot: { id: snapshot },
             settings: { hash: settings },
-            project,
+            project: project || null,
+            application: application || null,
+            ownerType,
             mode,
             licensed
         }))
     }
 
-    async function validateConfig (agent, project, snapshot, settings, mode, licensed) {
-        console.log('validateConfig().  agent.projectFilePath: ', agent.projectFilePath)
+    /**
+     * Validate the agent's project file
+     * @param {import('../../../lib/agent.js').Agent} agent - the agent to validate
+     * @param {Object} options - the options to validate
+     * @param {string} options.application - the application id to validate (leave undefined to skip this check)
+     * @param {string} options.project - the project id to validate (leave undefined to skip this check)
+     * @param {string} options.snapshot - the snapshot id to validate (leave undefined to skip this check)
+     * @param {string} options.settings - the settings hash to validate (leave undefined to skip this check)
+     * @param {string} options.mode - the mode to validate (leave undefined to skip this check)
+     * @param {boolean} options.licensed - the licensed state to validate (leave undefined to skip this check)
+     * @returns {Promise<void>} - resolves when validation is complete
+     */
+    async function validateConfig (agent, options) {
         const config = JSON.parse(await fs.readFile(agent.projectFilePath, { encoding: 'utf-8' }))
-        console.log('validateConfig().  config: ', config)
-        config.should.have.property('project', project)
+
+        // config should have one of the following: 'project', 'application'
+        config.should.have.property('ownerType')
+        if (config.ownerType === 'project') {
+            config.should.have.property('project')
+        } else if (config.ownerType === 'application') {
+            config.should.have.property('application')
+        }
+
+        if (options.application) {
+            config.should.have.property('ownerType', 'application')
+            config.should.have.property('application', options.application)
+        } else {
+            config.should.not.have.property('ownerType', 'application')
+            config.should.have.property('application', null)
+        }
+
+        if (options.project) {
+            config.should.have.property('ownerType', 'project')
+            config.should.have.property('project', options.project)
+        } else {
+            config.should.not.have.property('ownerType', 'project')
+            config.should.have.property('project', null)
+        }
+
         config.should.have.property('snapshot')
-        if (snapshot !== null) {
-            config.snapshot.should.have.property('id', snapshot)
+        if (options.snapshot) {
+            config.snapshot.should.have.property('id', options.snapshot)
         } else {
             config.should.have.property('snapshot', null)
         }
+
         config.should.have.property('settings')
-        if (settings !== null) {
-            config.settings.should.have.property('hash', settings)
+        if (options.settings) {
+            config.settings.should.have.property('hash', options.settings)
         } else {
             config.should.have.property('settings', null)
         }
-        if (arguments.length > 4) {
-            config.should.have.property('mode', mode)
+
+        if (options.mode !== undefined) {
+            config.should.have.property('mode', options.mode)
         }
-        if (arguments.length > 5) {
+
+        if (options.licensed !== undefined) {
             config.should.have.property('licensed')
-            config.licensed.should.equal(licensed)
+            config.licensed.should.equal(options.licensed)
         }
     }
 
@@ -116,12 +161,14 @@ describe('Agent', function () {
             start: sinon.stub(),
             stop: sinon.stub(),
             setProject: sinon.stub(),
+            setApplication: sinon.stub(),
             checkIn: sinon.stub()
         })
-        sinon.stub(Launcher, 'newLauncher').callsFake((config, project, snapshot, settings, mode) => {
+        sinon.stub(Launcher, 'newLauncher').callsFake((config, application, project, snapshot, settings, mode) => {
             return {
                 config,
                 project,
+                application,
                 snapshot,
                 settings,
                 mode,
@@ -164,11 +211,12 @@ describe('Agent', function () {
             agent.currentSnapshot.should.have.property('id', 'snapshotId')
         })
 
-        it('loads project file', async function () {
+        it('loads project file when device is owned by instance', async function () {
             const agent = createHTTPAgent()
-            await writeConfig(agent, 'projectId', 'snapshotId', 'settingsId')
+            await writeConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId' })
 
             await agent.loadProject()
+            agent.should.have.property('currentOwnerType', 'project')
             agent.should.have.property('currentProject', 'projectId')
             agent.should.have.property('currentSettings')
             agent.currentSettings.should.have.property('hash', 'settingsId')
@@ -177,9 +225,20 @@ describe('Agent', function () {
             agent.should.have.property('config').and.be.an.Object()
             agent.config.should.have.property('licensed')
         })
+        it('loads project file when device is owned by application', async function () {
+            const agent = createHTTPAgent()
+            await writeConfig(agent, { application: 'applicationId', snapshot: 'snapshotId', settings: 'settingsId' })
+
+            await agent.loadProject()
+            agent.should.have.property('currentOwnerType', 'application')
+            agent.should.have.property('currentApplication', 'applicationId')
+            agent.should.have.property('currentSettings')
+            agent.should.have.property('config').and.be.an.Object()
+            agent.config.should.have.property('licensed')
+        })
         it('loads project file set for developer mode', async function () {
             const agent = createHTTPAgent()
-            await writeConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer')
+            await writeConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId', mode: 'developer' })
 
             await agent.loadProject()
             agent.should.have.property('currentMode', 'developer')
@@ -197,12 +256,14 @@ describe('Agent', function () {
             existsSync(agent.projectFilePath).should.be.false()
 
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.config = { licensed: true }
             await agent.saveProject()
             existsSync(agent.projectFilePath).should.be.true()
             await agent.loadProject()
+            agent.should.have.property('currentOwnerType', 'project')
             agent.should.have.property('currentProject', 'projectId')
             agent.should.have.property('currentSettings')
             agent.currentSettings.should.have.property('hash', 'settingsId')
@@ -218,6 +279,7 @@ describe('Agent', function () {
             existsSync(agent.projectFilePath).should.be.false()
 
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentMode = 'developer'
@@ -244,7 +306,7 @@ describe('Agent', function () {
         })
         it('uses mqtt if broker config provided', async function () {
             const agent = createMQTTAgent()
-            await writeConfig(agent, 'projectId', 'snapshotId', 'settingsId')
+            await writeConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId' })
 
             agent.should.have.property('currentState', 'unknown')
             await agent.start()
@@ -286,7 +348,7 @@ describe('Agent', function () {
             const agent = createHTTPAgent()
             const state = agent.getState()
             console.log(state)
-            state.should.have.property('project', null)
+            state.should.have.property('ownerType', 'none')
             state.should.have.property('snapshot', null)
             state.should.have.property('settings', null)
             state.should.have.property('state', 'unknown')
@@ -299,6 +361,7 @@ describe('Agent', function () {
             agent.currentMode = 'developer'
             const state = agent.getState()
             console.log(state)
+            state.should.have.property('ownerType', 'none')
             state.should.have.property('project', null)
             state.should.have.property('snapshot', null)
             state.should.have.property('settings', null)
@@ -307,17 +370,36 @@ describe('Agent', function () {
             state.should.have.property('licensed')
         })
 
-        it('returns full state', async function () {
+        it('returns full state of device owned by an instance', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.config = { licensed: true }
             agent.launcher = { state: 'running' }
             const state = agent.getState()
             console.log(state)
-
+            state.should.have.property('ownerType', 'project')
             state.should.have.property('project', 'projectId')
+            state.should.have.property('snapshot', 'snapshotId')
+            state.should.have.property('settings', 'settingsId')
+            state.should.have.property('state', 'running')
+            state.should.have.property('mode', 'autonomous') // default
+            state.should.have.property('licensed', true)
+        })
+
+        it('returns full state of device owned by an application', async function () {
+            const agent = createHTTPAgent()
+            agent.currentApplication = 'applicationId'
+            agent.currentSnapshot = { id: 'snapshotId' }
+            agent.currentSettings = { hash: 'settingsId' }
+            agent.config = { licensed: true }
+            agent.launcher = { state: 'running' }
+            const state = agent.getState()
+            console.log(state)
+            state.should.have.property('ownerType', 'application')
+            state.should.have.property('application', 'applicationId')
             state.should.have.property('snapshot', 'snapshotId')
             state.should.have.property('settings', 'settingsId')
             state.should.have.property('state', 'running')
@@ -328,6 +410,7 @@ describe('Agent', function () {
         it('returns full state with developer mode', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'developer'
@@ -346,6 +429,7 @@ describe('Agent', function () {
             const agent = createHTTPAgent()
             agent.updating = true
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.launcher = { state: 'running' }
@@ -359,6 +443,7 @@ describe('Agent', function () {
             const agent = createHTTPAgent()
             sinon.spy(agent, 'stop')
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'autonomous'
@@ -369,7 +454,7 @@ describe('Agent', function () {
 
             agent.currentState.should.equal('stopped')
             // Config file is empty
-            await validateConfig(agent, null, null, null, null, false)
+            await validateConfig(agent, { licensed: false })
             // Agent was stopped
             agent.stop.callCount.should.equal(1)
             agent.updating.should.be.false()
@@ -378,16 +463,16 @@ describe('Agent', function () {
             const agent = createHTTPAgent()
             sinon.spy(agent, 'stop')
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'developer'
-            await writeConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer')
-            await validateConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer')
+            await writeConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId', mode: 'developer' })
 
             await agent.setState(null) // should NOT clear state as device is in developer mode
 
-            // agent.currentState.should.equal('running')
-            await validateConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer')
+            await validateConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId', mode: 'developer' })
+
             // Agent was NOT stopped
             agent.stop.callCount.should.equal(0)
             agent.updating.should.be.false()
@@ -396,17 +481,19 @@ describe('Agent', function () {
             const agent = createHTTPAgent()
             sinon.spy(agent, 'stop')
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'developer'
             agent.config = { licensed: true }
-            await writeConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer', true)
-            await validateConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer', true)
+            await writeConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId', mode: 'developer', licensed: true })
+            await validateConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId', mode: 'developer', licensed: true })
 
             await agent.setState({ licensed: false })
 
             // As device is in developer mode, other state is not affected but `licensed` state is always updated
-            await validateConfig(agent, 'projectId', 'snapshotId', 'settingsId', 'developer', false)
+            await validateConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId', mode: 'developer', licensed: false })
+
             // Agent was NOT stopped
             agent.stop.callCount.should.equal(0)
             agent.updating.should.be.false()
@@ -414,17 +501,18 @@ describe('Agent', function () {
         it('clears snapshot state if null snapshot passed in', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             const testLauncher = Launcher.newLauncher()
             agent.launcher = testLauncher
-            await writeConfig(agent, 'projectId', 'snapshotId', 'settingsId')
+            await writeConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId' })
 
             await agent.setState({ snapshot: null })
 
             agent.currentState.should.equal('stopped')
             // Saved config still includes project
-            await validateConfig(agent, 'projectId', null, 'settingsId')
+            await validateConfig(agent, { project: 'projectId', snapshot: null, settings: 'settingsId' })
             // Launcher has been stopped
             should.not.exist(agent.launcher)
             testLauncher.stop.callCount.should.equal(1)
@@ -433,6 +521,7 @@ describe('Agent', function () {
         })
         it('sets project if changed whilst snapshot is null', async function () {
             const agent = createHTTPAgent()
+            agent.currentApplication = null
             agent.currentProject = null
             agent.currentSnapshot = null
             agent.currentSettings = null
@@ -440,7 +529,23 @@ describe('Agent', function () {
             await agent.setState({ project: 'projectId', snapshot: null })
 
             // Saved config still includes project
-            await validateConfig(agent, 'projectId', null, null)
+            await validateConfig(agent, { project: 'projectId', snapshot: null, settings: null })
+
+            // Launcher has been stopped
+            should.not.exist(agent.launcher)
+            agent.updating.should.be.false()
+        })
+        it('sets application if changed whilst snapshot is null', async function () {
+            const agent = createHTTPAgent()
+            agent.currentProject = null
+            agent.currentSnapshot = null
+            agent.currentSettings = null
+
+            await agent.setState({ application: 'applicationId', snapshot: null })
+
+            // Saved config still includes project
+            await validateConfig(agent, { application: 'applicationId', snapshot: null, settings: null })
+
             // Launcher has been stopped
             should.not.exist(agent.launcher)
             agent.updating.should.be.false()
@@ -449,6 +554,7 @@ describe('Agent', function () {
         it('starts the launcher without update if needed', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             await agent.setState({
@@ -465,6 +571,7 @@ describe('Agent', function () {
         it('Updates when project changes (projectId -> newProject)', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
@@ -478,7 +585,7 @@ describe('Agent', function () {
                 settings: 'newSettingsId',
                 snapshot: 'newSnapshotId'
             })
-            await validateConfig(agent, 'newProject', 'newSnapshotId', 'newSettingsId')
+            await validateConfig(agent, { project: 'newProject', snapshot: 'newSnapshotId', settings: 'newSettingsId' })
 
             testLauncher.stop.called.should.be.true()
             should.exist(agent.launcher)
@@ -503,7 +610,7 @@ describe('Agent', function () {
                 settings: 'newSettingsId',
                 snapshot: 'newSnapshotId'
             })
-            await validateConfig(agent, 'newProject', 'newSnapshotId', 'newSettingsId')
+            await validateConfig(agent, { project: 'newProject', snapshot: 'newSnapshotId', settings: 'newSettingsId' })
 
             testLauncher.stop.called.should.be.true()
             should.exist(agent.launcher)
@@ -515,6 +622,7 @@ describe('Agent', function () {
         it('Updates when snapshot cleared', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
@@ -527,7 +635,7 @@ describe('Agent', function () {
                 snapshot: null
             })
             // Saved config still includes project
-            await validateConfig(agent, 'projectId', null, 'settingsId')
+            await validateConfig(agent, { project: 'projectId', snapshot: null, settings: 'settingsId' })
 
             testLauncher.stop.called.should.be.true()
             should.not.exist(agent.launcher)
@@ -536,6 +644,7 @@ describe('Agent', function () {
         it('Updates when settings changed (null -> newSettingsId)', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = null
 
@@ -547,7 +656,7 @@ describe('Agent', function () {
             await agent.setState({
                 settings: 'newSettingsId'
             })
-            await validateConfig(agent, 'projectId', 'snapshotId', 'newSettingsId')
+            await validateConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'newSettingsId' })
 
             testLauncher.stop.called.should.be.true()
             should.exist(agent.launcher)
@@ -559,6 +668,7 @@ describe('Agent', function () {
         it('Updates when settings changed (settingsId -> newSettingsId)', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
@@ -570,7 +680,7 @@ describe('Agent', function () {
             await agent.setState({
                 settings: 'newSettingsId'
             })
-            await validateConfig(agent, 'projectId', 'snapshotId', 'newSettingsId')
+            await validateConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'newSettingsId' })
 
             testLauncher.stop.called.should.be.true()
             should.exist(agent.launcher)
@@ -592,7 +702,8 @@ describe('Agent', function () {
             await agent.setState({
                 snapshot: 'newSnapshotId'
             })
-            await validateConfig(agent, null, 'newSnapshotId', 'settingsId')
+            await validateConfig(agent, { project: null, snapshot: 'newSnapshotId', settings: 'settingsId' })
+
             should.exist(agent.launcher)
             agent.launcher.writeConfiguration.called.should.be.true()
             agent.launcher.start.called.should.be.true()
@@ -601,6 +712,7 @@ describe('Agent', function () {
         it('Updates when snapshot changed (snapshotId -> newSnapshotId)', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
 
@@ -612,7 +724,8 @@ describe('Agent', function () {
             await agent.setState({
                 snapshot: 'newSnapshotId'
             })
-            await validateConfig(agent, 'projectId', 'newSnapshotId', 'settingsId')
+            await validateConfig(agent, { project: 'projectId', snapshot: 'newSnapshotId', settings: 'settingsId' })
+
             should.exist(agent.launcher)
             agent.launcher.writeConfiguration.called.should.be.true()
             agent.launcher.start.called.should.be.true()
@@ -621,6 +734,7 @@ describe('Agent', function () {
         it('Does not update when snapshot changed if device is in developer mode', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'developer'
@@ -635,7 +749,8 @@ describe('Agent', function () {
                 snapshot: 'newSnapshotId'
             })
             // config should not have changed
-            await validateConfig(agent, 'projectId', 'snapshotId', 'settingsId')
+            await validateConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId' })
+
             should.exist(agent.launcher)
             agent.launcher.writeConfiguration.called.should.be.false() // no change to config due to being in developer mode
             agent.httpClient.getSettings.called.should.be.false()
@@ -669,6 +784,7 @@ describe('Agent', function () {
         it('Checks in when switching to developer mode (HTTP)', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'autonomous'
@@ -691,6 +807,7 @@ describe('Agent', function () {
         it('Checks in when switching to developer mode (MQTT)', async function () {
             const agent = createMQTTAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'autonomous'
@@ -716,13 +833,14 @@ describe('Agent', function () {
 
             const agent = createMQTTAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'a-snapshot-id', flows }
             agent.currentSettings = { hash: 'settingsId' }
             this.currentState = 'unknown'
             agent.currentMode = 'developer'
             // spy agent.saveProject
             sinon.spy(agent, 'saveProject')
-            const testLauncher = Launcher.newLauncher(undefined, undefined, { id: 'a-DIFFERENT-snapshot-id', flows })
+            const testLauncher = Launcher.newLauncher(undefined, null, null, { id: 'a-DIFFERENT-snapshot-id', flows })
             agent.launcher = testLauncher
             await agent.start()
             await agent.setState({
@@ -754,6 +872,7 @@ describe('Agent', function () {
             const testFlow = [{ id: 'a-node', wires: [] }, { id: 'b-node', wires: [] }]
             const agent = createMQTTAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'a-snapshot-id', flows: testFlow, env: { FF_SNAPSHOT_NAME: 'snapshot 1' } }
             agent.currentSettings = { hash: 'settingsId' }
             this.currentState = 'unknown'
@@ -764,7 +883,7 @@ describe('Agent', function () {
                 return agent.currentSnapshot
             }))
             const launcherLocalSnapshot = { id: 'a-snapshot-id', flows: testFlow, env: { FF_SNAPSHOT_NAME: 'snapshot 2' } } // different env vars
-            const testLauncher = Launcher.newLauncher(undefined, undefined, launcherLocalSnapshot, agent.currentSettings)
+            const testLauncher = Launcher.newLauncher(undefined, null, null, launcherLocalSnapshot, agent.currentSettings)
             agent.launcher = testLauncher
             await agent.start()
             await agent.setState({
@@ -798,13 +917,14 @@ describe('Agent', function () {
 
             const agent = createMQTTAgent()
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'a-snapshot-id', flows: flows1 }
             agent.currentSettings = { hash: 'settingsId' }
             this.currentState = 'unknown'
             agent.currentMode = 'developer'
             // spy agent.saveProject
             sinon.spy(agent, 'saveProject')
-            const testLauncher = Launcher.newLauncher(undefined, undefined, { id: 'a-snapshot-id', flows: flows2 })
+            const testLauncher = Launcher.newLauncher(undefined, null, null, { id: 'a-snapshot-id', flows: flows2 })
             sinon.replace(testLauncher, 'readFlow', sinon.fake(() => {
                 return flows2
             }))
@@ -839,12 +959,13 @@ describe('Agent', function () {
             const agent = createMQTTAgent()
             sinon.spy(agent, 'saveProject')
             agent.currentProject = 'projectId'
+            agent.currentApplication = null
             agent.currentSnapshot = { id: 'original-snapshot-id', flows: [] }
             agent.currentSettings = { hash: 'settingsId' }
             this.currentState = 'unknown'
             agent.currentMode = 'developer'
 
-            const testLauncher = Launcher.newLauncher(agent.config, agent.currentProject, agent.currentSnapshot, agent.currentSettings, agent.currentMode)
+            const testLauncher = Launcher.newLauncher(agent.config, null, agent.currentProject, agent.currentSnapshot, agent.currentSettings, agent.currentMode)
             sinon.replace(agent.httpClient, 'getSnapshot', sinon.fake(() => {
                 return agent.currentSnapshot
             }))
