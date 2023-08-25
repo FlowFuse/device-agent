@@ -1,3 +1,9 @@
+#### 1.10.1: Release
+
+ - Increase snapshot download timeout (#163) @hardillb
+ - Bump word-wrap from 1.2.3 to 1.2.5 (#160) @app/dependabot
+ - Fix device running or reporting old snapshot id/name (#157) @Steve-Mcl
+
 #### 1.10.0: Release
 
  - Use local TZ env var else use timeZone from settings (#155) @hardillb
