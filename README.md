@@ -48,8 +48,8 @@ directory.
 By default the agent uses `/opt/flowforge-device` or `c:\opt\flowforge-device` as 
 its working directory. This can be overridden with the `-d/--dir` option.
 
-The directory must exist and be accessible to the user that will be
-running the agent.
+NOTE: The device agent will attempt to create the working directory if it is not found,
+however if an error occurs, the device agent will exit and report a startup error.
 
 #### Linux/MacOS
 
