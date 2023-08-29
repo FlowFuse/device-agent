@@ -1,6 +1,7 @@
 # FlowForge Device Agent
 
-This module provides an agent that runs Node-RED deployed from the platform.
+This module provides an agent that runs Node-RED instances deployed from the
+FlowForge platform.
 
 ## Prerequisites
 
