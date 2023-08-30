@@ -6,7 +6,7 @@ FlowForge platform.
 ## Prerequisites
 
  - NodeJS v14 or later
- - A FlowForge platform instance to connect to
+ - A FlowForge platform to connect to
 
 ## Supported Operating Systems
 
@@ -49,8 +49,8 @@ directory.
 By default the agent uses `/opt/flowforge-device` or `c:\opt\flowforge-device` as 
 its working directory. This can be overridden with the `-d/--dir` option.
 
-The directory must exist and be accessible to the user that will be
-running the agent.
+NOTE: The device agent will attempt to create the working directory if it is not found,
+however if an error occurs, the device agent will exit and report a startup error.
 
 #### Linux/MacOS
 
@@ -223,7 +223,7 @@ Global Options
 ## Running with no access to npmjs.org
 
 By default the Device Agent will try and download the correct version of Node-RED and 
-any nodes required to run the Instance Snapshot that is assigned to run on the device.
+any nodes required to run the Snapshot that is assigned to run on the device.
 
 If the device is being run on an offline network or security policies prevent the 
 Device Agent from connecting to npmjs.org then it can be configured to use a pre-cached 
@@ -236,9 +236,9 @@ By default this will be `/opt/flowforge-device/module_cache`.
 
 ### Creating a module cache
 
-To create a suitable module cache, you will need to install the modules on a local device with
-access to npmjs.org, ensuring you use the same OS and Architecture as your target
-device, and then copy the modules on to your device.
+To create a suitable module cache, the device must be assigned to an instance.  You will need to
+install the modules on a local device with access to npmjs.org, ensuring you use the same
+OS and Architecture as your target device, and then copy the modules on to your device.
 
 1. From the Instance Snapshot page, select the snapshot you want to deploy and select the option to download its `package.json` file.
 2. Place this file in an empty directory on your local device.

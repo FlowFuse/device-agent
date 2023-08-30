@@ -25,8 +25,8 @@ describe('Launcher', function () {
         await fs.rm(config.dir, { recursive: true, force: true })
     })
 
-    it('Create Snapshot Flow/Creds Files', async function () {
-        const launcher = newLauncher(config, 'projectId', setup.snapshot)
+    it('Create Snapshot Flow/Creds Files, instance bound device', async function () {
+        const launcher = newLauncher(config, null, 'projectId', setup.snapshot)
         await launcher.writeFlow()
         await launcher.writeCredentials()
         const flow = await fs.readFile(path.join(config.dir, 'project', 'flows.json'))
@@ -35,8 +35,18 @@ describe('Launcher', function () {
         should(JSON.parse(creds)).eqls(setup.snapshot.credentials)
     })
 
-    it('Write Settings - without broker', async function () {
-        const launcher = newLauncher(config, 'PROJECTID', setup.snapshot)
+    it('Create Snapshot Flow/Creds Files, application bound device', async function () {
+        const launcher = newLauncher(config, 'applicationId', null, setup.snapshot)
+        await launcher.writeFlow()
+        await launcher.writeCredentials()
+        const flow = await fs.readFile(path.join(config.dir, 'project', 'flows.json'))
+        const creds = await fs.readFile(path.join(config.dir, 'project', 'flows_cred.json'))
+        should(JSON.parse(flow)).eqls(setup.snapshot.flows)
+        should(JSON.parse(creds)).eqls(setup.snapshot.credentials)
+    })
+
+    it('Write Settings - without broker, instance bound device', async function () {
+        const launcher = newLauncher(config, null, 'PROJECTID', setup.snapshot)
         await launcher.writeSettings()
         const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
         const settings = JSON.parse(setFile)
@@ -46,13 +56,24 @@ describe('Launcher', function () {
         settings.flowforge.should.have.property('projectID', 'PROJECTID')
         settings.flowforge.should.not.have.property('projectLink')
     })
+    it('Write Settings - without broker, application bound device', async function () {
+        const launcher = newLauncher(config, 'APP-ID', null, setup.snapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('port', 1880)
+        settings.should.have.property('credentialSecret', 'secret')
+        settings.should.have.property('flowforge')
+        settings.flowforge.should.have.property('applicationID', 'APP-ID')
+        settings.flowforge.should.not.have.property('projectLink')
+    })
     it('Write Settings - with broker', async function () {
         const launcher = newLauncher({
             ...config,
             brokerURL: 'BURL',
             brokerUsername: 'BUSER:TEAMID:deviceid',
             brokerPassword: 'BPASS'
-        }, 'PROJECTID', setup.snapshot)
+        }, null, 'PROJECTID', setup.snapshot)
         await launcher.writeSettings()
         const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
         const settings = JSON.parse(setFile)
@@ -69,7 +90,7 @@ describe('Launcher', function () {
     })
 
     it('Write package.json', async function () {
-        const launcher = newLauncher(config, 'projectId', setup.snapshot)
+        const launcher = newLauncher(config, null, 'projectId', setup.snapshot)
         await launcher.writePackage()
         const pkgFile = await fs.readFile(path.join(config.dir, 'project', 'package.json'))
         const pkg = JSON.parse(pkgFile)
@@ -87,7 +108,7 @@ describe('Launcher', function () {
                 ca: '456',
                 key: '789'
             }
-        }, 'PROJECTID', setup.snapshot)
+        }, null, 'PROJECTID', setup.snapshot)
         await launcher.writeSettings()
         const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
         const settings = JSON.parse(setFile)
@@ -97,7 +118,7 @@ describe('Launcher', function () {
         const launcher = newLauncher({
             ...config,
             httpStatic: 'static-path'
-        }, 'PROJECTID', setup.snapshot)
+        }, null, 'PROJECTID', setup.snapshot)
         await launcher.writeSettings()
         const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
         const settings = JSON.parse(setFile)
