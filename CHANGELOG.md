@@ -1,3 +1,7 @@
+#### 1.11.0: Release
+
+  - Allow a device to be assigned to application (#161) @Steve-Mcl
+
 #### 1.10.1: Release
 
  - Increase snapshot download timeout (#163) @hardillb
