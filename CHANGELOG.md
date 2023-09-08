@@ -1,3 +1,9 @@
+#### 1.11.1: Release
+
+ - Device Node-RED app environment variables: allow controllable propagation of env set to process to Node-RED app (#146) @elenaviter
+ - Do not attempt editor reconnect if platform tells us No Tunnel (#169) @knolleary
+ - Snapshot download retry (#167) @Steve-Mcl
+
 #### 1.11.0: Release
 
   - Allow a device to be assigned to application (#161) @Steve-Mcl
