@@ -126,7 +126,7 @@ describe('Launcher', function () {
     })
     it('Write .npmrc file', async function () {
         const launcher = newLauncher(config, null, 'projectId', setup.snapshot)
-        launcher.writeNPMRCFile()
+        await launcher.writeNPMRCFile()
         const npmrc = await fs.readFile(path.join(config.dir, 'project', '.npmrc'))
         npmrc.toString().should.eql('// test\n')
     })
