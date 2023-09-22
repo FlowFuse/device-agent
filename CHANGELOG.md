@@ -1,3 +1,7 @@
+#### 1.11.2: Release
+
+ - Support Node-RED 3.1 - due to changed internal dependency (#174 #175) @hardillb
+ 
 #### 1.11.1: Release
 
  - Device Node-RED app environment variables: allow controllable propagation of env set to process to Node-RED app (#146) @elenaviter
