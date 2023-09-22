@@ -19,7 +19,7 @@
         "lint": "eslint -c .eslintrc \"*.js\" \"lib/**/*.js\" \"frontend/**/*.js\" \"frontend/**/*.html\" \"test/**/*.js\"",
         "lint:fix": "eslint -c .eslintrc \"*.js\" \"lib/**/*.js\" \"frontend/**/*.js\" \"frontend/**/*.html\" \"test/**/*.js\" --fix",
         "test": "npm run test:lib && npm run test:frontend",
-        "test:lib": "mocha test/unit/lib/**/*_spec.js",
+        "test:lib": "mocha test/unit/**/*_spec.js",
         "test:frontend": "mocha test/unit/frontend/**/*.spec.js"
     },
     "bin": {

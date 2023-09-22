@@ -124,4 +124,18 @@ describe('Launcher', function () {
         const settings = JSON.parse(setFile)
         settings.should.have.property('httpStatic', 'static-path')
     })
+    it('Write .npmrc file', async function () {
+        const launcher = newLauncher(config, null, 'projectId', setup.snapshot)
+        launcher.writeNPMRCFile()
+        const npmrc = await fs.readFile(path.join(config.dir, 'project', '.npmrc'))
+        npmrc.toString().should.eql('// test\n')
+    })
+    it('Use Custom catalogue', async function () {
+        const launcher = newLauncher(config, null, 'projectId', setup.snapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.editorTheme.palette.catalogues.should.be.an.Array()
+        settings.editorTheme.palette.catalogues.should.containEql('foo')
+    })
 })
