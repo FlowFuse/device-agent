@@ -124,4 +124,37 @@ describe('Launcher', function () {
         const settings = JSON.parse(setFile)
         settings.should.have.property('httpStatic', 'static-path')
     })
+    it('Write .npmrc file', async function () {
+        const launcher = newLauncher(config, null, 'projectId', setup.snapshot)
+        await launcher.writeNPMRCFile()
+        const npmrc = await fs.readFile(path.join(config.dir, 'project', '.npmrc'))
+        npmrc.toString().should.eql('// test\n')
+    })
+    it('Uses custom catalogue when licensed', async function () {
+        const licensedConfig = {
+            ...config,
+            licenseType: 'ee',
+            licensed: true
+        }
+        const launcher = newLauncher(licensedConfig, null, 'projectId', setup.snapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('editorTheme')
+        settings.editorTheme.should.have.property('palette')
+        settings.editorTheme.palette.should.have.a.property('catalogue').and.be.an.Array()
+        settings.editorTheme.palette.catalogue.should.have.a.lengthOf(3)
+        settings.editorTheme.palette.catalogue[0].should.eql('foo')
+        settings.editorTheme.palette.catalogue[1].should.eql('bar')
+        settings.editorTheme.palette.catalogue[2].should.eql('baz')
+    })
+    it('ignores custom catalogue when NOT licensed', async function () {
+        const launcher = newLauncher(config, null, 'projectId', setup.snapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('editorTheme')
+        settings.editorTheme.should.have.property('palette')
+        settings.editorTheme.palette.should.not.have.a.property('catalogue')
+    })
 })

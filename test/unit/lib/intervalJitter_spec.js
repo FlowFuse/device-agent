@@ -16,6 +16,7 @@ describe('intervalJitter', function () {
         ij.start()
         should(ij).be.an.Object()
         ij.isRunning.should.be.true()
+        ij.stop()
     })
     it('can be stopped', async function () {
         const ij = new IntervalJitter()
