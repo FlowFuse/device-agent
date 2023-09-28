@@ -1,3 +1,7 @@
+#### 1.12.0: Release
+
+ - Support custom npm catalogues (#177) @hardillb
+
 #### 1.11.2: Release
 
  - Support Node-RED 3.1 - due to changed internal dependency (#174 #175) @hardillb
