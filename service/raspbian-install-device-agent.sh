@@ -9,7 +9,7 @@ fi
 MIN_NODEJS=14
 
 # Update package list and upgrade installed packages
-apt-get update
+sudo apt-get update
 
 # Helper functions to test for existence of npm
 function HAS_NPM {
@@ -65,15 +65,15 @@ if ! HAS_NPM; then
         exit 1
     fi
     echo "Installing npm..."
-    apt-get install -y npm
+    sudo apt-get install -y npm
 fi
 
 # Install Device Agent
-npm install -g @flowforge/flowforge-device-agent
+sudo npm install -g @flowforge/flowforge-device-agent
 
 # Create the working directory for the Device Agent
-mkdir -p /opt/flowforge-device
-chown -R $SUDO_USER /opt/flowforge-device
+sudo mkdir -p /opt/flowforge-device
+sudo chown -R $SUDO_USER /opt/flowforge-device
 
 # Create systemd service file for Device Agent
 echo "[Unit]
