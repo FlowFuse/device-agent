@@ -6,7 +6,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Node.js version
-MIN_NODEJS=16
+MIN_NODEJS=14
 
 # Update package list and upgrade installed packages
 apt-get update
@@ -33,7 +33,7 @@ if [ -x "$(command -v node)" ]; then
 else
     echo "**************************************************************"
     echo " No NodeJS found"
-    echo " Do you want to install NodeJS $MIN_NODEJS?"
+    echo " Do you want to install NodeJS 18?"
     echo "**************************************************************"
     read -p "y/N: " yn
     [ -z "$yn" ] && yn="n"
@@ -45,7 +45,7 @@ else
         sudo apt-get install -y ca-certificates curl gnupg
         sudo mkdir -p /etc/apt/keyrings
         curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-        echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$MIN_NODEJS.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+        echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
         sudo apt-get update
         sudo apt-get install nodejs -y
     else
