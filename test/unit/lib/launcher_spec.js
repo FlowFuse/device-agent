@@ -1,3 +1,4 @@
+const sinon = require('sinon')
 const should = require('should')
 const { newLauncher } = require('../../../lib/launcher')
 const setup = require('../setup')
@@ -23,6 +24,7 @@ describe('Launcher', function () {
 
     afterEach(async function () {
         await fs.rm(config.dir, { recursive: true, force: true })
+        sinon.restore()
     })
 
     it('Create Snapshot Flow/Creds Files, instance bound device', async function () {
@@ -91,6 +93,8 @@ describe('Launcher', function () {
 
     it('Write package.json', async function () {
         const launcher = newLauncher(config, null, 'projectId', setup.snapshot)
+        // spy on the removePackageLock function
+        sinon.spy(launcher, 'removePackageLock')
         await launcher.writePackage()
         const pkgFile = await fs.readFile(path.join(config.dir, 'project', 'package.json'))
         const pkg = JSON.parse(pkgFile)
@@ -98,6 +102,7 @@ describe('Launcher', function () {
         pkg.dependencies.should.have.property('node-red-node-random', '0.4.0')
         pkg.name.should.eqls('TEST_PROJECT')
         pkg.version.should.eqls('0.0.0-aaaabbbbcccc')
+        launcher.removePackageLock.calledOnce.should.be.true()
     })
 
     it('Write Settings - with HTTPS, raw values', async function () {
