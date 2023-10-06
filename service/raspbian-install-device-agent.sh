@@ -1,9 +1,16 @@
 #!/bin/bash
 
-if [[ $EUID -ne 0 ]]; then
-    echo "This script must be run as root"
-    exit 1
-fi
+echo "**************************************************************"
+echo " FlowFuse Device Agent Installer                            "
+echo "                                                            "
+echo " Warning: "
+echo " The install need root priviledges at times, it uses        "   
+echo " sudo so may ask for your password.                         "
+echo " root access is used to install NodeJS if needed, to set    "
+echo " directory pemissions and to install the FlowFuse Device    "         
+echo " Agent and register the Device Agent as serivce             "                                           
+echo "                                                            "
+echo "**************************************************************"
 
 # Node.js version
 MIN_NODEJS=14
