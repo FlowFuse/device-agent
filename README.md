@@ -1,12 +1,12 @@
-# FlowForge Device Agent
+# FlowFuse Device Agent
 
 This module provides an agent that runs Node-RED instances deployed from the
-FlowForge platform.
+FlowFuse platform.
 
 ## Prerequisites
 
  - NodeJS v14 or later
- - A FlowForge platform to connect to
+ - A FlowFuse platform to connect to
 
 ## Supported Operating Systems
 
@@ -68,7 +68,7 @@ mkdir c:\opt\flowforge-device
 
 ### `device.yml` - for a single device
 
-When the device is registered on the FlowForge platform, a group of configuration
+When the device is registered on the FlowFuse platform, a group of configuration
 details are provided. These can be copied from the platform, or downloaded directly
 as a yml file.
 
@@ -77,14 +77,14 @@ This file should be copied into the working directory as `device.yml`.
 A different config file can be specified with the `-c/--config` option.
 
 The file must contain the following options (these are the ones provided by 
-FlowForge)
+FlowFuse)
 
 Required options   | Description
 -------------------|---------------
-`deviceId`         | The id for the device on the FlowForge platform
+`deviceId`         | The id for the device on the FlowFuse platform
 `token`            | Access Token to connect to the FF platform
 `credentialSecret` | Key to decrypt the flow credentials
-`forgeURL`         | The base url of the FlowForge platform
+`forgeURL`         | The base url of the FlowFuse platform
 
 To enable MQTT connectivity, the following options are required. They are provided
 by the platform if MQTT comms are enabled.
@@ -155,8 +155,8 @@ httpStatic:
 
 ### `device.yml` - for provisioning
 
-When a device should be auto registered on the FlowForge platform, a group of provisioning
-configuration details are required. These are generated for you in FlowForge
+When a device should be auto registered on the FlowFuse platform, a group of provisioning
+configuration details are required. These are generated for you in FlowFuse
 **Team Settings** under the **Devices** tab when you create a provisioning token.
 These can be copied from the platform, or downloaded directly as a yml file.
 
@@ -165,14 +165,14 @@ This file should be copied into the working directory as `device.yml`.
 A different config file can be specified with the `-c/--config` option.
 
 The file must contain the following options (these are the ones provided by 
-FlowForge)
+FlowFuse)
 
 Required options    | Description
 --------------------|---------------
 `provisioningName`  | The name of the token
 `provisioningTeam`  | The team this device will be registered to
 `provisioningToken` | Provisioning Token to connect to the FF platform
-`forgeURL`          | The base url of the FlowForge platform
+`forgeURL`          | The base url of the FlowFuse platform
 
 The following options can be added:
 
@@ -248,7 +248,7 @@ OS and Architecture as your target device, and then copy the modules on to your 
 
 ## Running as a service
 
-An example service file is provided [here](https://github.com/flowforge/flowforge-device-agent/tree/main/service).
+An example service file is provided [here](https://github.com/FlowFuse/device-agent/tree/main/service).
 
 ## Running the agent with the Web UI enabled
 
