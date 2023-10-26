@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const semver = require('semver')
 if (semver.lt(process.version, '14.0.0')) {
-    console.log('FlowForge Device Agent requires at least NodeJS v14.x')
+    console.log('FlowFuse Device Agent requires at least NodeJS v14.x')
     process.exit(1)
 }
 
@@ -78,7 +78,7 @@ function main (testOptions) {
     delete options.config
     AgentManager.init(options)
 
-    info('FlowForge Device Agent')
+    info('FlowFuse Device Agent')
     info('----------------------')
 
     if (options.ui) {
