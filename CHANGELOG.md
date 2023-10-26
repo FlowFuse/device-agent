@@ -1,3 +1,11 @@
+#### 1.13.0: Release
+
+ - Update a bunch of branding issues (#190) @knolleary
+ - Ensure PATH is always passed to NR (#186) @hardillb
+ - Create raspbian install script (#171) @MarianRaphael
+ - Update ff references in package.json (#181) @knolleary
+ - Change repo references after github org rename (#172) @ppawlowski
+ 
 #### 1.12.0: Release
 
  - Support custom npm catalogues (#177) @hardillb
