@@ -80,7 +80,7 @@ sudo npm install -g @flowforge/flowforge-device-agent
 
 # Create the working directory for the Device Agent
 sudo mkdir -p /opt/flowforge-device
-sudo chown -R $SUDO_USER /opt/flowforge-device
+sudo chown -R $USER /opt/flowforge-device
 
 # Create systemd service file for Device Agent
 echo "[Unit]
@@ -90,7 +90,7 @@ Documentation=https://flowforge.com/docs
 
 [Service]
 Type=simple
-User=$SUDO_USER
+User=$USER
 WorkingDirectory=/opt/flowforge-device
 
 Environment="NODE_OPTIONS=--max_old_space_size=512"
