@@ -1,3 +1,8 @@
+#### 1.13.1: Release
+
+ - Ensure that tunneled payloads are parsed (#189) @hardillb
+ - bug: Use $USER instead of undefined variable (#193) @ZJvandeWeg
+
 #### 1.13.0: Release
 
  - Update a bunch of branding issues (#190) @knolleary
