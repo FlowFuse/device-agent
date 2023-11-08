@@ -76,41 +76,41 @@ if ! HAS_NPM; then
 fi
 
 # Install Device Agent
-sudo npm install -g @flowforge/flowforge-device-agent
+sudo npm install -g @flowfuse/device-agent
 
 # Create the working directory for the Device Agent
-sudo mkdir -p /opt/flowforge-device
-sudo chown -R $USER /opt/flowforge-device
+sudo mkdir -p /opt/flowfuse-device
+sudo chown -R $USER /opt/flowfuse-device
 
 # Create systemd service file for Device Agent
 echo "[Unit]
-Description=FlowForge Device Agent
+Description=FlowFuse Device Agent
 Wants=network.target
-Documentation=https://flowforge.com/docs
+Documentation=https://flowfuse.com/docs
 
 [Service]
 Type=simple
 User=$USER
-WorkingDirectory=/opt/flowforge-device
+WorkingDirectory=/opt/flowfuse-device
 
 Environment="NODE_OPTIONS=--max_old_space_size=512"
-ExecStart=/usr/bin/env flowforge-device-agent
+ExecStart=/usr/bin/env flowfuse-device-agent
 # Use SIGINT to stop
 KillSignal=SIGINT
 # Auto restart on crash
 Restart=on-failure
 RestartSec=20
 # Tag things in the log
-SyslogIdentifier=FlowForgeDevice
+SyslogIdentifier=FlowFuseDevice
 #StandardOutput=syslog
 
 [Install]
-WantedBy=multi-user.target" | sudo tee /etc/systemd/system/flowforge-device-agent.service >/dev/null
+WantedBy=multi-user.target" | sudo tee /etc/systemd/system/flowfuse-device-agent.service >/dev/null
 
 # Reload systemd, enable and start the service
 sudo systemctl daemon-reload
-sudo systemctl enable flowforge-device-agent.service
-sudo systemctl start flowforge-device-agent.service
+sudo systemctl enable flowfuse-device-agent.service
+sudo systemctl start flowfuse-device-agent.service
 
 # Output status of the service
-sudo systemctl status flowforge-device-agent.service
+sudo systemctl status flowfuse-device-agent.service

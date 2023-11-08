@@ -1,0 +1,27 @@
+# systemd service file to start FlowFuse
+
+[Unit]
+Description=FlowFuse Device Agent
+Wants=network.target
+Documentation=https://flowfuse.com/docs
+
+[Service]
+Type=simple
+# Run as normal pi user - change to the user name you wish to run FlowFuse Device as
+User=pi
+Group=pi
+WorkingDirectory=/opt/flowfuse-device
+
+Environment="NODE_OPTIONS=--max_old_space_size=512"
+ExecStart=/usr/bin/env flowfuse-device-agent
+# Use SIGINT to stop
+KillSignal=SIGINT
+# Auto restart on crash
+Restart=on-failure
+RestartSec=20
+# Tag things in the log
+SyslogIdentifier=FlowFuseDevice
+#StandardOutput=syslog
+
+[Install]
+WantedBy=multi-user.target
