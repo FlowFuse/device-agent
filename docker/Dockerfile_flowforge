@@ -4,7 +4,7 @@ ARG VERSION=latest
 
 RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python3
 
-RUN mkdir /opt/flowfuse-device
+RUN mkdir /opt/flowforge-device
 RUN npm install -g @flowfuse/device-agent@${VERSION}
 
 EXPOSE 1880

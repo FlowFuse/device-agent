@@ -1,16 +1,16 @@
-# FlowForge Device Agent
+# FlowFuse Device Agent
 
-This container can be used to start a FlowForge device. The device needs to
-be [registered on your FlowForge instance](https://flowforge.com/docs/user/devices/#register-the-device).
+This container can be used to start a FlowFuse device. The device needs to
+be [registered on your FlowFuse instance](https://flowfuse.com/docs/device-agent/register/).
 
 The YAML with configuration needs to be mounted inside the container.
 
 ```
-docker run -v /path/to/device.yml:/opt/flowforge-device/device.yml -p 1880:1880 flowforge/device-agent:latest
+docker run -v /path/to/device.yml:/opt/flowfuse-device/device.yml -p 1880:1880 flowfuse/device-agent:latest
 ```
 
 To run with verbose logging run as follows:
 
 ```
-docker run -v /path/to/device.yml:/opt/flowforge-device/device.yml -p 1880:1880 flowforge/device-agent:latest flowforge-device-agent -v
+docker run -v /path/to/device.yml:/opt/flowfuse-device/device.yml -p 1880:1880 flowfuse/device-agent:latest flowfuse-device-agent -v
 ```
