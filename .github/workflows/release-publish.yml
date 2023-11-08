@@ -57,6 +57,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
           readme-filepath: ./docker/README.md
   publish_legacy:
+    needs: [publish]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
