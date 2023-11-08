@@ -1,5 +1,5 @@
 {
-    "name": "@flowforge/flowforge-device-agent",
+    "name": "@flowfuse/device-agent",
     "version": "1.13.1",
     "description": "An Edge Agent for running Node-RED instances deployed from the FlowFuse Platform",
     "exports": {
@@ -23,7 +23,8 @@
         "test:frontend": "mocha test/unit/frontend/**/*.spec.js"
     },
     "bin": {
-        "flowforge-device-agent": "./index.js"
+        "flowforge-device-agent": "./index.js",
+        "flowfuse-device-agent": "./index.js"
     },
     "keywords": [
         "flowfuse",

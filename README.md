@@ -14,28 +14,32 @@ The Device Agent can be installed on most Linux distributions, Windows, and MacO
 
 ## Installing the Device Agent
 
-The Device Agent is published to the public npm repository as [@flowforge/flowforge-device-agent](https://www.npmjs.com/package/@flowforge/flowforge-device-agent).
+The Device Agent is published to the public npm repository as [@flowfuse/device-agent](https://www.npmjs.com/package/@flowfuse/device-agent).
 
-It can be installed as a global npm module. This will ensure the agent
-command is on the path:
+It can be installed as a global npm module. This will ensure the agent command is on the path.
+
+Note: previous versions of the agent were published as `@flowforge/flowforge-device-agent`.
 
 ### Linux/MacOS
 
 ```bash
-sudo npm install -g @flowforge/flowforge-device-agent
+sudo npm install -g @flowfuse/device-agent
 ```
 
 ### Windows
 
 ```bash
-npm install -g @flowforge/flowforge-device-agent
+npm install -g @flowfuse/device-agent
 ```
 
-Or you can chose to run the Docker container. When you do, you'll need to mount
-the `device.yml` obtained when [Registering the device](#register-the-device):
+### Docker
+
+We publish a Docker container for the Device Agent as `flowfuse/device-agent` on DockerHub.
+
+When running with the container you will need to mount the `device.yml` obtained when [Registering the device](#register-the-device):
 
 ```bash
-docker run --mount /path/to/device.yml:/opt/flowforge/device.yml -p 1880:1880 flowforge/device-agent:latest
+docker run --mount /path/to/device.yml:/opt/flowfuse/device.yml -p 1880:1880 flowfuse/device-agent:latest
 ```
 
 ## Configuration
@@ -46,8 +50,11 @@ directory.
 
 ### Configuration directory
 
-By default the agent uses `/opt/flowforge-device` or `c:\opt\flowforge-device` as 
+By default the agent uses `/opt/flowfuse-device` or `c:\opt\flowfuse-device` as 
 its working directory. This can be overridden with the `-d/--dir` option.
+
+For backwards compatibility with previous versions, the agent will use `/opt/flowforge-device`
+if it is exists, unless overridden on the command-line.
 
 NOTE: The device agent will attempt to create the working directory if it is not found,
 however if an error occurs, the device agent will exit and report a startup error.
@@ -55,14 +62,14 @@ however if an error occurs, the device agent will exit and report a startup erro
 #### Linux/MacOS
 
 ```bash
-sudo mkdir /opt/flowforge-device
-sudo chown -R $USER /opt/flowforge-device
+sudo mkdir /opt/flowfuse-device
+sudo chown -R $USER /opt/flowfuse-device
 ```
 
 #### Windows (run elevated)
 
 ```bash
-mkdir c:\opt\flowforge-device
+mkdir c:\opt\flowfuse-device
 ```
 
 
@@ -127,9 +134,9 @@ to provide absolute paths to files containing the certificates/keys.
 
 ```yml
 https:
-   keyPath: /opt/flowforge-device/certs/key.pem
-   certPath: /opt/flowforge-device/certs/cert.pem
-   caPath: /opt/flowforge-device/certs/ca.pem
+   keyPath: /opt/flowfuse-device/certs/key.pem
+   certPath: /opt/flowfuse-device/certs/cert.pem
+   caPath: /opt/flowfuse-device/certs/ca.pem
 ```
 
 ##### `httpStatic` configuration
@@ -139,7 +146,7 @@ This option can be used to serve content from a local directory.
 If set to a path, the files in that directory will be served relative to `/`.
 
 ```yml
-httpStatic: /opt/flowforge-device/static-content
+httpStatic: /opt/flowfuse-device/static-content
 ```
 
 It is also possible to configure it with a list of directories and the corresponding
@@ -147,9 +154,9 @@ path they should be served from.
 
 ```yml
 httpStatic:
-  - path: /opt/flowforge-device/static-content/images
+  - path: /opt/flowfuse-device/static-content/images
     root: /images
-  - path: /opt/flowforge-device/static-content/js
+  - path: /opt/flowfuse-device/static-content/js
     root: /js
 ```
 
@@ -184,13 +191,13 @@ Extra options   | Description
 ## Running
 
 If the agent was installed as a global npm module, the command 
-`flowforge-device-agent` will be on the path.
+`flowfuse-device-agent` will be on the path.
 
 If the default working directory and config file are being used, then the agent
 can be started with:
 
 ```
-$ flowforge-device-agent
+$ flowfuse-device-agent
 ```
 
 For information about the available command-line arguments, run with `-h`:
@@ -199,7 +206,7 @@ For information about the available command-line arguments, run with `-h`:
 Options
 
   -c, --config file     Device configuration file. Default: device.yml
-  -d, --dir dir         Where the agent should store its state. Default: /opt/flowforge-device
+  -d, --dir dir         Where the agent should store its state. Default: /opt/flowfuse-device
   -i, --interval secs
   -p, --port number
   -m, --moduleCache     Use local npm module cache rather than install
@@ -232,7 +239,7 @@ set of modules.
 You can enable this mode by adding `-m` to the command line adding `moduleCache: true` 
 to the `device.yml` file. This will cause the Device Agent to load the modules from the 
 `module_cache` directory in the Device Agents Configuration directory as described above.
-By default this will be `/opt/flowforge-device/module_cache`.
+By default this will be `/opt/flowfuse-device/module_cache`.
 
 ### Creating a module cache
 

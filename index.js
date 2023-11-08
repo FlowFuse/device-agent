@@ -16,6 +16,18 @@ const ConfigLoader = require('./lib/config')
 const webServer = new WebServer()
 
 function main (testOptions) {
+    const pkg = require('./package.json')
+    if (pkg.name === '@flowforge/flowforge-device-agent') {
+        console.log(`
+**************************************************************************
+* The FlowFuse Device Agent is moving to '@flowfuse/device-agent' on npm *
+* and 'flowfuse/device-agent' on DockerHub. Please upgrade to the new    *
+* packages to ensure you continue to receive updates.                    *
+* See https://flowfuse.com/docs/device-agent/install/ for details        *
+**************************************************************************
+`)
+    }
+
     let options
 
     try {
@@ -27,12 +39,23 @@ function main (testOptions) {
         quit()
     }
     if (options.version) {
-        console.log(require('./package.json').version)
+        console.log(pkg.version)
         quit()
     }
     if (options.help) {
         console.log(require('./lib/cli/usage').usage())
         quit()
+    }
+
+    if (options.dir === '') {
+        // No dir has been explicitly set, so we need to set the default.
+        // 1. Use `/opt/flowforge-device` if it exists
+        // 2. Otherwise use `/opt/flowfuse-device`
+        if (fs.existsSync('/opt/flowforge-device')) {
+            options.dir = '/opt/flowforge-device'
+        } else {
+            options.dir = '/opt/flowfuse-device'
+        }
     }
 
     if (!path.isAbsolute(options.dir)) {
@@ -48,7 +71,7 @@ function main (testOptions) {
             }
         } catch (err) {
             const quitMsg = `Cannot create dir '${options.dir}'.
-                Please ensure the parent directory is writable, or set a different path with -d`
+Please ensure the parent directory is writable, or set a different path with -d`
             quit(quitMsg, 20) // Exit Code 20 - Invalid dir
             // REF: https://slg.ddnss.de/list-of-common-exit-codes-for-gnu-linux/
             return
