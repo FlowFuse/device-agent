@@ -39,7 +39,7 @@ We publish a Docker container for the Device Agent as `flowfuse/device-agent` on
 When running with the container you will need to mount the `device.yml` obtained when [Registering the device](#register-the-device):
 
 ```bash
-docker run --mount /path/to/device.yml:/opt/flowfuse/device.yml -p 1880:1880 flowfuse/device-agent:latest
+docker run --mount type=bind,src=/path/to/device.yml,target=/opt/flowfuse/device.yml -p 1880:1880 flowfuse/device-agent:latest
 ```
 
 ## Configuration
