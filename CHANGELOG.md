@@ -1,3 +1,7 @@
+#### 1.13.3: Release
+
+ - Fix references in workflow (#202) @knolleary
+
 #### 1.13.2: Release
 
  - Update logo to fuse branding (#199) @knolleary
