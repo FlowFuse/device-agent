@@ -1,3 +1,10 @@
+#### 1.13.2: Release
+
+ - Update logo to fuse branding (#199) @knolleary
+ - Rebranding in the service file and installer (#198) @knolleary
+ - Move npm org (#197) @knolleary
+ - Update setup-node action (#196) @hardillb
+ 
 #### 1.13.1: Release
 
  - Ensure that tunneled payloads are parsed (#189) @hardillb
