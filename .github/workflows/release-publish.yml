@@ -31,7 +31,7 @@ jobs:
           flavor: |
             latest=true
           images: |
-            flowforge/device-agent
+            flowfuse/device-agent
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v2.2.0
       - name: Setup Docker buildx
@@ -67,7 +67,6 @@ jobs:
       - name: "Install jq"
         run: sudo apt-get install -y jq
       - name: "Patch module name"
-        working-directory: helm
         run: |
           cat package.json | jq '.name = "@flowforge/flowforge-device-agent"' > package.json-patched
           mv package.json-patched package.json
