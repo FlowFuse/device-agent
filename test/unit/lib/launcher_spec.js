@@ -1,4 +1,6 @@
 const should = require('should')
+const sinon = require('sinon')
+const utils = require('../../../lib/utils')
 const { newLauncher } = require('../../../lib/launcher')
 const setup = require('../setup')
 const fs = require('fs/promises')
@@ -15,7 +17,7 @@ describe('Launcher', function () {
         dir: '',
         verbose: true
     }
-
+    const nodeEnv = process.env.NODE_ENV
     beforeEach(async function () {
         config.dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ff-launcher-'))
         await fs.mkdir(path.join(config.dir, 'project'))
@@ -23,6 +25,8 @@ describe('Launcher', function () {
 
     afterEach(async function () {
         await fs.rm(config.dir, { recursive: true, force: true })
+        process.env.NODE_ENV = nodeEnv // restore NODE_ENV
+        sinon.restore()
     })
 
     it('Create Snapshot Flow/Creds Files, instance bound device', async function () {
@@ -156,5 +160,69 @@ describe('Launcher', function () {
         settings.should.have.property('editorTheme')
         settings.editorTheme.should.have.property('palette')
         settings.editorTheme.palette.should.not.have.a.property('catalogue')
+    })
+    it('Uses flowfuse project nodes from dev-env when detected', async function () {
+        // Summary: if dev-env is detected, then the launcher should use the project nodes from dev-env
+        const licensedConfig = {
+            ...config,
+            licenseType: 'ee',
+            licensed: true
+        }
+        // set NODE_ENV to 'development' to simulate dev-env
+        process.env.NODE_ENV = 'development'
+        // spy utils.getPackagePath to ensure it is called with 'nr-project-nodes'
+        sinon.spy(utils, 'getPackagePath')
+        const launcher = newLauncher(licensedConfig, null, 'projectId', setup.snapshot)
+        await launcher.writeSettings()
+
+        // check that utils.getPackagePath was called with 'nr-project-nodes'
+        utils.getPackagePath.calledWith('nr-project-nodes').should.be.true()
+
+        // check that settings.nodesDir contains the dev path to the project nodes
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('nodesDir')
+
+        // because we are in dev-env, settings.nodesDir should contain the dev path + 'packages/nr-project-nodes'
+        settings.nodesDir.filter((dir) => dir.endsWith('packages/nr-project-nodes')).should.have.a.lengthOf(1)
+    })
+    it('Uses flowfuse project nodes from device node_modules is runtime', async function () {
+        // Summary: if dev-env is not detected, then the launcher should use the project nodes from device-agent node_modules
+        const licensedConfig = {
+            ...config,
+            licenseType: 'ee',
+            licensed: true
+        }
+        // set NODE_ENV to 'production' to simulate runtime
+        process.env.NODE_ENV = 'production'
+        // spy utils.getPackagePath to ensure it is called with '@flowfuse/nr-project-nodes'
+        sinon.spy(utils, 'getPackagePath')
+        const launcher = newLauncher(licensedConfig, null, 'projectId', setup.snapshot)
+        await launcher.writeSettings()
+
+        // check that utils.getPackagePath was called with '@flowfuse/nr-project-nodes'
+        utils.getPackagePath.calledWith('@flowfuse/nr-project-nodes').should.be.true()
+
+        // check that settings.nodesDir contains the dev path to the project nodes
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('nodesDir')
+
+        // because we are in runtime, settings.nodesDir should contain the agent path + 'node_modules/@flowfuse/nr-project-nodes'
+        settings.nodesDir.filter((dir) => dir.endsWith('node_modules/@flowfuse/nr-project-nodes')).should.have.a.lengthOf(1)
+    })
+    it('Does not add path for project nodes when unlicensed', async function () {
+        // Summary: if NON EE, then nodesDir should either be empty OR should NOT contain 'nr-project-nodes'
+        const unlicensedConfig = {
+            ...config,
+            licensed: false
+        }
+        const launcher = newLauncher(unlicensedConfig, null, 'projectId', setup.snapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        if (settings.nodesDir && Array.isArray(settings.nodesDir) && settings.nodesDir.length > 0) {
+            settings.nodesDir.filter((dir) => dir.endsWith('nr-project-nodes')).should.have.a.lengthOf(0)
+        }
     })
 })
