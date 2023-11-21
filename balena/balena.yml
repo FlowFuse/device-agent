@@ -1,0 +1,21 @@
+name: flowfuseDeviceAgent
+type: sw.application
+description: >-
+  Deploy the FlowFuse Device agent using Balena
+assets:
+  repository:
+    type: blob.asset
+    data:
+      url: 'https://github.com/flowfuse/device-agent'
+data:
+  defaultDeviceType: raspberry-pi
+  supportedDeviceTypes:
+    - raspberry-pi
+    - raspberry-pi2
+    - raspberrypi3-64
+    - raspberrypi4-64
+    - raspberrypi5
+    - intel-nuc
+    - jetson-nano
+    - jetson-nano-emmc
+version: 1.0.0
