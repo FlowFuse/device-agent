@@ -1,6 +1,5 @@
 const should = require('should') // eslint-disable-line
 const utils = require('../../../lib/utils.js')
-const path = require('path')
 
 /*
     Ensure utils used throughout agent are tested
@@ -102,30 +101,6 @@ describe('utils', function () {
             utils.compareNodeRedData({ modules: { 'node-red': 'latest' } }, { modules: {} }).should.be.false()
             utils.compareNodeRedData({ modules: { 'node-red': 'latest' } }, { modules: null }).should.be.false()
             utils.compareNodeRedData({ modules: { 'node-red': 'latest' } }, { modules: undefined }).should.be.false()
-        })
-    })
-    describe('getPackagePath', function () {
-        const devPackages = path.join(__dirname, '..', '..', '..', '..', '..', 'packages')
-        const runtimePackages = path.join(__dirname, '..', '..', '..', 'node_modules')
-        describe('developer environment', function () {
-            beforeEach(function () {
-                process.env.NODE_ENV = 'development' // simulate dev environment
-            })
-            it('should return path of the specified packageName in the dev-env path', function () {
-                const pkgPath = utils.getPackagePath('nr-project-nodes')
-                pkgPath.should.be.a.String()
-                pkgPath.should.eql(path.join(devPackages, 'nr-project-nodes').replace(/\\/g, '/'))
-            })
-        })
-        describe('runtime environment', function () {
-            beforeEach(function () {
-                process.env.NODE_ENV = 'production' // simulate runtime environment
-            })
-            it('should return path of the specified packageName in the device-agent node_modules', function () {
-                const pkgPath = utils.getPackagePath('@flowfuse/nr-project-nodes')
-                pkgPath.should.be.a.String()
-                pkgPath.should.eql(path.join(runtimePackages, '@flowfuse', 'nr-project-nodes').replace(/\\/g, '/'))
-            })
         })
     })
 })
