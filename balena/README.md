@@ -1,6 +1,6 @@
 # Deploy Flowfuse Device Agent with Balena
 
-[![balena deploy button](https://www.balena.io/deploy.svg)](https://dashboard.balena-cloud.com/deploy?repoUrl=https://github.com/flowfuse/device-agent&https://github.com/flowfuse/device-agent/balena/balena.yml)
+[![balena deploy button](https://www.balena.io/deploy.svg)](https://dashboard.balena-cloud.com/deploy?repoUrl=https://github.com/flowfuse/device-agent&https://raw.githubusercontent.com/flowfuse/device-agent/master/balena/balena.yml)
 
 The documentation for the FlowFuse Device Agent can be found [here](https://flowfuse.com/docs/device-agent/introduction/)
 

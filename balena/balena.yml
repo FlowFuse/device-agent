@@ -7,6 +7,10 @@ assets:
     type: blob.asset
     data:
       url: 'https://github.com/flowfuse/device-agent'
+  logo:
+    type: blob.asset
+    data:
+      url: https://website-data.s3.eu-west-1.amazonaws.com/ff-logo--wordmark--light.png
 data:
   defaultDeviceType: raspberry-pi
   supportedDeviceTypes:
