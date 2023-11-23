@@ -1,3 +1,9 @@
+#### 1.14.0: Release
+
+ - Move to @flowfuse/nr-theme (#210) @knolleary
+ - Revert "Include project nodes for app assigned devices" (#208) @Steve-Mcl
+ - Include project nodes for app assigned devices (#205) @Steve-Mcl
+
 #### 1.13.3: Release
 
  - Fix references in workflow (#202) @knolleary
