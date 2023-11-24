@@ -115,7 +115,12 @@ describe('MQTT Comms', function () {
             })
         })
 
-        mqtt = MQTT.connect(`ws://localhost:${port}`)
+        mqtt = MQTT.connect(`ws://localhost:${port}`, {
+            clientId: 'testsuite-' + Date.now(),
+            username: 'device:team:device',
+            password: 'pass',
+            protocol: 'ws'
+        })
 
         try {
             sinon.stub(EditorTunnel, 'create').callsFake(function () {
@@ -172,12 +177,12 @@ describe('MQTT Comms', function () {
                 resolve(m)
             }
             const cleanUp = () => {
-                mqtt.unsubscribe(responseTopic)
+                mqtt.unsubscribe(responseTopic || topic)
                 mqtt.off('message', onMessage)
                 clearTimeout(timeOver)
             }
             // if message received, resolve
-            mqtt.subscribe(responseTopic)
+            mqtt.subscribe(responseTopic || topic)
             mqtt.on('message', onMessage)
             // publish message
             mqtt.publish(topic, payload, function (err) {
@@ -252,13 +257,62 @@ describe('MQTT Comms', function () {
         // short delay to allow mqtt to connect and stack to unwind
         await new Promise(resolve => setTimeout(resolve, 500))
         const response = await mqttPubAndAwait(commandTopic, payloadStr, responseTopic)
+        await new Promise(resolve => setTimeout(resolve, 50))
         response.should.have.a.property('command', 'startEditor')
         response.should.have.a.property('correlationData', 'correlationData-test')
         response.should.have.a.property('payload').and.be.an.Object()
         response.payload.should.have.a.property('connected', false)
         response.payload.should.have.a.property('token', 'token-test')
-        await new Promise(resolve => setTimeout(resolve, 50))
-        console.log('done')
+    })
+    it('does not crash when agent.setState() throws', function (done) {
+        // spy on warn()
+        sinon.spy(console, 'log')
+        // mute multiple calls to done() because if we do have an unhandledRejection,
+        // we probably had, or will have a timeout and a done() call too
+        const doneOnce = function (err) {
+            if (doneOnce.called) { return }
+            doneOnce.called = true
+            done(err)
+        }
+        // global unhandled exception handler to catch the error thrown by setState()
+        process.on('unhandledRejection', (reason) => {
+            doneOnce(new Error('unhandledRejection caught'))
+        })
+
+        mqttClient.start()
+        if (mqttClient.agent.setState.isSinonProxy) {
+            mqttClient.agent.setState = null
+            mqttClient.agent.setState = async function (state) {
+                // sleep for 10 ms, simulating a nested async call
+                await new Promise(resolve => setTimeout(resolve, 10))
+                throw new Error('setState() threw')
+            }
+            // spy on the agent.setState() method
+            sinon.spy(mqttClient.agent, 'setState')
+        }
+
+        // short delay to allow mqtt to connect and stack to unwind
+        setTimeout(() => {
+            // send an update command that will cause the agent to call setState
+            const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
+            const payload = {
+                command: 'update',
+                debugInfo: 'From MQTT test @ ' + new Date().toISOString()
+            }
+            mqttPubAndAwait(commandTopic, JSON.stringify(payload), null).then(() => {
+                // short delay to allow mqtt command to be sent, received and processed
+                setTimeout(() => {
+                    if (mqttClient.agent.setState.calledOnce) {
+                        // find the console.log call made by the agent.setState() error handler
+                        const consoleLogCalls = console.log.getCalls()
+                        const consoleLogCall = consoleLogCalls.find(call => call.args[0].includes('Error: setState() threw'))
+                        doneOnce(consoleLogCall ? null : new Error('error not thrown'))
+                    } else {
+                        doneOnce(new Error('agent.setState() not called'))
+                    }
+                }, 300)
+            }).catch(doneOnce)
+        }, 400)
     })
     it.skip('MQTT command stopEditor stops the editor', async function () {
         // TODO
