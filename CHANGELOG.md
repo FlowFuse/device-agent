@@ -1,3 +1,8 @@
+#### 1.15.0: Release
+
+ - Fix Docker path to the config file (#215) @robmarcer
+ - Protect against unhandled exceptions (#212) @Steve-Mcl
+
 #### 1.14.0: Release
 
  - Move to @flowfuse/nr-theme (#210) @knolleary
