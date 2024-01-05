@@ -28,7 +28,8 @@ function createAgent (opts) {
     opts.state = opts.state || 'stopped'
     const newAgent = function () {
         this.updating = false
-        this.currentMode = opts.currentMode
+        this.currentMode = opts.currentMode || null
+        this.editorToken = opts.editorToken
         this.currentSnapshot = opts.currentSnapshot
         this.currentProject = opts.currentProject
         this.currentSettings = opts.currentSettings
@@ -39,6 +40,7 @@ function createAgent (opts) {
         const agent = this
         return {
             currentMode: agent.currentMode,
+            editorToken: agent.editorToken,
             currentSnapshot: agent.currentSnapshot,
             currentProject: agent.currentProject,
             currentSettings: agent.currentSettings,
@@ -48,7 +50,8 @@ function createAgent (opts) {
             }),
             getCurrentFlows: sinon.fake.returns(agent.flows),
             getCurrentCredentials: sinon.fake.returns(agent.credentials),
-            getCurrentPackage: sinon.fake.returns(agent.package)
+            getCurrentPackage: sinon.fake.returns(agent.package),
+            saveEditorToken: sinon.fake()
         }
     }
     return newAgent()
@@ -60,7 +63,7 @@ describe('MQTT Comms', function () {
     /** @type {import('aedes-server-factory').Server} MQTT WS */ let httpServer
     /** @type {Aedes} MQTT Broker */ let aedes = null
     /** @type {MQTT.MqttClient} MQTT Client */ let mqtt
-    /** @type {MQTTClientComms} Agent mqttClient comms */ let mqttClient = null
+    /** @type {import('../../../lib/mqtt').MQTTClient} Agent mqttClient comms */ let mqttClient = null
     let currentId = 0 // incrementing id for each agent
     const sockets = {} // Maintain a hash of all connected sockets (for closing them later)
 
@@ -73,9 +76,11 @@ describe('MQTT Comms', function () {
         const snapshot = opts.snapshotId !== null ? { id: opts.snapshotId } : null
         const settings = opts.settingsId !== null ? { hash: opts.settingsId } : null
         const mode = opts.mode || 'developer'
+        const editorToken = opts.editorToken || null
 
         const agent = createAgent({
             currentMode: mode,
+            editorToken,
             currentProject: project,
             currentSettings: settings,
             currentSnapshot: snapshot,
@@ -88,7 +93,7 @@ describe('MQTT Comms', function () {
         return new MQTTClientComms(agent, {
             dir: configDir,
             forgeURL: 'http://localhost:9000',
-            brokerURL: 'ws://localhost:9001',
+            brokerURL: 'ws://localhost:9800',
             brokerUsername: `device:${team}:${device}`,
             brokerPassword: 'pass'
         })
@@ -96,7 +101,7 @@ describe('MQTT Comms', function () {
 
     before(async function () {
         aedes = new Aedes()
-        const port = 9001
+        const port = 9800
         httpServer = createServer(aedes, { ws: true })
         httpServer.listen(port, function () {
             console.log('websocket server listening on port ', port)
@@ -169,7 +174,7 @@ describe('MQTT Comms', function () {
             const timeOver = setTimeout(() => {
                 cleanUp()
                 reject(new Error('mqttPubAndAwait timed out'))
-            }, 500)
+            }, 500000)
             const onMessage = (topic, message) => {
                 const m = JSON.parse(message.toString())
                 console.log('mqtt.on(message => received message %s %s', topic, m)
@@ -263,6 +268,36 @@ describe('MQTT Comms', function () {
         response.should.have.a.property('payload').and.be.an.Object()
         response.payload.should.have.a.property('connected', false)
         response.payload.should.have.a.property('token', 'token-test')
+    })
+    it('Calls saves token when commanded to startEditor', async function () {
+        mqttClient.start()
+        const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
+        const responseTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/response`
+        console.log('commandTopic', commandTopic)
+        console.log('responseTopic', responseTopic)
+        mqttClient.should.have.a.property('client').and.be.an.Object()
+        mqttClient.should.have.a.property('commandTopic').and.be.a.String().and.equal(commandTopic)
+        mqttClient.should.have.a.property('responseTopic').and.be.a.String().and.equal(responseTopic)
+
+        mqttClient.agent.launcher = {} // fake a launcher so that `startTunnel` gets to the point where it saves the token
+
+        const payload = {
+            command: 'startEditor',
+            correlationData: 'correlationData-test',
+            responseTopic,
+            payload: {
+                token: 'token-test'
+            }
+        }
+        const payloadStr = JSON.stringify(payload)
+
+        // short delay to allow mqtt to connect and stack to unwind
+        await new Promise(resolve => setTimeout(resolve, 500))
+        const response = await mqttPubAndAwait(commandTopic, payloadStr, responseTopic)
+        await new Promise(resolve => setTimeout(resolve, 50))
+        response.should.have.a.property('command', 'startEditor')
+        mqttClient.agent.saveEditorToken.callCount.should.equal(1)
+        mqttClient.agent.saveEditorToken.firstCall.calledWith('token-test').should.be.true()
     })
     it('does not crash when agent.setState() throws', function (done) {
         // spy on warn()

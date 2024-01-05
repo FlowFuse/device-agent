@@ -50,7 +50,7 @@ describe('Agent', function () {
     }
     async function writeConfig (
         agent,
-        { application, project, snapshot, settings, mode, licensed } = { application: null, project: null, snapshot: null, settings: null, mode: null, licensed: null }
+        { application, project, snapshot, settings, mode, licensed, editorToken } = { application: null, project: null, snapshot: null, settings: null, mode: null, licensed: null, editorToken: null }
     ) {
         project = project || agent?.currentProject || null
         application = application || agent?.currentApplication || null
@@ -69,7 +69,8 @@ describe('Agent', function () {
             application: application || null,
             ownerType,
             mode,
-            licensed
+            licensed,
+            editorToken
         }))
     }
 
@@ -162,7 +163,9 @@ describe('Agent', function () {
             stop: sinon.stub(),
             setProject: sinon.stub(),
             setApplication: sinon.stub(),
-            checkIn: sinon.stub()
+            checkIn: sinon.stub(),
+            startTunnel: sinon.stub(),
+            sendCommandResponse: sinon.stub()
         })
         sinon.stub(Launcher, 'newLauncher').callsFake((config, application, project, snapshot, settings, mode) => {
             return {
@@ -248,6 +251,19 @@ describe('Agent', function () {
             agent.should.have.property('currentSnapshot')
             agent.currentSnapshot.should.have.property('id', 'snapshotId')
         })
+        it('loads project file with a tunnel token', async function () {
+            const agent = createHTTPAgent()
+            await writeConfig(agent, { project: 'projectId', snapshot: 'snapshotId', settings: 'settingsId', mode: 'developer', editorToken: 'token' })
+
+            await agent.loadProject()
+            agent.should.have.property('currentMode', 'developer')
+            agent.should.have.property('editorToken', 'token')
+            agent.should.have.property('currentProject', 'projectId')
+            agent.should.have.property('currentSettings')
+            agent.currentSettings.should.have.property('hash', 'settingsId')
+            agent.should.have.property('currentSnapshot')
+            agent.currentSnapshot.should.have.property('id', 'snapshotId')
+        })
     })
 
     describe('saveProject', function () {
@@ -283,6 +299,7 @@ describe('Agent', function () {
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentMode = 'developer'
+            agent.editorToken = 'token'
             await agent.saveProject()
             existsSync(agent.projectFilePath).should.be.true()
             await agent.loadProject()
@@ -292,6 +309,7 @@ describe('Agent', function () {
             agent.should.have.property('currentSnapshot')
             agent.currentSnapshot.should.have.property('id', 'snapshotId')
             agent.should.have.property('currentMode', 'developer')
+            agent.should.have.property('editorToken', 'token')
         })
     })
 
@@ -827,6 +845,30 @@ describe('Agent', function () {
             // test that checkIn was called with arg 'developer'
             agent.mqttClient.checkIn.called.should.be.true('checkIn was not called following switch to developer mode')
         })
+        it('Clears editorToken when switching off developer mode', async function () {
+            const agent = createMQTTAgent()
+            agent.currentProject = 'projectId'
+            agent.currentApplication = null
+            agent.currentSnapshot = { id: 'snapshotId' }
+            agent.currentSettings = { hash: 'settingsId' }
+            agent.currentMode = 'developer'
+            agent.editorToken = 'test-token'
+
+            const testLauncher = Launcher.newLauncher()
+            agent.launcher = testLauncher
+            await agent.start()
+            await agent.setState({
+                mode: 'autonomous'
+            })
+            for (let i = 0; i < 30; i++) {
+                if (agent.mqttClient.checkIn.called) {
+                    break
+                }
+                await new Promise(resolve => setTimeout(resolve, 10))
+            }
+            // test that checkIn was called with arg 'developer'
+            should(agent.editorToken).be.null()
+        })
         it('reloads latest snapshot from platform when switching off developer mode (if snapshot ID changed)', async function () {
             sinon.stub(utils, 'compareNodeRedData').returns(false)
             const flows = [{ id: 'a-node-id', payload: 'i-am-original' }, {}]
@@ -1035,6 +1077,80 @@ describe('Agent', function () {
             state.should.have.property('settings', null)
             state.should.have.property('state', 'unknown')
             state.should.have.property('mode', 'developer')
+        })
+        describe('editor tunnel', function () {
+            it('reconnects tunnel in developer mode when editorToken is set', async function () {
+                // Create a temporary agent and set project, snapshot and settings IDs etc
+                // so that the agent will have the necessary properties to "start" the launcher
+                // and thus attempt to re-open the tunnel
+                // This is purely to generate config file with the necessary properties set
+                const agent = createMQTTAgent()
+                agent.currentMode = 'developer'
+                agent.editorToken = 'token'
+                agent.project = 'projectId'
+                agent.snapshot = 'snapshotId'
+                agent.settings = 'settingsId'
+                agent.currentSnapshot = { id: 'snapshotId' }
+                await agent.saveProject()
+
+                // Create a new agent and load the project file created above
+                const agent2 = createMQTTAgent()
+                await agent2.loadProject()
+                await agent2.start()
+
+                // fake a check-in what will start the launcher and the attempt to start the tunnel
+                const state = agent2.getState()
+                await agent2.setState(state)
+
+                // fail safe this test by checking the launcher was created and start was called
+                // also, that the mqtt client was created and start was called
+                agent2.should.have.property('launcher').and.be.an.Object()
+                agent2.should.have.property('mqttClient').and.be.an.Object()
+                agent2.launcher.start.callCount.should.equal(1)
+                agent2.mqttClient.start.callCount.should.equal(1)
+
+                // check that the tunnel is started with the correct token (arg0)
+                // NOTE: since this is not an MQTT commanded execution, 2nd arg should NOT be present
+                //       and therefore sendCommandResponse should NOT be called
+                agent2.mqttClient.startTunnel.callCount.should.equal(1)
+                agent2.mqttClient.startTunnel.firstCall.calledWith('token').should.be.true()
+                should.not.exist(agent2.mqttClient.startTunnel.firstCall.args[1])
+                agent2.mqttClient.sendCommandResponse.callCount.should.equal(0) // since this was not an MQTT commanded execution, no response should be sent
+            })
+            it('does not attempt to reconnect tunnel if not in developer mode (even if editorToken is set)', async function () {
+                // Create a temporary agent and set project, snapshot and settings IDs etc
+                // so that the agent will have the necessary properties to "start" the launcher
+                // and thus attempt to re-open the tunnel (but only in developer mode)
+                // This is purely to generate config file with the necessary properties set
+                const agent = createMQTTAgent()
+                agent.currentMode = 'autonomous' // not developer mode this time
+                agent.editorToken = 'token'
+                agent.project = 'projectId'
+                agent.snapshot = 'snapshotId'
+                agent.settings = 'settingsId'
+                agent.currentSnapshot = { id: 'snapshotId' }
+                await agent.saveProject()
+
+                // Create a new agent and load the project file created above
+                const agent2 = createMQTTAgent()
+                await agent2.loadProject()
+                await agent2.start()
+
+                // fake a check-in what will start the launcher
+                const state = agent2.getState()
+                await agent2.setState(state)
+
+                // fail safe this test by checking the launcher was created and start was called
+                // also, that the mqtt client was created and start was called
+                agent2.should.have.property('launcher').and.be.an.Object()
+                agent2.should.have.property('mqttClient').and.be.an.Object()
+                agent2.launcher.start.callCount.should.equal(1)
+                agent2.mqttClient.start.callCount.should.equal(1)
+
+                // now ensure that the tunnel was NOT started
+                agent2.mqttClient.startTunnel.callCount.should.equal(0)
+                agent2.mqttClient.sendCommandResponse.callCount.should.equal(0)
+            })
         })
     })
 })
