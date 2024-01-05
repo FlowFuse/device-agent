@@ -174,7 +174,7 @@ describe('MQTT Comms', function () {
             const timeOver = setTimeout(() => {
                 cleanUp()
                 reject(new Error('mqttPubAndAwait timed out'))
-            }, 500000)
+            }, 500)
             const onMessage = (topic, message) => {
                 const m = JSON.parse(message.toString())
                 console.log('mqtt.on(message => received message %s %s', topic, m)
@@ -269,7 +269,7 @@ describe('MQTT Comms', function () {
         response.payload.should.have.a.property('connected', false)
         response.payload.should.have.a.property('token', 'token-test')
     })
-    it('Calls saves token when commanded to startEditor', async function () {
+    it('Calls save token when commanded to startEditor', async function () {
         mqttClient.start()
         const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
         const responseTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/response`
