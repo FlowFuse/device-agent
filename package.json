@@ -1,6 +1,6 @@
 {
     "name": "@flowfuse/device-agent",
-    "version": "1.15.0",
+    "version": "2.0.0",
     "description": "An Edge Agent for running Node-RED instances deployed from the FlowFuse Platform",
     "exports": {
         "./libraryPlugin": "./lib/plugins/libraryPlugin.js"

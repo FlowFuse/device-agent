@@ -1,3 +1,10 @@
+#### 2.0.0: Release
+
+ - Enable WebSocket Affinity in the device agent (#213) @hardillb
+ - Fix WS readystate crash (#221) @Steve-Mcl
+ - Permit Device Agent to automatically re-establish Editor Tunnel after a restart (#220) @Steve-Mcl
+ - Fix console.log(JSON) (#219) @hardillb
+
 #### 1.15.0: Release
 
  - Fix Docker path to the config file (#215) @robmarcer
