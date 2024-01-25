@@ -101,6 +101,36 @@ Please ensure the parent directory is writable, or set a different path with -d`
     delete options.config
     AgentManager.init(options)
 
+    if (options.qc) {
+        // Quick Connect mode
+        if (!options.ffUrl) {
+            quit('Quick Connect requires --ff-url to be set', 2)
+        }
+        if (!options.otc || options.otc.length < 8) {
+            // 8 is the minimum length of an OTC
+            // e.g. ab-cd-ef
+            quit('Quick Connect requires parameter --otc to be 8 or more characters', 2)
+        }
+        AgentManager.quickConnectDevice(options.ffUrl, options.otc, options.dir).then((success) => {
+            if (success) {
+                const runCommandInfo = ['flowfuse-device-agent']
+                if (options.dir !== '/opt/flowfuse-device') {
+                    runCommandInfo.push(`-d ${options.dir}`)
+                }
+                info('Quick Connect was successful, your device is now configured.')
+                info('Device Agent will now exit')
+                info('To run the Device Agent using the configuration created by Quick Connect, run:')
+                info(runCommandInfo.join(' '))
+                quit()
+            } else {
+                throw new Error('Quick Connect was unsuccessful')
+            }
+        }).catch((err) => {
+            quit(err.message, 2)
+        })
+        return
+    }
+
     info('FlowFuse Device Agent')
     info('----------------------')
 
