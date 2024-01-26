@@ -80,6 +80,91 @@ describe('Test the AgentManager', function () {
         AgentManager.configuration.should.have.property('forgeURL', 'http://localhost:9999')
         should(AgentManager.configuration.provisioningMode !== true).be.true()
     })
+    it('Agent Manager should request config from FlowFuse when started in Quick Connect mode', async function () {
+        const deviceFile = path.join(configDir, 'project', 'device.yml')
+        // setup a web server to mock the FlowFuse server
+        let httpserver
+        try {
+            httpserver = require('http').createServer((req, res) => {
+                // 2 routes: api/vi/settings (for check in) and api/v1/devices (for using the OTC)
+                if (req.url === '/api/v1/settings/') {
+                    console.log('/api/v1/settings')
+                    res.writeHead(200, { 'Content-Type': 'application/json' })
+                    res.end(JSON.stringify({}))
+                } else if (req.url === '/api/v1/devices/') {
+                    console.log('/api/v1/devices/')
+                    res.writeHead(200, { 'Content-Type': 'application/json' })
+                    res.end(JSON.stringify({
+                        version: '2.1',
+                        id: 'device-hash-id',
+                        forgeURL: 'http://localhost:3000',
+                        credentials: {
+                            token: 'abcd',
+                            credentialSecret: 'yoohoo',
+                            forgeURL: 'http://localhost:3000',
+                            broker: {
+                                url: 'mqtt://localhost:8883',
+                                username: 'broker:user',
+                                password: 'broker:pass'
+                            }
+                        }
+                    }))
+                } else {
+                    console.log('404')
+                    res.writeHead(404)
+                    res.end()
+                }
+            })
+            httpserver.listen(9753)
+
+            // init the AgentManager in Quick Connect mode
+            const options = {
+                qc: true,
+                ffUrl: 'http://localhost:9753',
+                otc: 'one-time-code',
+                dir: configDir,
+                deviceFile
+            }
+            AgentManager.init(options)
+            sinon.spy(AgentManager, '_provisionDevice')
+
+            // perform the Quick Connect
+            await AgentManager.quickConnectDevice()
+
+            // check _provisionDevice was called
+            AgentManager._provisionDevice.calledOnce.should.be.true()
+            AgentManager._provisionDevice.args[0][0].should.be.an.Object() // called with the `device` object
+            const provisioningData = AgentManager._provisionDevice.args[0][0]
+            provisioningData.should.have.property('version').and.be.a.String()
+            provisioningData.should.have.property('id', 'device-hash-id')
+            provisioningData.should.have.property('credentials').and.be.an.Object()
+            provisioningData.credentials.should.have.property('token', 'abcd')
+            provisioningData.credentials.should.have.property('credentialSecret', 'yoohoo')
+            provisioningData.credentials.should.have.property('forgeURL', 'http://localhost:3000')
+            provisioningData.credentials.should.have.property('broker').and.be.an.Object()
+            provisioningData.credentials.broker.should.have.property('url', 'mqtt://localhost:8883')
+            provisioningData.credentials.broker.should.have.property('username', 'broker:user')
+            provisioningData.credentials.broker.should.have.property('password', 'broker:pass')
+
+            // check the config file was created and contains the correct data
+            const deviceConfig = await fs.readFile(deviceFile, 'utf8')
+            deviceConfig.should.match(/deviceId: device-hash-id/)
+            deviceConfig.should.match(/forgeURL: http:\/\/localhost:3000/)
+            deviceConfig.should.match(/credentialSecret: yoohoo/)
+            deviceConfig.should.match(/token: abcd/)
+            deviceConfig.should.match(/brokerURL: mqtt:\/\/localhost:8883/)
+            deviceConfig.should.match(/brokerUsername: broker:user/)
+            deviceConfig.should.match(/brokerPassword: broker:pass/)
+            deviceConfig.should.match(/quickConnected: true/)
+        } catch (error) {
+            console.log(error)
+            throw error
+        } finally {
+            // cleanup
+            httpserver.close()
+            AgentManager._provisionDevice.restore()
+        }
+    })
     it('Agent Manager should call agent start (regular credentials)', async function () {
         this.skip() // TODO: fix this test
         const deviceFile = path.join(configDir, 'project', 'device.yml')
