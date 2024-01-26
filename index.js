@@ -111,7 +111,7 @@ Please ensure the parent directory is writable, or set a different path with -d`
             // e.g. ab-cd-ef
             quit('Quick Connect requires parameter --otc to be 8 or more characters', 2)
         }
-        AgentManager.quickConnectDevice(options.ffUrl, options.otc, options.dir).then((success) => {
+        AgentManager.quickConnectDevice().then((success) => {
             if (success) {
                 const runCommandInfo = ['flowfuse-device-agent']
                 if (options.dir !== '/opt/flowfuse-device') {
