@@ -86,13 +86,7 @@ describe('Test the AgentManager', function () {
         let httpserver
         try {
             httpserver = require('http').createServer((req, res) => {
-                // 2 routes: api/vi/settings (for check in) and api/v1/devices (for using the OTC)
-                if (req.url === '/api/v1/settings/') {
-                    console.log('/api/v1/settings')
-                    res.writeHead(200, { 'Content-Type': 'application/json' })
-                    res.end(JSON.stringify({}))
-                } else if (req.url === '/api/v1/devices/') {
-                    console.log('/api/v1/devices/')
+                if (req.url === '/api/v1/devices/') {
                     res.writeHead(200, { 'Content-Type': 'application/json' })
                     res.end(JSON.stringify({
                         version: '2.1',
@@ -110,16 +104,14 @@ describe('Test the AgentManager', function () {
                         }
                     }))
                 } else {
-                    console.log('404')
                     res.writeHead(404)
-                    res.end()
+                    res.end('{}')
                 }
             })
             httpserver.listen(9753)
 
             // init the AgentManager in Quick Connect mode
             const options = {
-                qc: true,
                 ffUrl: 'http://localhost:9753',
                 otc: 'one-time-code',
                 dir: configDir,

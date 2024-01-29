@@ -77,8 +77,8 @@ mkdir c:\opt\flowfuse-device
 
 When the device is registered on the FlowFuse platform, a group of configuration
 details are provided. These can be copied from the platform, downloaded directly
-as a yml file or pulled from the FlowFuse server using the Quick Connect command
-that is issued with the configuration details. More details on this can be found
+as a yml file or pulled from the FlowFuse server using the command issued by the
+platform when you create a device. More details on this can be found
 in the [FlowFuse documentation](https://flowfuse.com/docs/device-agent/introduction/).
 
 This file should exist in the working directory as `device.yml`.
@@ -222,12 +222,10 @@ Web UI Options
   --ui-pass string    Web UI password. Required if --ui is specified
   --ui-runtime mins   Time the Web UI server is permitted to run. Default: 10
 
-Quick Connect command
+Setup command
 
-  -q, --qc           Quick Connect a device agent. This will pull the device.yml file from the
-                     FlowFuse server, setup your device then exit
-  -o, --otc string   One time code. Required for Quick Connect
-  -u, --ff-url url   URL of FlowFuse. Required for Quick Connect
+  -o, --otc string   Setup device using a one time code
+  -u, --ff-url url   URL of FlowFuse. Required for setup
 
 Global Options
 
