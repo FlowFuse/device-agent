@@ -147,7 +147,7 @@ describe('Test the AgentManager', function () {
             deviceConfig.should.match(/brokerURL: mqtt:\/\/localhost:8883/)
             deviceConfig.should.match(/brokerUsername: broker:user/)
             deviceConfig.should.match(/brokerPassword: broker:pass/)
-            deviceConfig.should.match(/quickConnected: true/)
+            deviceConfig.should.match(/cliSetup: true/)
         } catch (error) {
             console.log(error)
             throw error
