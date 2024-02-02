@@ -7,7 +7,8 @@ if (semver.lt(process.version, '14.0.0')) {
 
 const TESTING = process.env.NODE_ENV === 'test'
 const commandLineArgs = require('command-line-args')
-const { info } = require('./lib/log')
+const { info, warn } = require('./lib/log')
+const { hasProperty } = require('./lib/utils')
 const path = require('path')
 const fs = require('fs')
 const { AgentManager } = require('./lib/AgentManager')
@@ -100,6 +101,39 @@ Please ensure the parent directory is writable, or set a different path with -d`
 
     delete options.config
     AgentManager.init(options)
+
+    if (hasProperty(options, 'otc') || hasProperty(options, 'ffUrl')) {
+        // Quick Connect mode
+        if (!options.otc || options.otc.length < 8) {
+            // 8 is the minimum length of an OTC
+            // e.g. ab-cd-ef
+            warn('Device setup requires parameter --otc to be 8 or more characters')
+            quit(null, 2)
+        }
+        info('Entering Device setup...')
+        if (!options.ffUrl) {
+            warn('Device setup requires parameter --ff-url to be set')
+            quit(null, 2)
+        }
+        AgentManager.quickConnectDevice().then((success) => {
+            if (success) {
+                const runCommandInfo = ['flowfuse-device-agent']
+                if (options.dir !== '/opt/flowfuse-device') {
+                    runCommandInfo.push(`-d ${options.dir}`)
+                }
+                info('Device setup was successful')
+                info('To start the Device Agent with the new configuration run the following command:')
+                info(runCommandInfo.join(' '))
+                quit()
+            } else {
+                warn('Device setup was unsuccessful')
+                quit(null, 2)
+            }
+        }).catch((err) => {
+            quit(err.message, 2)
+        })
+        return
+    }
 
     info('FlowFuse Device Agent')
     info('----------------------')
