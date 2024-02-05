@@ -16,8 +16,16 @@ describe('Launcher', function () {
         verbose: true
     }
 
+    const configWithPlatformInfo = {
+        ...config,
+        forgeURL: 'https://test',
+        token: 'test-token',
+        deviceId: 'deviceid'
+    }
+
     beforeEach(async function () {
         config.dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ff-launcher-'))
+        configWithPlatformInfo.dir = config.dir
         await fs.mkdir(path.join(config.dir, 'project'))
     })
 
@@ -156,5 +164,19 @@ describe('Launcher', function () {
         settings.should.have.property('editorTheme')
         settings.editorTheme.should.have.property('palette')
         settings.editorTheme.palette.should.not.have.a.property('catalogue')
+    })
+    it('sets up audit logging for the node-red instance', async function () {
+        const launcher = newLauncher(configWithPlatformInfo, null, 'projectId', setup.snapshot)
+        const expectedURL = `${configWithPlatformInfo.forgeURL}/logging/device/${configWithPlatformInfo.deviceId}/audit`
+        should(launcher).be.an.Object()
+        launcher.should.have.property('auditLogURL', expectedURL)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('flowforge')
+        settings.flowforge.should.have.property('auditLogger').and.be.an.Object()
+        settings.flowforge.auditLogger.should.have.property('url', expectedURL)
+        settings.flowforge.auditLogger.should.have.property('token', configWithPlatformInfo.token)
+        settings.flowforge.auditLogger.should.have.property('bin', path.join(__dirname, '..', '..', '..', 'lib', 'auditLogger', 'index.js'))
     })
 })
