@@ -174,6 +174,7 @@ describe('Launcher', function () {
         const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
         const settings = JSON.parse(setFile)
         settings.should.have.property('flowforge')
+        settings.flowforge.should.have.property('deviceId', configWithPlatformInfo.deviceId)
         settings.flowforge.should.have.property('auditLogger').and.be.an.Object()
         settings.flowforge.auditLogger.should.have.property('url', expectedURL)
         settings.flowforge.auditLogger.should.have.property('token', configWithPlatformInfo.token)
