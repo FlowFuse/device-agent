@@ -130,6 +130,32 @@ describe('Launcher', function () {
         const npmrc = await fs.readFile(path.join(config.dir, 'project', '.npmrc'))
         npmrc.toString().should.eql('// test\n')
     })
+    it('Writes flowfuse theme files', async function () {
+        const launcher = newLauncher(config, null, 'projectId', setup.snapshot)
+        await launcher.writeThemeFiles()
+        const expectedTargetDir = path.join(config.dir, 'project', 'node_modules', '@flowfuse', 'nr-theme')
+        const themeFiles = await fs.readdir(expectedTargetDir)
+        themeFiles.should.containEql('package.json')
+        themeFiles.should.containEql('lib')
+        themeFiles.should.containEql('resources')
+
+        const packageFile = await fs.readFile(path.join(expectedTargetDir, 'package.json'))
+        const packageJSON = JSON.parse(packageFile)
+        packageJSON.should.have.property('name', '@flowfuse/nr-theme')
+
+        // ensure the lib/theme/common, lib/theme/forge-dark and lib/theme/forge-light directories exist
+        const libDir = path.join(expectedTargetDir, 'lib')
+        const themeDir = path.join(libDir, 'theme')
+        const commonDir = path.join(themeDir, 'common')
+        const darkDir = path.join(themeDir, 'forge-dark')
+        const lightDir = path.join(themeDir, 'forge-light')
+        const commonDirStat = await fs.stat(commonDir)
+        const darkDirStat = await fs.stat(darkDir)
+        const lightDirStat = await fs.stat(lightDir)
+        commonDirStat.isDirectory().should.be.true()
+        darkDirStat.isDirectory().should.be.true()
+        lightDirStat.isDirectory().should.be.true()
+    })
     it('Uses custom catalogue when licensed', async function () {
         const licensedConfig = {
             ...config,
