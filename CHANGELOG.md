@@ -1,3 +1,8 @@
+#### 2.1.0: Release
+
+ - Implement quick connect in device agent (#226) @Steve-Mcl
+ - Fix affinity cookie parsing (#225) @knolleary
+ 
 #### 2.0.0: Release
 
  - Enable WebSocket Affinity in the device agent (#213) @hardillb
