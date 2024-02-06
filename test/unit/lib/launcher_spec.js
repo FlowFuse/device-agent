@@ -180,4 +180,21 @@ describe('Launcher', function () {
         settings.flowforge.auditLogger.should.have.property('token', configWithPlatformInfo.token)
         settings.flowforge.auditLogger.should.have.property('bin', path.join(__dirname, '..', '..', '..', 'lib', 'auditLogger', 'index.js'))
     })
+    it('settings.js loads audit logger with settings from config', async function () {
+        const launcher = newLauncher(configWithPlatformInfo, null, 'projectId', setup.snapshot)
+        const expectedURL = `${configWithPlatformInfo.forgeURL}/logging/device/${configWithPlatformInfo.deviceId}/audit`
+        await launcher.writeSettings()
+
+        // copy the template-settings as settings.js to the test dir
+        await fs.copyFile(path.join(__dirname, '..', '..', '..', 'lib', 'template', 'template-settings.js'), path.join(config.dir, 'project', 'settings.js'))
+        const runtimeSettings = require(path.join(config.dir, 'project', 'settings.js'))
+        should(runtimeSettings).be.an.Object()
+        runtimeSettings.should.have.property('logging').and.be.an.Object()
+        runtimeSettings.logging.should.have.property('auditLogger').and.be.an.Object()
+        runtimeSettings.logging.auditLogger.should.have.property('level', 'off')
+        runtimeSettings.logging.auditLogger.should.have.property('audit', true)
+        runtimeSettings.logging.auditLogger.should.have.property('handler').and.be.a.Function()
+        runtimeSettings.logging.auditLogger.should.have.property('loggingURL', expectedURL)
+        runtimeSettings.logging.auditLogger.should.have.property('token', configWithPlatformInfo.token)
+    })
 })
