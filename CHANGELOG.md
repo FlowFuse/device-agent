@@ -1,3 +1,9 @@
+#### 2.2.0: Release
+
+ - Wire up Node-RED instance audit events to FF (#232) @Steve-Mcl
+ - Implement deferred stop like nr-launcher (#236) @Steve-Mcl
+ - Fix theme following org name change (#235) @Steve-Mcl
+ 
 #### 2.1.0: Release
 
  - Implement quick connect in device agent (#226) @Steve-Mcl
