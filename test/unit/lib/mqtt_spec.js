@@ -51,7 +51,11 @@ function createAgent (opts) {
             getCurrentFlows: sinon.fake.returns(agent.flows),
             getCurrentCredentials: sinon.fake.returns(agent.credentials),
             getCurrentPackage: sinon.fake.returns(agent.package),
-            saveEditorToken: sinon.fake()
+            saveEditorToken: sinon.fake(),
+            startNR: sinon.fake(),
+            restartNR: sinon.fake(),
+            suspendNR: sinon.fake(),
+            checkIn: sinon.fake()
         }
     }
     return newAgent()
@@ -104,18 +108,18 @@ describe('MQTT Comms', function () {
         const port = 9800
         httpServer = createServer(aedes, { ws: true })
         httpServer.listen(port, function () {
-            console.log('websocket server listening on port ', port)
+            // console.log('websocket server listening on port ', port)
         })
         let nextSocketId = 0
         httpServer.on('connection', function (socket) {
         // Add a newly connected socket
             const socketId = nextSocketId++
             sockets[socketId] = socket
-            console.log('socket', socketId, 'opened')
+            // console.log('socket', socketId, 'opened')
 
             // Remove the socket when it closes
             socket.on('close', function () {
-                console.log('socket', socketId, 'closed')
+                // console.log('socket', socketId, 'closed')
                 delete sockets[socketId]
             })
         })
@@ -146,10 +150,10 @@ describe('MQTT Comms', function () {
         aedes.removeAllListeners()
         if (httpServer) {
             // Close the server
-            httpServer.close(function () { console.log('Server closed!') })
+            httpServer.close(function () { /* console.log('Server closed!') */ })
             // Destroy all open sockets
             for (const socketId in sockets) {
-                console.log('socket', socketId, 'destroyed')
+                // console.log('socket', socketId, 'destroyed')
                 sockets[socketId].destroy()
             }
         }
@@ -177,7 +181,7 @@ describe('MQTT Comms', function () {
             }, 500)
             const onMessage = (topic, message) => {
                 const m = JSON.parse(message.toString())
-                console.log('mqtt.on(message => received message %s %s', topic, m)
+                // console.log('mqtt.on(message => received message %s %s', topic, m)
                 cleanUp(timeOver)
                 resolve(m)
             }
@@ -243,8 +247,8 @@ describe('MQTT Comms', function () {
 
         const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
         const responseTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/response`
-        console.log('commandTopic', commandTopic)
-        console.log('responseTopic', responseTopic)
+        // console.log('commandTopic', commandTopic)
+        // console.log('responseTopic', responseTopic)
         mqttClient.should.have.a.property('client').and.be.an.Object()
         mqttClient.should.have.a.property('commandTopic').and.be.a.String().and.equal(commandTopic)
         mqttClient.should.have.a.property('responseTopic').and.be.a.String().and.equal(responseTopic)
@@ -273,8 +277,8 @@ describe('MQTT Comms', function () {
         mqttClient.start()
         const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
         const responseTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/response`
-        console.log('commandTopic', commandTopic)
-        console.log('responseTopic', responseTopic)
+        // console.log('commandTopic', commandTopic)
+        // console.log('responseTopic', responseTopic)
         mqttClient.should.have.a.property('client').and.be.an.Object()
         mqttClient.should.have.a.property('commandTopic').and.be.a.String().and.equal(commandTopic)
         mqttClient.should.have.a.property('responseTopic').and.be.a.String().and.equal(responseTopic)
@@ -360,5 +364,89 @@ describe('MQTT Comms', function () {
     })
     it.skip('MQTT command upload gets a response with a snapshot', async function () {
         // TODO
+    })
+    it('MQTT command suspend calls agent.suspendNR and checks in', async function () {
+        mqttClient.start()
+        const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
+        const responseTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/response`
+        mqttClient.should.have.a.property('client').and.be.an.Object()
+        mqttClient.should.have.a.property('commandTopic').and.be.a.String().and.equal(commandTopic)
+        mqttClient.should.have.a.property('responseTopic').and.be.a.String().and.equal(responseTopic)
+
+        const payload = {
+            command: 'suspend',
+            correlationData: 'correlationData-test',
+            responseTopic,
+            payload: {
+                token: 'token-test'
+            }
+        }
+        const payloadStr = JSON.stringify(payload)
+
+        // short delay to allow mqtt to connect and stack to unwind
+        await new Promise(resolve => setTimeout(resolve, 500))
+        const response = await mqttPubAndAwait(commandTopic, payloadStr, responseTopic)
+        await new Promise(resolve => setTimeout(resolve, 50))
+        response.should.have.a.property('command', 'suspend')
+        response.should.have.a.property('correlationData', 'correlationData-test')
+        response.should.have.a.property('payload').and.be.an.Object()
+        mqttClient.agent.suspendNR.callCount.should.equal(1)
+        mqttClient.agent.checkIn.callCount.should.equal(1)
+    })
+    it('MQTT command start calls agent.startNR and checks in', async function () {
+        mqttClient.start()
+        const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
+        const responseTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/response`
+        mqttClient.should.have.a.property('client').and.be.an.Object()
+        mqttClient.should.have.a.property('commandTopic').and.be.a.String().and.equal(commandTopic)
+        mqttClient.should.have.a.property('responseTopic').and.be.a.String().and.equal(responseTopic)
+
+        const payload = {
+            command: 'start',
+            correlationData: 'correlationData-test',
+            responseTopic,
+            payload: {
+                token: 'token-test'
+            }
+        }
+        const payloadStr = JSON.stringify(payload)
+
+        // short delay to allow mqtt to connect and stack to unwind
+        await new Promise(resolve => setTimeout(resolve, 500))
+        const response = await mqttPubAndAwait(commandTopic, payloadStr, responseTopic)
+        await new Promise(resolve => setTimeout(resolve, 50))
+        response.should.have.a.property('command', 'start')
+        response.should.have.a.property('correlationData', 'correlationData-test')
+        response.should.have.a.property('payload').and.be.an.Object()
+        mqttClient.agent.startNR.callCount.should.equal(1)
+        mqttClient.agent.checkIn.callCount.should.equal(1)
+    })
+    it('MQTT command restart calls agent.restartNR and checks in', async function () {
+        mqttClient.start()
+        const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
+        const responseTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/response`
+        mqttClient.should.have.a.property('client').and.be.an.Object()
+        mqttClient.should.have.a.property('commandTopic').and.be.a.String().and.equal(commandTopic)
+        mqttClient.should.have.a.property('responseTopic').and.be.a.String().and.equal(responseTopic)
+
+        const payload = {
+            command: 'restart',
+            correlationData: 'correlationData-test',
+            responseTopic,
+            payload: {
+                token: 'token-test'
+            }
+        }
+        const payloadStr = JSON.stringify(payload)
+
+        // short delay to allow mqtt to connect and stack to unwind
+        await new Promise(resolve => setTimeout(resolve, 500))
+        const response = await mqttPubAndAwait(commandTopic, payloadStr, responseTopic)
+        await new Promise(resolve => setTimeout(resolve, 50))
+        response.should.have.a.property('command', 'restart')
+        response.should.have.a.property('correlationData', 'correlationData-test')
+        response.should.have.a.property('payload').and.be.an.Object()
+        mqttClient.agent.restartNR.callCount.should.equal(1)
+        mqttClient.agent.checkIn.callCount.should.equal(1)
     })
 })

@@ -14,6 +14,11 @@ const Launcher = require('../../../lib/launcher.js')
 
 describe('Agent', function () {
     let configDir
+    const launcherStopStartMonitor = [] // a log of all launcher.stop/start calls (used to test that the agent stop/starts the launcher)
+
+    function resetLauncherStopStartMonitor () {
+        launcherStopStartMonitor.length = 0
+    }
 
     function findInLogs (level, msg) {
         const logs = logger.getBufferedMessages()
@@ -167,16 +172,23 @@ describe('Agent', function () {
             startTunnel: sinon.stub(),
             sendCommandResponse: sinon.stub()
         })
-        sinon.stub(Launcher, 'newLauncher').callsFake((config, application, project, snapshot, settings, mode) => {
+
+        sinon.stub(Launcher, 'newLauncher').callsFake((agent, application, project, snapshot, settings, mode) => {
             return {
-                config,
+                agent,
                 project,
                 application,
                 snapshot,
                 settings,
                 mode,
-                start: sinon.stub().resolves(),
-                stop: sinon.stub().resolves(),
+                start: sinon.stub().callsFake(() => {
+                    launcherStopStartMonitor.push({ fn: 'start' })
+                    return Promise.resolve()
+                }),
+                stop: sinon.stub().callsFake((clean, reason) => {
+                    launcherStopStartMonitor.push({ fn: 'stop', clean, reason })
+                    return Promise.resolve()
+                }),
                 writeConfiguration: sinon.stub().resolves(),
                 readPackage: sinon.stub().resolves({ modules: {} }),
                 readFlow: sinon.stub().resolves([])
@@ -186,6 +198,7 @@ describe('Agent', function () {
 
     afterEach(async function () {
         await fs.rm(configDir, { recursive: true, force: true })
+        resetLauncherStopStartMonitor()
         sinon.restore()
     })
 
@@ -345,19 +358,134 @@ describe('Agent', function () {
             agent.launcher = Launcher.newLauncher()
             agent.httpClient.stopPolling.callCount.should.equal(0)
             await agent.start()
+            // reset the call count before stop and check it after
+            agent.httpClient.stopPolling.resetHistory()
             await agent.stop()
             agent.httpClient.stopPolling.callCount.should.equal(1)
-            agent.launcher.stop.callCount.should.equal(1)
+            // ensure launcher stop was called
+            launcherStopStartMonitor.length.should.equal(1)
+            launcherStopStartMonitor[0].should.deepEqual({ fn: 'stop', clean: false, reason: 'shutdown' })
+            // ensure launcher is cleared
+            should(agent.launcher).be.undefined()
         })
         it('stops the agent and all components - mqtt enabled', async function () {
             const agent = createMQTTAgent()
             agent.launcher = Launcher.newLauncher()
             agent.httpClient.stopPolling.callCount.should.equal(0)
             await agent.start()
+            // reset the call count before stop and check it after
+            agent.httpClient.stopPolling.resetHistory()
             await agent.stop()
             agent.httpClient.stopPolling.callCount.should.equal(1)
             agent.mqttClient.stop.callCount.should.equal(1)
-            agent.launcher.stop.callCount.should.equal(1)
+            // ensure launcher stop was called
+            launcherStopStartMonitor.length.should.equal(1)
+            launcherStopStartMonitor[0].should.deepEqual({ fn: 'stop', clean: false, reason: 'shutdown' })
+            // ensure launcher is cleared
+            should(agent.launcher).be.undefined()
+        })
+    })
+
+    describe('actions', function () {
+        it('suspends Node-RED', async function () {
+            const agent = createMQTTAgent()
+            agent.launcher = Launcher.newLauncher()
+            await agent.start()
+            sinon.spy(agent, 'saveProject')
+            await agent.suspendNR()
+            launcherStopStartMonitor.length.should.equal(1)
+            launcherStopStartMonitor[0].should.deepEqual({ fn: 'stop', clean: false, reason: 'suspended' })
+            should(agent.launcher).be.undefined()
+            agent.should.have.property('currentState', 'suspended')
+            agent.should.have.property('targetState', 'suspended')
+            // ensure project is saved (the targetState is persisted to ensure the agent restarts in the target state)
+            agent.saveProject.called.should.be.true('saveProject was not called following target state change')
+        })
+        it('reloads target state as suspended', async function () {
+            const agent = createMQTTAgent()
+            agent.launcher = Launcher.newLauncher()
+            await agent.start()
+            await agent.suspendNR()
+            await agent.stop()
+
+            const agent2 = createMQTTAgent()
+            await agent2.start()
+            agent2.should.have.property('targetState', 'suspended')
+        })
+        it('reloads target state as running', async function () {
+            const agent = createMQTTAgent()
+            agent.launcher = Launcher.newLauncher()
+            await agent.start()
+            await agent.suspendNR()
+            await agent.stop()
+            agent.should.have.property('targetState', 'suspended')
+
+            const agent2 = createMQTTAgent()
+            await agent2.startNR() // cause project to be updated
+            await agent2.stop()
+            agent2.should.have.property('targetState', 'running')
+
+            const agent3 = createMQTTAgent()
+            await agent3.start()
+            agent3.should.have.property('targetState', 'running')
+        })
+        it('restarts Node-RED', async function () {
+            const agent = createMQTTAgent()
+            agent.launcher = Launcher.newLauncher()
+            await agent.start()
+            // cause the device to start
+            await agent.setState({
+                project: 'projectId',
+                settings: 'settingsId',
+                snapshot: 'snapshotId'
+            })
+            launcherStopStartMonitor.length.should.be.greaterThan(0)
+            launcherStopStartMonitor[0].clean.should.be.false()
+            // reset monitor before calling restart
+            resetLauncherStopStartMonitor()
+            await agent.restartNR()
+            // stop should be called with clean = false and reason = restart
+            launcherStopStartMonitor.length.should.equal(2) // stop followed by start
+            launcherStopStartMonitor[0].should.deepEqual({ fn: 'stop', clean: false, reason: 'restart' })
+            launcherStopStartMonitor[1].should.deepEqual({ fn: 'start' })
+            should(agent.launcher).be.an.Object()
+            agent.should.have.property('currentState', 'running')
+        })
+        it('starts Node-RED after suspend', async function () {
+            const agent = createMQTTAgent()
+            agent.launcher = Launcher.newLauncher()
+            sinon.spy(agent, 'saveProject')
+            await agent.start()
+            // cause the device to start
+            await agent.setState({
+                project: 'projectId',
+                settings: 'settingsId',
+                snapshot: 'snapshotId'
+            })
+            // reset monitor before calling suspend
+            resetLauncherStopStartMonitor()
+
+            // suspend it
+            await agent.suspendNR()
+            launcherStopStartMonitor.length.should.equal(1)
+            launcherStopStartMonitor[0].should.deepEqual({ fn: 'stop', clean: false, reason: 'suspended' })
+            should(agent.launcher).be.undefined()
+            agent.should.have.property('targetState', 'suspended')
+            agent.should.have.property('currentState', 'suspended')
+            agent.saveProject.called.should.be.true('saveProject was not called following target state change')
+
+            // reset before calling start
+            resetLauncherStopStartMonitor()
+            agent.saveProject.resetHistory()
+
+            // now start it
+            await agent.startNR()
+            launcherStopStartMonitor.length.should.equal(1)
+            launcherStopStartMonitor[0].should.deepEqual({ fn: 'start' })
+            should(agent.launcher).be.an.Object()
+            agent.should.have.property('targetState', 'running')
+            agent.should.have.property('currentState', 'running')
+            agent.saveProject.called.should.be.true('saveProject was not called following target state change')
         })
     })
 
