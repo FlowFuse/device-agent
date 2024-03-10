@@ -446,10 +446,11 @@ describe('Agent', function () {
             await agent.restartNR()
             // stop should be called with clean = false and reason = restart
             launcherStopStartMonitor.length.should.equal(2) // stop followed by start
-            launcherStopStartMonitor[0].should.deepEqual({ fn: 'stop', clean: false, reason: 'restart' })
+            launcherStopStartMonitor[0].should.deepEqual({ fn: 'stop', clean: false, reason: 'restarting' })
             launcherStopStartMonitor[1].should.deepEqual({ fn: 'start' })
             should(agent.launcher).be.an.Object()
             agent.should.have.property('currentState', 'running')
+            agent.should.have.property('targetState', 'running')
         })
         it('starts Node-RED after suspend', async function () {
             const agent = createMQTTAgent()
@@ -493,11 +494,11 @@ describe('Agent', function () {
         it('returns partial state', async function () {
             const agent = createHTTPAgent()
             const state = agent.getState()
-            console.log(state)
             state.should.have.property('ownerType', 'none')
             state.should.have.property('snapshot', null)
             state.should.have.property('settings', null)
             state.should.have.property('state', 'unknown')
+            state.should.have.property('targetState', 'running')
             state.should.have.property('mode', 'autonomous') // default
             state.should.have.property('licensed')
         })
@@ -506,12 +507,12 @@ describe('Agent', function () {
             const agent = createHTTPAgent()
             agent.currentMode = 'developer'
             const state = agent.getState()
-            console.log(state)
             state.should.have.property('ownerType', 'none')
             state.should.have.property('project', null)
             state.should.have.property('snapshot', null)
             state.should.have.property('settings', null)
             state.should.have.property('state', 'unknown')
+            state.should.have.property('targetState', 'running')
             state.should.have.property('mode', 'developer')
             state.should.have.property('licensed')
         })
@@ -525,12 +526,12 @@ describe('Agent', function () {
             agent.config = { licensed: true }
             agent.launcher = { state: 'running' }
             const state = agent.getState()
-            console.log(state)
             state.should.have.property('ownerType', 'project')
             state.should.have.property('project', 'projectId')
             state.should.have.property('snapshot', 'snapshotId')
             state.should.have.property('settings', 'settingsId')
             state.should.have.property('state', 'running')
+            state.should.have.property('targetState', 'running')
             state.should.have.property('mode', 'autonomous') // default
             state.should.have.property('licensed', true)
         })
@@ -543,12 +544,12 @@ describe('Agent', function () {
             agent.config = { licensed: true }
             agent.launcher = { state: 'running' }
             const state = agent.getState()
-            console.log(state)
             state.should.have.property('ownerType', 'application')
             state.should.have.property('application', 'applicationId')
             state.should.have.property('snapshot', 'snapshotId')
             state.should.have.property('settings', 'settingsId')
             state.should.have.property('state', 'running')
+            state.should.have.property('targetState', 'running')
             state.should.have.property('mode', 'autonomous') // default
             state.should.have.property('licensed', true)
         })
@@ -562,12 +563,30 @@ describe('Agent', function () {
             agent.currentMode = 'developer'
             agent.launcher = { state: 'running' }
             const state = agent.getState()
-            console.log(state)
-
             state.should.have.property('project', 'projectId')
             state.should.have.property('snapshot', 'snapshotId')
             state.should.have.property('settings', 'settingsId')
             state.should.have.property('state', 'running')
+            state.should.have.property('targetState', 'running')
+            state.should.have.property('mode', 'developer')
+        })
+
+        it('returns state when suspended', async function () {
+            const agent = createMQTTAgent()
+            agent.launcher = Launcher.newLauncher()
+            await agent.start()
+            await agent.suspendNR()
+            agent.currentProject = 'projectId'
+            agent.currentApplication = null
+            agent.currentSnapshot = { id: 'snapshotId' }
+            agent.currentSettings = { hash: 'settingsId' }
+            agent.currentMode = 'developer'
+            const state = agent.getState()
+            state.should.have.property('project', 'projectId')
+            state.should.have.property('snapshot', 'snapshotId')
+            state.should.have.property('settings', 'settingsId')
+            state.should.have.property('state', 'suspended')
+            state.should.have.property('targetState', 'suspended')
             state.should.have.property('mode', 'developer')
         })
 
