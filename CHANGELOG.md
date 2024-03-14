@@ -1,3 +1,8 @@
+#### 2.3.0: Release
+
+ - Add support for device actions (#239) @Steve-Mcl
+ - Save affinity cookie locally so it can be reused between restarts (#238) @knolleary
+
 #### 2.2.0: Release
 
  - Wire up Node-RED instance audit events to FF (#232) @Steve-Mcl
