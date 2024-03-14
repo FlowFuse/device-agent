@@ -1,3 +1,7 @@
+#### 2.3.1: Release
+
+ - Fix CORS handling (#242) @hardillb
+
 #### 2.3.0: Release
 
  - Add support for device actions (#239) @Steve-Mcl
