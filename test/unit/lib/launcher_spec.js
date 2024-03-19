@@ -93,10 +93,38 @@ describe('Launcher', function () {
         settings.flowforge.should.have.property('projectID', 'PROJECTID')
         settings.flowforge.should.have.property('projectLink')
         settings.flowforge.should.have.property('teamID', 'TEAMID')
+        // by default, since the feature flag is not set, it should be true.
+        // This is for backwards compatibility where a Node-RED instance has the nodes in their flows
+        // but the feature flag is not present in the settings.
+        settings.flowforge.projectLink.should.have.property('featureEnabled', true)
         settings.flowforge.projectLink.should.have.property('broker')
         settings.flowforge.projectLink.broker.should.have.property('url', 'BURL')
         settings.flowforge.projectLink.broker.should.have.property('username', 'BUSER:TEAMID:deviceid')
         settings.flowforge.projectLink.broker.should.have.property('password', 'BPASS')
+    })
+    it('Write Settings - with broker and feature flag `projectComms` false', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...config,
+                brokerURL: 'BURL',
+                brokerUsername: 'BUSER:TEAMID:deviceid',
+                brokerPassword: 'BPASS'
+            }
+        }, null, 'PROJECTID', setup.snapshot, { features: { projectComms: false } })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('port', 1880)
+        settings.should.have.property('credentialSecret', 'secret')
+        settings.should.have.property('flowforge')
+        settings.flowforge.should.have.property('projectID', 'PROJECTID')
+        settings.flowforge.should.have.property('projectLink')
+        settings.flowforge.should.have.property('teamID', 'TEAMID')
+        settings.flowforge.projectLink.should.have.property('featureEnabled', false) // explicitly disabled
+        settings.flowforge.projectLink.should.have.property('broker')
+        settings.flowforge.projectLink.broker.should.have.property('url', '') // should be set to empty string
+        settings.flowforge.projectLink.broker.should.have.property('username', '') // should be set to empty string
+        settings.flowforge.projectLink.broker.should.have.property('password', '') // should be set to empty string
     })
 
     it('Write package.json', async function () {
