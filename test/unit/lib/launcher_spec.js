@@ -210,7 +210,7 @@ describe('Launcher', function () {
         const settings = JSON.parse(setFile)
         settings.should.have.property('editorTheme')
         settings.editorTheme.should.have.property('palette')
-        settings.editorTheme.palette.should.have.a.property('catalogue').and.be.an.Array()
+        settings.editorTheme.palette.should.have.a.property('catalogues').and.be.an.Array()
         settings.editorTheme.palette.catalogues.should.have.a.lengthOf(3)
         settings.editorTheme.palette.catalogues[0].should.eql('foo')
         settings.editorTheme.palette.catalogues[1].should.eql('bar')
