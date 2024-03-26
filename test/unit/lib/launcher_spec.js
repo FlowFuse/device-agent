@@ -211,10 +211,10 @@ describe('Launcher', function () {
         settings.should.have.property('editorTheme')
         settings.editorTheme.should.have.property('palette')
         settings.editorTheme.palette.should.have.a.property('catalogue').and.be.an.Array()
-        settings.editorTheme.palette.catalogue.should.have.a.lengthOf(3)
-        settings.editorTheme.palette.catalogue[0].should.eql('foo')
-        settings.editorTheme.palette.catalogue[1].should.eql('bar')
-        settings.editorTheme.palette.catalogue[2].should.eql('baz')
+        settings.editorTheme.palette.catalogues.should.have.a.lengthOf(3)
+        settings.editorTheme.palette.catalogues[0].should.eql('foo')
+        settings.editorTheme.palette.catalogues[1].should.eql('bar')
+        settings.editorTheme.palette.catalogues[2].should.eql('baz')
     })
     it('ignores custom catalogue when NOT licensed', async function () {
         const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
@@ -223,7 +223,7 @@ describe('Launcher', function () {
         const settings = JSON.parse(setFile)
         settings.should.have.property('editorTheme')
         settings.editorTheme.should.have.property('palette')
-        settings.editorTheme.palette.should.not.have.a.property('catalogue')
+        settings.editorTheme.palette.should.not.have.a.property('catalogues')
     })
     it('sets up audit logging for the node-red instance', async function () {
         const launcher = newLauncher({ config: configWithPlatformInfo }, null, 'projectId', setup.snapshot)
