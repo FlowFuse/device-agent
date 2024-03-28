@@ -1,3 +1,9 @@
+#### 2.3.2: Release
+
+ - Remove Object.hasOwn (#248) @knolleary
+ - Add nodejs 18 & 20 to test runners (#247) @hardillb
+ - Respect shared-library and projectComms feature flags (#244) @Steve-Mcl
+
 #### 2.3.1: Release
 
  - Fix CORS handling (#242) @hardillb
