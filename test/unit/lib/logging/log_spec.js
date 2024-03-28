@@ -29,12 +29,7 @@ describe('Log', function () {
                 msg: 'm5'
             }))
             Log.info('m6')
-            Log.NRlog(JSON.stringify({
-                level: 'info',
-                ts: Date.now(),
-                msg: 'm7'
-            }))
-
+            Log.NRlog('m7')
             const bufferedMessages = Log.getBufferedMessages()
             // Verify we buffered the last 5
             bufferedMessages.should.have.length(5)
