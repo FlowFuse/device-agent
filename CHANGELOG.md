@@ -1,3 +1,7 @@
+#### 2.4.0: Release
+
+ - Add catalogue and npmrc to App bound instances (#246) @hardillb
+
 #### 2.3.2: Release
 
  - Remove Object.hasOwn (#248) @knolleary
