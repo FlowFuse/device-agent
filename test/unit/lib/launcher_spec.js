@@ -1,4 +1,5 @@
 const should = require('should')
+const sinon = require('sinon')
 const { newLauncher } = require('../../../lib/launcher')
 const setup = require('../setup')
 const fs = require('fs/promises')
@@ -136,6 +137,37 @@ describe('Launcher', function () {
         pkg.dependencies.should.have.property('node-red-node-random', '0.4.0')
         pkg.name.should.eqls('TEST_PROJECT')
         pkg.version.should.eqls('0.0.0-aaaabbbbcccc')
+    })
+
+    it.only('Updates package.json with user defined Node-RED version', async function () {
+        const newSettings = {
+            editor: {
+                nodeRedVersion: '3.1.9'
+            }
+        }
+        // simulate agent update settings. Essentially, when updated settings are available, the agent will
+        // create a new launcher instance then call writeConfiguration with the `updateSettings` flag set to true
+        const launcher = newLauncher({ config }, 'application', null, setup.snapshot, newSettings)
+        // mock relevant parts of launcher and launcher.agent:
+        sinon.spy(launcher, 'writePackage')
+        sinon.spy(launcher, 'writeSettings')
+        sinon.spy(launcher, 'writeFlow')
+        sinon.stub(launcher, 'installDependencies').resolves()
+        launcher.agent.currentOwnerType = 'application'
+
+        // simulate agent update settings
+        await launcher.writeConfiguration({ updateSettings: true })
+        launcher.settings.should.have.property('editor').and.be.an.Object()
+        launcher.settings.editor.should.have.property('nodeRedVersion', '3.1.9')
+        launcher.writePackage.calledOnce.should.be.true()
+        launcher.writeSettings.calledOnce.should.be.true()
+        launcher.writeFlow.calledOnce.should.be.true()
+        launcher.installDependencies.calledOnce.should.be.true()
+
+        // check written package.json
+        const pkgFileAfter = await fs.readFile(path.join(config.dir, 'project', 'package.json'))
+        const pkgAfter = JSON.parse(pkgFileAfter)
+        pkgAfter.dependencies.should.have.property('node-red', '3.1.9')
     })
 
     it('Write Settings - with HTTPS, raw values', async function () {
