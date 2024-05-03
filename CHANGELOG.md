@@ -1,3 +1,9 @@
+#### 2.4.1: Release
+
+ - Ensure local ws connections are closed on disconnect (#255) @knolleary
+ - Update `package.json` with user defined node-red version (#254) @Steve-Mcl
+ - If NR process has exited, dont send or wait for sigxxx (#252) @Steve-Mcl
+
 #### 2.4.0: Release
 
  - Add catalogue and npmrc to App bound instances (#246) @hardillb
