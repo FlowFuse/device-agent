@@ -13,7 +13,7 @@ jobs:
         with:
           node-version: 16
       - run: npm ci
-      - uses: JS-DevTools/npm-publish@v2.2.0
+      - uses: JS-DevTools/npm-publish@v3.1.1
         with:
           token: ${{ secrets.NPM_PUBLISH_TOKEN }}
   build_container:
@@ -71,7 +71,7 @@ jobs:
           cat package.json | jq '.name = "@flowforge/flowforge-device-agent"' > package.json-patched
           mv package.json-patched package.json
       - run: npm install
-      - uses: JS-DevTools/npm-publish@v2.2.0
+      - uses: JS-DevTools/npm-publish@v3.1.1
         with:
           token: ${{ secrets.NPM_PUBLISH_TOKEN_FLOWFORGE }}
       - name: Docker Meta Data
