@@ -1,3 +1,4 @@
+const mocha = require('mocha') // eslint-disable-line
 const should = require('should') // eslint-disable-line
 const sinon = require('sinon')
 const agent = require('../../../lib/agent')
@@ -39,6 +40,13 @@ describe('Test the AgentManager', function () {
         AgentManager.init({})
         AgentManager.should.have.property('options').and.be.an.Object()
         AgentManager.state.should.eql('unknown')
+    })
+    it('Should not extend got with proxies if env vars are not set', function () {
+        process.env.http_proxy = ''
+        process.env.https_proxy = ''
+        AgentManager.init({})
+        should(AgentManager._got.defaults.options.agent?.http).be.undefined()
+        should(AgentManager._got.defaults.options.agent?.https).be.undefined()
     })
     it('Agent Manager should exit cleanly', async function () {
         AgentManager.init({})
@@ -167,5 +175,57 @@ describe('Test the AgentManager', function () {
         await AgentManager.startAgent()
         agent.newAgent.calledOnce.should.be.true()
         AgentManager.agent.start.calledOnce.should.be.true()
+    })
+    it('Extends GOT with http proxy when env var is set', async function () {
+        const deviceFile = path.join(configDir, 'project', 'device.yml')
+        await fs.writeFile(deviceFile, 'deviceId: ididid\nforgeURL: http://localhost:9999\ncredentialSecret: yoohoo\ntoken: bbbb\n')
+        sinon.stub(process, 'env').value({
+            ...process.env,
+            http_proxy: 'http://http_proxy:1234',
+            https_proxy: ''
+        })
+        AgentManager.init({
+            deviceFile
+        })
+        await AgentManager.reloadConfig()
+        AgentManager.should.have.property('_got')
+        should(AgentManager._got.defaults.options.agent?.http).be.instanceOf(require('http-proxy-agent').HttpProxyAgent)
+        AgentManager._got.defaults.options.agent.http.proxy.should.have.property('hostname', 'http_proxy')
+        AgentManager._got.defaults.options.agent.http.proxy.should.have.property('port', '1234')
+        should(AgentManager._got.defaults.options.agent?.https).undefined()
+    })
+    it('Extends GOT with https proxy when env var is set', async function () {
+        const deviceFile = path.join(configDir, 'project', 'device.yml')
+        await fs.writeFile(deviceFile, 'deviceId: ididid\nforgeURL: http://localhost:9999\ncredentialSecret: yoohoo\ntoken: bbbb\n')
+        sinon.stub(process, 'env').value({
+            ...process.env,
+            http_proxy: '',
+            https_proxy: 'http://https_proxy:4567'
+        })
+        AgentManager.init({
+            deviceFile
+        })
+        await AgentManager.reloadConfig()
+        AgentManager.should.have.property('_got')
+        should(AgentManager._got.defaults.options.agent?.https).be.instanceOf(require('https-proxy-agent').HttpsProxyAgent)
+        AgentManager._got.defaults.options.agent.https.proxy.should.have.property('hostname', 'https_proxy')
+        AgentManager._got.defaults.options.agent.https.proxy.should.have.property('port', '4567')
+        should(AgentManager._got.defaults.options.agent?.http).undefined()
+    })
+    it('Extends GOT with both http & https proxies when env var are set', async function () {
+        const deviceFile = path.join(configDir, 'project', 'device.yml')
+        await fs.writeFile(deviceFile, 'deviceId: ididid\nforgeURL: http://localhost:9999\ncredentialSecret: yoohoo\ntoken: bbbb\n')
+        sinon.stub(process, 'env').value({
+            ...process.env,
+            http_proxy: 'http://https_proxy:8000',
+            https_proxy: 'http://https_proxy:8000'
+        })
+        AgentManager.init({
+            deviceFile
+        })
+        await AgentManager.reloadConfig()
+        AgentManager.should.have.property('_got')
+        should(AgentManager._got.defaults.options.agent?.http).be.instanceOf(require('http-proxy-agent').HttpProxyAgent)
+        should(AgentManager._got.defaults.options.agent?.https).be.instanceOf(require('https-proxy-agent').HttpsProxyAgent)
     })
 })

@@ -1,5 +1,7 @@
+const mocha = require('mocha') // eslint-disable-line
 const should = require('should')
 const sinon = require('sinon')
+const childProcess = require('child_process')
 const { newLauncher } = require('../../../lib/launcher')
 const setup = require('../setup')
 const fs = require('fs/promises')
@@ -28,10 +30,51 @@ describe('Launcher', function () {
         config.dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ff-launcher-'))
         configWithPlatformInfo.dir = config.dir
         await fs.mkdir(path.join(config.dir, 'project'))
+
+        sinon.replace(childProcess, 'spawn', sinon.fake(() => {
+            return {
+                on: (event, cb) => {},
+                stdout: { on: (event, cb) => {} },
+                stderr: { on: (event, cb) => {} }
+            }
+        }))
     })
 
     afterEach(async function () {
         await fs.rm(config.dir, { recursive: true, force: true })
+        sinon.restore()
+    })
+
+    it('Creates a new launcher instance', async function () {
+        const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
+        should(launcher).be.an.Object()
+        await launcher.writeFlow()
+        await launcher.writeCredentials()
+
+        // stub installDependencies so we don't actually install anything when starting
+        sinon.stub(launcher, 'installDependencies').resolves()
+
+        await launcher.start() // childProcess.spawn is faked in beforeEach
+
+        // check it spawns with the required settings
+        console.log(launcher.proc.spawnargs)
+        should(childProcess.spawn.args).be.an.Array().and.have.lengthOf(1)
+        should(childProcess.spawn.args[0]).be.an.Array().and.have.lengthOf(3)
+        const arg0 = childProcess.spawn.args[0][0]
+        should(arg0).be.a.String().and.containEql('node')
+
+        const arg1 = childProcess.spawn.args[0][1]
+        should(arg1).be.an.Array() // max_old_space_size, red.js, -u, /path/to/project
+
+        const arg2 = childProcess.spawn.args[0][2]
+        should(arg2).be.an.Object()
+        arg2.should.have.property('cwd', path.join(config.dir, 'project'))
+        arg2.should.have.property('env')
+        arg2.env.should.have.property('NODE_PATH')
+        arg2.env.NODE_PATH.should.containEql(path.join(config.dir, 'project', 'node_modules'))
+        arg2.env.NODE_PATH.should.containEql(path.join(__dirname, '..', '..', '..', 'node_modules'))
+        arg2.env.should.have.property('FF_PROJECT_NAME', 'TEST_PROJECT')
+        arg2.env.should.have.property('TZ')
     })
 
     it('Create Snapshot Flow/Creds Files, instance bound device', async function () {
@@ -139,7 +182,7 @@ describe('Launcher', function () {
         pkg.version.should.eqls('0.0.0-aaaabbbbcccc')
     })
 
-    it.only('Updates package.json with user defined Node-RED version', async function () {
+    it('Updates package.json with user defined Node-RED version', async function () {
         const newSettings = {
             editor: {
                 nodeRedVersion: '3.1.9'
@@ -288,5 +331,36 @@ describe('Launcher', function () {
         runtimeSettings.logging.auditLogger.should.have.property('handler').and.be.a.Function()
         runtimeSettings.logging.auditLogger.should.have.property('loggingURL', expectedURL)
         runtimeSettings.logging.auditLogger.should.have.property('token', configWithPlatformInfo.token)
+    })
+
+    it('Passes proxy env vars to child process when set', async function () {
+        sinon.stub(process, 'env').value({
+            ...process.env,
+            http_proxy: 'http://http_proxy',
+            https_proxy: 'http://https_proxy',
+            no_proxy: 'no_proxy',
+            all_proxy: 'all_proxy'
+        })
+        const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
+        should(launcher).be.an.Object()
+        await launcher.writeFlow()
+        await launcher.writeCredentials()
+
+        // stub installDependencies so we don't actually install anything when starting
+        sinon.stub(launcher, 'installDependencies').resolves()
+
+        await launcher.start() // childProcess.spawn is faked in beforeEach
+
+        // check it spawns with the required settings
+        console.log(launcher.proc.spawnargs)
+        should(childProcess.spawn.args).be.an.Array().and.have.lengthOf(1)
+        should(childProcess.spawn.args[0]).be.an.Array().and.have.lengthOf(3)
+        const arg2 = childProcess.spawn.args[0][2]
+        should(arg2).be.an.Object()
+        arg2.should.have.property('env')
+        arg2.env.should.have.property('http_proxy', 'http://http_proxy')
+        arg2.env.should.have.property('https_proxy', 'http://https_proxy')
+        arg2.env.should.have.property('no_proxy', 'no_proxy')
+        arg2.env.should.have.property('all_proxy', 'all_proxy')
     })
 })
