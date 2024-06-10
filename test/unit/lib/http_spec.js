@@ -146,9 +146,8 @@ describe('HTTP Comms', function () {
         httpClient.client.defaults.options.should.have.property('prefixUrl', 'http://localhost:9876/api/v1/devices/my-device-1/')
 
         // ensure proxies are not set
-        httpClient.client.defaults.options.should.have.property('agent')
-        httpClient.client.defaults.options.agent.should.have.property('http', undefined)
-        httpClient.client.defaults.options.agent.should.have.property('https', undefined)
+        should(httpClient.client.defaults.options.agent?.http).be.undefined()
+        should(httpClient.client.defaults.options.agent?.https).be.undefined()
     })
 
     it('Extends GOT with http proxy when env var is set', async function () {
@@ -157,15 +156,15 @@ describe('HTTP Comms', function () {
             http_proxy: 'http://http_proxy:1234',
             https_proxy: ''
         })
-        const client = createHttpClient({}, {
+        const httpClient = createHttpClient({}, {
             forgeURL: 'http://localhost:2222',
             token: 'token-token-2222'
         })
-        client.should.have.property('client')
-        should(client.client.defaults.options.agent?.http).be.instanceOf(require('http-proxy-agent').HttpProxyAgent)
-        client.client.defaults.options.agent.http.proxy.should.have.property('hostname', 'http_proxy')
-        client.client.defaults.options.agent.http.proxy.should.have.property('port', '1234')
-        should(client.client.defaults.options.agent?.https).be.undefined()
+        httpClient.should.have.property('client')
+        should(httpClient.client.defaults.options.agent?.http).be.instanceOf(require('http-proxy-agent').HttpProxyAgent)
+        httpClient.client.defaults.options.agent.http.proxy.should.have.property('hostname', 'http_proxy')
+        httpClient.client.defaults.options.agent.http.proxy.should.have.property('port', '1234')
+        should(httpClient.client.defaults.options.agent?.https).be.undefined()
     })
     it('Extends GOT with https proxy when env var is set', async function () {
         sinon.stub(process, 'env').value({
@@ -173,14 +172,14 @@ describe('HTTP Comms', function () {
             http_proxy: '',
             https_proxy: 'http://https_proxy:4567'
         })
-        const client = createHttpClient({}, {
+        const httpClient = createHttpClient({}, {
             forgeURL: 'http://localhost:2222',
             token: 'token-token-2222'
         })
-        should(client.client.defaults.options.agent?.https).be.instanceOf(require('https-proxy-agent').HttpsProxyAgent)
-        client.client.defaults.options.agent.https.proxy.should.have.property('hostname', 'https_proxy')
-        client.client.defaults.options.agent.https.proxy.should.have.property('port', '4567')
-        should(client.client.defaults.options.agent?.http).be.undefined()
+        should(httpClient.client.defaults.options.agent?.https).be.instanceOf(require('https-proxy-agent').HttpsProxyAgent)
+        httpClient.client.defaults.options.agent.https.proxy.should.have.property('hostname', 'https_proxy')
+        httpClient.client.defaults.options.agent.https.proxy.should.have.property('port', '4567')
+        should(httpClient.client.defaults.options.agent?.http).be.undefined()
     })
     it('Extends GOT with both http & https proxies when env vars are set', async function () {
         sinon.stub(process, 'env').value({
@@ -188,15 +187,15 @@ describe('HTTP Comms', function () {
             http_proxy: 'http://http_proxy:8888',
             https_proxy: 'http://https_proxy:8889'
         })
-        const client = createHttpClient({}, {
+        const httpClient = createHttpClient({}, {
             forgeURL: 'http://localhost:2222',
             token: 'token-token-2222'
         })
-        should(client.client.defaults.options.agent?.http).be.instanceOf(require('http-proxy-agent').HttpProxyAgent)
-        client.client.defaults.options.agent.http.proxy.should.have.property('hostname', 'http_proxy')
-        client.client.defaults.options.agent.http.proxy.should.have.property('port', '8888')
-        should(client.client.defaults.options.agent?.https).be.instanceOf(require('https-proxy-agent').HttpsProxyAgent)
-        client.client.defaults.options.agent.https.proxy.should.have.property('hostname', 'https_proxy')
-        client.client.defaults.options.agent.https.proxy.should.have.property('port', '8889')
+        should(httpClient.client.defaults.options.agent?.http).be.instanceOf(require('http-proxy-agent').HttpProxyAgent)
+        httpClient.client.defaults.options.agent.http.proxy.should.have.property('hostname', 'http_proxy')
+        httpClient.client.defaults.options.agent.http.proxy.should.have.property('port', '8888')
+        should(httpClient.client.defaults.options.agent?.https).be.instanceOf(require('https-proxy-agent').HttpsProxyAgent)
+        httpClient.client.defaults.options.agent.https.proxy.should.have.property('hostname', 'https_proxy')
+        httpClient.client.defaults.options.agent.https.proxy.should.have.property('port', '8889')
     })
 })
