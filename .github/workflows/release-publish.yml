@@ -42,7 +42,7 @@ jobs:
           username: flowfuse
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
       - name: Build and push FlowFuse Device Agent container
-        uses: docker/build-push-action@v4.0.0
+        uses: docker/build-push-action@v5.4.0
         with:
           context: docker
           file: docker/Dockerfile
@@ -94,7 +94,7 @@ jobs:
           username: flowforge
           password: ${{ secrets.DOCKER_HUB_PASSWORD_FLOWFORGE }}
       - name: Build and push FlowFuse Device Agent container
-        uses: docker/build-push-action@v4.0.0
+        uses: docker/build-push-action@v5.4.0
         with:
           context: docker
           file: docker/Dockerfile_flowforge
