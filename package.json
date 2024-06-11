@@ -41,6 +41,7 @@
         "http-proxy-agent": "^7.0.2",
         "https-proxy-agent": "^7.0.4",
         "mqtt": "^4.3.7",
+        "proxy-from-env": "^1.1.0",
         "semver": "^7.3.8",
         "ws": "^8.13.0",
         "yaml": "^2.1.1"
