@@ -5,7 +5,7 @@ const { HttpProxyAgent } = require('http-proxy-agent')
 const { HttpsProxyAgent } = require('https-proxy-agent')
 const rewire = require('rewire')
 
-describe.only('auditLogger', () => {
+describe('auditLogger', () => {
     function setup (settings) {
         const module = rewire('../../../../lib/auditLogger/index.js')
         const logger = module(settings)

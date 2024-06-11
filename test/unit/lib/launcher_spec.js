@@ -333,7 +333,7 @@ describe('Launcher', function () {
         runtimeSettings.logging.auditLogger.should.have.property('token', configWithPlatformInfo.token)
     })
 
-    describe.only('Proxy Support', function () {
+    describe('Proxy Support', function () {
         afterEach(async function () {
             delete process.env.http_proxy
             delete process.env.https_proxy

@@ -108,7 +108,7 @@ describe('HTTP Comms', function () {
         sinon.stub(console, 'log') // hush console.log
         sinon.stub(console, 'info') // hush console.info
     })
-    
+
     afterEach(async function () {
         delete process.env.http_proxy
         delete process.env.https_proxy
