@@ -68,102 +68,103 @@ describe('FFTeamLibraryPlugin', () => {
         }
     })
 
-    it('should create an instance with valid configuration and no proxy', () => {
-        const config = {
-            id: 'plugin-id',
-            label: 'Plugin Label',
-            projectID: 'project-id',
-            libraryID: 'library-id',
-            token: 'token',
-            baseURL: 'https://example.com'
-        }
+    describe('Proxy support', () => {
+        afterEach(() => {
+            delete process.env.http_proxy
+            delete process.env.https_proxy
+            delete process.env.no_proxy
+        })
+        it('should create an instance with valid configuration and no proxy', () => {
+            const config = {
+                id: 'plugin-id',
+                label: 'Plugin Label',
+                projectID: 'project-id',
+                libraryID: 'library-id',
+                token: 'token',
+                baseURL: 'https://example.com'
+            }
+            delete process.env.http_proxy
+            delete process.env.https_proxy
+            delete process.env.no_proxy
 
-        const plugin = new FFTeamLibraryPluginClass(config)
+            const plugin = new FFTeamLibraryPluginClass(config)
 
-        should(plugin).be.instanceOf(FFTeamLibraryPluginClass)
-        should(plugin.type).be.eql('flowfuse-team-library')
-        should(plugin.id).be.eql('plugin-id')
-        should(plugin.label).be.eql('Plugin Label')
-        should(plugin._client)
-        should(plugin._client.defaults).be.an.Object()
-        should(plugin._client.defaults.options).be.an.Object()
+            should(plugin).be.instanceOf(FFTeamLibraryPluginClass)
+            should(plugin.type).be.eql('flowfuse-team-library')
+            should(plugin.id).be.eql('plugin-id')
+            should(plugin.label).be.eql('Plugin Label')
+            should(plugin._client)
+            should(plugin._client.defaults).be.an.Object()
+            should(plugin._client.defaults.options).be.an.Object()
 
-        plugin._client.defaults.options.prefixUrl.should.be.eql('https://example.com/library/library-id/')
-        plugin._client.defaults.options.headers['user-agent'].should.be.eql('FlowFuse HTTP Storage v0.1')
-        plugin._client.defaults.options.headers.authorization.should.be.eql('Bearer token')
-        plugin._client.defaults.options.timeout.request.should.be.eql(10000)
-        should(plugin._client.defaults.options.agent?.http).be.undefined()
-        should(plugin._client.defaults.options.agent?.https).be.undefined()
-    })
-
-    it('should extend got to use http proxy when env var http_proxy is set', () => {
-        sinon.stub(process, 'env').value({
-            ...process.env,
-            http_proxy: 'http://http_proxy:1234',
-            https_proxy: ''
+            plugin._client.defaults.options.prefixUrl.should.be.eql('https://example.com/library/library-id/')
+            plugin._client.defaults.options.headers['user-agent'].should.be.eql('FlowFuse HTTP Storage v0.1')
+            plugin._client.defaults.options.headers.authorization.should.be.eql('Bearer token')
+            plugin._client.defaults.options.timeout.request.should.be.eql(10000)
+            should(plugin._client.defaults.options.agent?.http).be.undefined()
+            should(plugin._client.defaults.options.agent?.https).be.undefined()
         })
 
-        const config = {
-            id: 'plugin-id',
-            label: 'Plugin Label',
-            projectID: 'project-id',
-            libraryID: 'library-id',
-            token: 'token',
-            baseURL: 'https://example.com'
-        }
+        it('should extend got to use http proxy when env var http_proxy is set', () => {
+            process.env.http_proxy = 'http://http_proxy:1234'
+            process.env.https_proxy = ''
 
-        const plugin = new FFTeamLibraryPluginClass(config)
-        should(plugin).be.instanceOf(FFTeamLibraryPluginClass)
-        should(plugin._client.defaults.options.agent.https).be.undefined()
-        plugin._client.defaults.options.agent.should.have.property('http').and.be.instanceOf(HttpProxyAgent)
-        plugin._client.defaults.options.agent.http.should.have.property('proxy').and.be.an.Object()
-        plugin._client.defaults.options.agent.http.proxy.should.have.property('hostname', 'http_proxy')
-        plugin._client.defaults.options.agent.http.proxy.should.have.property('port', '1234')
-    })
+            const config = {
+                id: 'plugin-id',
+                label: 'Plugin Label',
+                projectID: 'project-id',
+                libraryID: 'library-id',
+                token: 'token',
+                baseURL: 'https://example.com'
+            }
 
-    it('should extend got to use https proxy when env var https_proxy is set', () => {
-        sinon.stub(process, 'env').value({
-            ...process.env,
-            http_proxy: '',
-            https_proxy: 'http://https_proxy:4567'
+            const plugin = new FFTeamLibraryPluginClass(config)
+            should(plugin).be.instanceOf(FFTeamLibraryPluginClass)
+            should(plugin._client.defaults.options.agent.https).be.undefined()
+            plugin._client.defaults.options.agent.should.have.property('http').and.be.instanceOf(HttpProxyAgent)
+            plugin._client.defaults.options.agent.http.should.have.property('proxy').and.be.an.Object()
+            plugin._client.defaults.options.agent.http.proxy.should.have.property('hostname', 'http_proxy')
+            plugin._client.defaults.options.agent.http.proxy.should.have.property('port', '1234')
         })
 
-        const config = {
-            id: 'plugin-id',
-            label: 'Plugin Label',
-            projectID: 'project-id',
-            libraryID: 'library-id',
-            token: 'token',
-            baseURL: 'https://example.com'
-        }
+        it('should extend got to use https proxy when env var https_proxy is set', () => {
+            process.env.http_proxy = ''
+            process.env.https_proxy = 'http://https_proxy:4567'
 
-        const plugin = new FFTeamLibraryPluginClass(config)
-        should(plugin).be.instanceOf(FFTeamLibraryPluginClass)
-        should(plugin._client.defaults.options.agent.http).be.undefined()
-        plugin._client.defaults.options.agent.should.have.property('https').and.be.instanceOf(HttpsProxyAgent)
-        plugin._client.defaults.options.agent.https.should.have.property('proxy')
-        plugin._client.defaults.options.agent.https.proxy.should.have.property('hostname', 'https_proxy')
-        plugin._client.defaults.options.agent.https.proxy.should.have.property('port', '4567')
-    })
-    it('should extend got to use http & https proxies when env vars are set', () => {
-        sinon.stub(process, 'env').value({
-            ...process.env,
-            http_proxy: 'http://https_proxy:1234',
-            https_proxy: 'http://https_proxy:4567'
+            const config = {
+                id: 'plugin-id',
+                label: 'Plugin Label',
+                projectID: 'project-id',
+                libraryID: 'library-id',
+                token: 'token',
+                baseURL: 'https://example.com'
+            }
+
+            const plugin = new FFTeamLibraryPluginClass(config)
+            should(plugin).be.instanceOf(FFTeamLibraryPluginClass)
+            should(plugin._client.defaults.options.agent.http).be.undefined()
+            plugin._client.defaults.options.agent.should.have.property('https').and.be.instanceOf(HttpsProxyAgent)
+            plugin._client.defaults.options.agent.https.should.have.property('proxy')
+            plugin._client.defaults.options.agent.https.proxy.should.have.property('hostname', 'https_proxy')
+            plugin._client.defaults.options.agent.https.proxy.should.have.property('port', '4567')
         })
+        it('should extend got to use http & https proxies when env vars are set', () => {
+            process.env.http_proxy = 'http://https_proxy:1234'
+            process.env.https_proxy = 'http://https_proxy:4567'
 
-        const config = {
-            id: 'plugin-id',
-            label: 'Plugin Label',
-            projectID: 'project-id',
-            libraryID: 'library-id',
-            token: 'token',
-            baseURL: 'https://example.com'
-        }
+            const config = {
+                id: 'plugin-id',
+                label: 'Plugin Label',
+                projectID: 'project-id',
+                libraryID: 'library-id',
+                token: 'token',
+                baseURL: 'https://example.com'
+            }
 
-        const plugin = new FFTeamLibraryPluginClass(config)
-        should(plugin).be.instanceOf(FFTeamLibraryPluginClass)
-        plugin._client.defaults.options.agent.should.have.property('http').and.be.instanceOf(HttpProxyAgent)
-        plugin._client.defaults.options.agent.should.have.property('https').and.be.instanceOf(HttpsProxyAgent)
+            const plugin = new FFTeamLibraryPluginClass(config)
+            should(plugin).be.instanceOf(FFTeamLibraryPluginClass)
+            plugin._client.defaults.options.agent.should.have.property('http').and.be.instanceOf(HttpProxyAgent)
+            plugin._client.defaults.options.agent.should.have.property('https').and.be.instanceOf(HttpsProxyAgent)
+        })
     })
 })

@@ -524,7 +524,7 @@ describe('MQTT Comms', function () {
         res.error.should.have.a.property('code', 'unsupported_action')
     })
 
-    describe('Proxy', function () {
+    describe('Proxy Support', function () {
         // common variables
         const port2 = port + 1 // MQTT broker port
         /** @type {import('aedes-server-factory').Server} MQTT WS */ let httpServerProxied
@@ -563,6 +563,7 @@ describe('MQTT Comms', function () {
                 protocol: 'ws'
             })
         })
+
         after(async function () {
             mqttProxied && mqttProxied.end()
             aedesProxied.close()
@@ -579,16 +580,19 @@ describe('MQTT Comms', function () {
             sinon.restore()
         })
 
+        afterEach(async function () {
+            delete process.env.http_proxy
+            delete process.env.https_proxy
+            delete process.env.no_proxy
+        })
+
         async function mqttPubAndAwait (topic, payload, responseTopic) {
             return _mqttPubAndAwait(mqttProxied, topic, payload, responseTopic)
         }
 
         it('MQTT Comms Client does not set a proxy agent if process env does not contain proxy settings', async function () {
-            sinon.stub(process, 'env').value({
-                ...process.env,
-                http_proxy: '',
-                https_proxy: ''
-            })
+            process.env.http_proxy = ''
+            process.env.https_proxy = ''
 
             // initialise the mqtt client
             mqttClient.start()
@@ -603,11 +607,8 @@ describe('MQTT Comms', function () {
         })
 
         it('MQTT Comms Client has a HttpProxyAgent for ws connection', async function () {
-            sinon.stub(process, 'env').value({
-                ...process.env,
-                http_proxy: `http://${proxyHost}:${proxyPort}`,
-                https_proxy: `http://${proxyHost}:${proxyPort}`
-            })
+            process.env.http_proxy = `http://${proxyHost}:${proxyPort}`
+            process.env.https_proxy = `http://${proxyHost}:${proxyPort}`
 
             // initialise the mqtt client
             mqttClient.config.brokerURL = 'ws://localhost:' + port
@@ -624,11 +625,8 @@ describe('MQTT Comms', function () {
         })
 
         it('MQTT Comms Client has a HttpsProxyAgent for wss connection', async function () {
-            sinon.stub(process, 'env').value({
-                ...process.env,
-                http_proxy: `http://${proxyHost}:${proxyPort}`,
-                https_proxy: `http://${proxyHost}:${proxyPort}`
-            })
+            process.env.http_proxy = `http://${proxyHost}:${proxyPort}`
+            process.env.https_proxy = `http://${proxyHost}:${proxyPort}`
 
             // initialise the mqtt client
             mqttClient.config.brokerURL = 'wss://localhost:' + port
@@ -645,11 +643,8 @@ describe('MQTT Comms', function () {
         })
 
         it('MQTT Comms Client can connect with proxy', async function () {
-            sinon.stub(process, 'env').value({
-                ...process.env,
-                http_proxy: `http://${proxyHost}:${proxyPort}`,
-                https_proxy: `http://${proxyHost}:${proxyPort}`
-            })
+            process.env.http_proxy = `http://${proxyHost}:${proxyPort}`
+            process.env.https_proxy = `http://${proxyHost}:${proxyPort}`
 
             // start and send test message
             mqttClient.start()
@@ -673,11 +668,8 @@ describe('MQTT Comms', function () {
         })
 
         it('MQTT command gets a response when proxy is set', async function () {
-            sinon.stub(process, 'env').value({
-                ...process.env,
-                http_proxy: `http://${proxyHost}:${proxyPort}`,
-                https_proxy: `http://${proxyHost}:${proxyPort}`
-            })
+            process.env.http_proxy = `http://${proxyHost}:${proxyPort}`
+            process.env.https_proxy = `http://${proxyHost}:${proxyPort}`
 
             mqttClient.start()
 

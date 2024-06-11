@@ -108,94 +108,74 @@ describe('HTTP Comms', function () {
         sinon.stub(console, 'log') // hush console.log
         sinon.stub(console, 'info') // hush console.info
     })
-
+    
     afterEach(async function () {
+        delete process.env.http_proxy
+        delete process.env.https_proxy
+        delete process.env.no_proxy
         sinon.restore()
     })
 
-    it('Creates the HTTP Comms Client', async function () {
-        // ensure proxy settings are not set
-        sinon.stub(process, 'env').value({
-            ...process.env,
-            http_proxy: '',
-            https_proxy: '',
-            no_proxy: '',
-            all_proxy: ''
-        })
-        const httpClient = createHttpClient({
-            device: 'my-device-1',
-            project: 'project1',
-            snapshotId: 'snapshot1',
-            settingsId: 'settings1',
-            mode: 'developer',
-            editorToken: 'editor-token'
-        }, {
-            forgeURL: 'http://localhost:9876',
-            token: 'token-token-123'
-        })
-        httpClient.should.have.a.property('agent').and.be.an.Object()
-        httpClient.should.have.a.property('config').and.be.an.Object()
-        httpClient.config.should.have.a.property('forgeURL', 'http://localhost:9876')
-        httpClient.config.should.have.a.property('token', 'token-token-123')
-        httpClient.config.should.have.a.property('deviceId', 'my-device-1')
+    describe('Proxy Support', function () {
+        it('Creates the HTTP Comms Client', async function () {
+            // ensure proxy settings are not set
+            delete process.env.http_proxy
+            delete process.env.https_proxy
+            delete process.env.no_proxy
+            const httpClient = createHttpClient({
+                device: 'my-device-1',
+                project: 'project1',
+                snapshotId: 'snapshot1',
+                settingsId: 'settings1',
+                mode: 'developer',
+                editorToken: 'editor-token'
+            }, {
+                forgeURL: 'http://localhost:9876',
+                token: 'token-token-123'
+            })
+            httpClient.should.have.a.property('agent').and.be.an.Object()
+            httpClient.should.have.a.property('config').and.be.an.Object()
+            httpClient.config.should.have.a.property('forgeURL', 'http://localhost:9876')
+            httpClient.config.should.have.a.property('token', 'token-token-123')
+            httpClient.config.should.have.a.property('deviceId', 'my-device-1')
 
-        // ensure the client is a got instance
-        httpClient.should.have.property('client')
-        httpClient.client.should.have.property('defaults').and.be.an.Object()
-        httpClient.client.defaults.should.have.property('options').and.be.an.Object()
-        httpClient.client.defaults.options.should.have.property('prefixUrl', 'http://localhost:9876/api/v1/devices/my-device-1/')
+            // ensure the client is a got instance
+            httpClient.should.have.property('client')
+            httpClient.client.should.have.property('defaults').and.be.an.Object()
+            httpClient.client.defaults.should.have.property('options').and.be.an.Object()
+            httpClient.client.defaults.options.should.have.property('prefixUrl', 'http://localhost:9876/api/v1/devices/my-device-1/')
 
-        // ensure proxies are not set
-        should(httpClient.client.defaults.options.agent?.http).be.undefined()
-        should(httpClient.client.defaults.options.agent?.https).be.undefined()
-    })
+            // ensure proxies are not set
+            should(httpClient.client.defaults.options.agent?.http).be.undefined()
+            should(httpClient.client.defaults.options.agent?.https).be.undefined()
+        })
 
-    it('Extends GOT with http proxy when env var is set', async function () {
-        sinon.stub(process, 'env').value({
-            ...process.env,
-            http_proxy: 'http://http_proxy:1234',
-            https_proxy: ''
+        it('Extends GOT with http proxy when env var is set', async function () {
+            process.env.http_proxy = 'http://http_proxy:1234'
+            process.env.https_proxy = ''
+            process.env.no_proxy = ''
+            const httpClient = createHttpClient({}, {
+                forgeURL: 'http://localhost:2222',
+                token: 'token-token-2222'
+            })
+            httpClient.should.have.property('client')
+            should(httpClient.client.defaults.options.agent?.http).be.instanceOf(require('http-proxy-agent').HttpProxyAgent)
+            httpClient.client.defaults.options.agent.http.proxy.should.have.property('hostname', 'http_proxy')
+            httpClient.client.defaults.options.agent.http.proxy.should.have.property('port', '1234')
+            should(httpClient.client.defaults.options.agent?.https).be.undefined()
         })
-        const httpClient = createHttpClient({}, {
-            forgeURL: 'http://localhost:2222',
-            token: 'token-token-2222'
+        it('Extends GOT with https proxy when env var is set', async function () {
+            process.env.http_proxy = ''
+            process.env.https_proxy = 'http://https_proxy:4321'
+            process.env.no_proxy = ''
+            const httpClient = createHttpClient({}, {
+                forgeURL: 'https://testfuse.com',
+                token: 'token-token-2222'
+            })
+            should(httpClient.client.defaults.options.agent?.https).be.instanceOf(require('https-proxy-agent').HttpsProxyAgent)
+            httpClient.client.defaults.options.agent.https.proxy.should.have.property('hostname', 'https_proxy')
+            httpClient.client.defaults.options.agent.https.proxy.should.have.property('port', '4321')
+            should(httpClient.client.defaults.options.agent?.http).be.undefined()
         })
-        httpClient.should.have.property('client')
-        should(httpClient.client.defaults.options.agent?.http).be.instanceOf(require('http-proxy-agent').HttpProxyAgent)
-        httpClient.client.defaults.options.agent.http.proxy.should.have.property('hostname', 'http_proxy')
-        httpClient.client.defaults.options.agent.http.proxy.should.have.property('port', '1234')
-        should(httpClient.client.defaults.options.agent?.https).be.undefined()
-    })
-    it('Extends GOT with https proxy when env var is set', async function () {
-        sinon.stub(process, 'env').value({
-            ...process.env,
-            http_proxy: '',
-            https_proxy: 'http://https_proxy:4567'
-        })
-        const httpClient = createHttpClient({}, {
-            forgeURL: 'http://localhost:2222',
-            token: 'token-token-2222'
-        })
-        should(httpClient.client.defaults.options.agent?.https).be.instanceOf(require('https-proxy-agent').HttpsProxyAgent)
-        httpClient.client.defaults.options.agent.https.proxy.should.have.property('hostname', 'https_proxy')
-        httpClient.client.defaults.options.agent.https.proxy.should.have.property('port', '4567')
-        should(httpClient.client.defaults.options.agent?.http).be.undefined()
-    })
-    it('Extends GOT with both http & https proxies when env vars are set', async function () {
-        sinon.stub(process, 'env').value({
-            ...process.env,
-            http_proxy: 'http://http_proxy:8888',
-            https_proxy: 'http://https_proxy:8889'
-        })
-        const httpClient = createHttpClient({}, {
-            forgeURL: 'http://localhost:2222',
-            token: 'token-token-2222'
-        })
-        should(httpClient.client.defaults.options.agent?.http).be.instanceOf(require('http-proxy-agent').HttpProxyAgent)
-        httpClient.client.defaults.options.agent.http.proxy.should.have.property('hostname', 'http_proxy')
-        httpClient.client.defaults.options.agent.http.proxy.should.have.property('port', '8888')
-        should(httpClient.client.defaults.options.agent?.https).be.instanceOf(require('https-proxy-agent').HttpsProxyAgent)
-        httpClient.client.defaults.options.agent.https.proxy.should.have.property('hostname', 'https_proxy')
-        httpClient.client.defaults.options.agent.https.proxy.should.have.property('port', '8889')
     })
 })

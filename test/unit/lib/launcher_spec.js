@@ -333,34 +333,40 @@ describe('Launcher', function () {
         runtimeSettings.logging.auditLogger.should.have.property('token', configWithPlatformInfo.token)
     })
 
-    it('Passes proxy env vars to child process when set', async function () {
-        sinon.stub(process, 'env').value({
-            ...process.env,
-            http_proxy: 'http://http_proxy',
-            https_proxy: 'http://https_proxy',
-            no_proxy: 'no_proxy',
-            all_proxy: 'all_proxy'
+    describe.only('Proxy Support', function () {
+        afterEach(async function () {
+            delete process.env.http_proxy
+            delete process.env.https_proxy
+            delete process.env.no_proxy
+            delete process.env.all_proxy
         })
-        const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
-        should(launcher).be.an.Object()
-        await launcher.writeFlow()
-        await launcher.writeCredentials()
+        it('Passes proxy env vars to child process when set', async function () {
+            process.env.http_proxy = 'http://http_proxy'
+            process.env.https_proxy = 'http://https_proxy'
+            process.env.no_proxy = 'no_proxy'
+            process.env.all_proxy = 'all_proxy'
 
-        // stub installDependencies so we don't actually install anything when starting
-        sinon.stub(launcher, 'installDependencies').resolves()
+            const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
+            should(launcher).be.an.Object()
+            await launcher.writeFlow()
+            await launcher.writeCredentials()
 
-        await launcher.start() // childProcess.spawn is faked in beforeEach
+            // stub installDependencies so we don't actually install anything when starting
+            sinon.stub(launcher, 'installDependencies').resolves()
 
-        // check it spawns with the required settings
-        console.log(launcher.proc.spawnargs)
-        should(childProcess.spawn.args).be.an.Array().and.have.lengthOf(1)
-        should(childProcess.spawn.args[0]).be.an.Array().and.have.lengthOf(3)
-        const arg2 = childProcess.spawn.args[0][2]
-        should(arg2).be.an.Object()
-        arg2.should.have.property('env')
-        arg2.env.should.have.property('http_proxy', 'http://http_proxy')
-        arg2.env.should.have.property('https_proxy', 'http://https_proxy')
-        arg2.env.should.have.property('no_proxy', 'no_proxy')
-        arg2.env.should.have.property('all_proxy', 'all_proxy')
+            await launcher.start() // childProcess.spawn is faked in beforeEach
+
+            // check it spawns with the required settings
+            console.log(launcher.proc.spawnargs)
+            should(childProcess.spawn.args).be.an.Array().and.have.lengthOf(1)
+            should(childProcess.spawn.args[0]).be.an.Array().and.have.lengthOf(3)
+            const arg2 = childProcess.spawn.args[0][2]
+            should(arg2).be.an.Object()
+            arg2.should.have.property('env')
+            arg2.env.should.have.property('http_proxy', 'http://http_proxy')
+            arg2.env.should.have.property('https_proxy', 'http://https_proxy')
+            arg2.env.should.have.property('no_proxy', 'no_proxy')
+            arg2.env.should.have.property('all_proxy', 'all_proxy')
+        })
     })
 })

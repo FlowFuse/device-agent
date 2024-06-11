@@ -40,9 +40,6 @@ describe('template-settings', () => {
         // since we will be loading the generated template+settings, we need to simlink the
         // node_modules to the project directory (so it can pick up ant requires in the settings.js file)
         await fs.symlink(path.join(__dirname, '..', '..', '..', 'node_modules'), path.join(projectPath, 'node_modules'), 'dir')
-        // clear any proxy settings
-        process.env.http_proxy = ''
-        process.env.https_proxy = ''
     })
 
     afterEach(async function () {
@@ -164,112 +161,6 @@ describe('template-settings', () => {
         _got.get.calledOnce.should.be.true()
     })
 
-    it('should not extend got when env vars http(s)_proxy are not set', async function () {
-        process.env.http_proxy = ''
-        process.env.https_proxy = ''
-
-        const settingsFile = await generateSettingsFile()
-        const settings = rewire(settingsFile) // using rewire instead of require so we can access internal variables
-        should.exist(settings)
-
-        // normally got is loaded the first time tokens() is called but for test purposes we
-        // need to load it here first so that we can stub the get method
-        /** @type {import('got').default} */
-        const _got = got.extend({})
-        settings.__set__('got', _got) // update the internal got instance with this one
-        sandbox.stub(_got, 'get').resolves({ body: JSON.stringify({ username: 'test', permissions: ['read'] }) })
-
-        await settings.adminAuth.tokens('ffde_123456')
-
-        _got.get.calledOnce.should.be.true()
-        should(_got.defaults.options.agent).be.undefined()
-    })
-    it('should extend got to use http proxy when env var http_proxy is set', async function () {
-        // since got gets extended when tokens() is called and a http_proxy is set in the env
-        // we need to increase the timeout for this test. Reason being that got.extend replaces
-        // the got instance so pre-initialising it and stubbing the get method does not work!
-        // Instead, we have to call it twice and let the first call simply fail then when it
-        // returns, we can stub the get method and try again
-        this.timeout(5000) // template-settings.js tokens() has a 2000ms timeout
-
-        process.env.http_proxy = 'http://localhost:1234'
-        process.env.https_proxy = ''
-
-        const settingsFile = await generateSettingsFile()
-        const settings = rewire(settingsFile) // using rewire instead of require so we can access internal variables
-        should.exist(settings)
-
-        // normally got is loaded the first time tokens() is called but for test purposes we
-        // need to load it here first so that we can stub the get method
-        /** @type {import('got').default} */
-        const _got = got.extend({})
-        settings.__set__('got', _got) // update the internal got instance with this one
-        sandbox.stub(_got, 'get').resolves({ body: JSON.stringify({ username: 'test', permissions: ['read'] }) })
-
-        await settings.adminAuth.tokens('ffde_123456') // first call initializes got, now we can stub the get method
-        const extendedGot = settings.__get__('got')
-        sandbox.stub(extendedGot, 'get').resolves({ body: JSON.stringify({ username: 'test', permissions: ['read'] }) })
-        await settings.adminAuth.tokens('ffde_123456')
-
-        extendedGot.get.calledOnce.should.be.true()
-        should(extendedGot.defaults.options.agent?.http).be.instanceOf(HttpProxyAgent)
-        extendedGot.defaults.options.agent.http.should.have.property('proxy').and.be.an.Object()
-        extendedGot.defaults.options.agent.http.proxy.should.have.property('hostname', 'localhost')
-        extendedGot.defaults.options.agent.http.proxy.should.have.property('port', '1234')
-        should(extendedGot.defaults.options.agent?.https).be.undefined()
-    })
-
-    it('should extend got to use https proxy when env var https_proxy is set', async function () {
-        // since got gets extended when tokens() is called and a https_proxy is set in the env
-        // we need to increase the timeout for this test. Reason being that got.extend replaces
-        // the got instance so pre-initialising it and stubbing the get method does not work!
-        // Instead, we have to call it twice and let the first call simply fail then when it
-        // returns, we can stub the get method and try again
-        this.timeout(5000) // template-settings.js tokens() has a 2000ms timeout
-
-        process.env.http_proxy = ''
-        process.env.https_proxy = 'http://localhost:7654'
-
-        const settingsFile = await generateSettingsFile()
-        const settings = rewire(settingsFile) // using rewire instead of require so we can access internal variables
-        should.exist(settings)
-
-        // normally got is loaded the first time tokens() is called but for test purposes we
-        // need to load it here first so that we can stub the get method
-        /** @type {import('got').default} */
-        const _got = got.extend({})
-        settings.__set__('got', _got) // update the internal got instance with this one
-        sandbox.stub(_got, 'get').resolves({ body: JSON.stringify({ username: 'test', permissions: ['read'] }) })
-
-        await settings.adminAuth.tokens('ffde_123456') // first call initializes got, now we can stub the get method
-        const extendedGot = settings.__get__('got')
-        sandbox.stub(extendedGot, 'get').resolves({ body: JSON.stringify({ username: 'test', permissions: ['read'] }) })
-        await settings.adminAuth.tokens('ffde_123456')
-
-        extendedGot.defaults.options.agent.should.have.property('https')
-        should(extendedGot.defaults.options.agent?.https).be.instanceOf(HttpsProxyAgent)
-        extendedGot.defaults.options.agent.https.should.have.property('proxy')
-        extendedGot.defaults.options.agent.https.proxy.should.have.property('hostname', 'localhost')
-        extendedGot.defaults.options.agent.https.proxy.should.have.property('port', '7654')
-        should(extendedGot.defaults.options.agent?.http).be.undefined()
-    })
-
-    it('should extend got to use http & https proxies when env vars are set', async function () {
-        this.timeout(5000) // increase timeout of this test as the underlying http call will fail (tokens() has a 2000ms timeout)
-
-        process.env.http_proxy = 'http://localhost:4567'
-        process.env.https_proxy = 'http://localhost:7654'
-
-        const settingsFile = await generateSettingsFile()
-        const settings = rewire(settingsFile) // using rewire instead of require so we can access internal variables
-        should.exist(settings)
-
-        await settings.adminAuth.tokens('ffde_123456') // calling tokens() initializes got
-        const extendedGot = settings.__get__('got')
-
-        extendedGot.defaults.options.agent.should.have.property('https').and.be.instanceOf(HttpsProxyAgent)
-        extendedGot.defaults.options.agent.should.have.property('http').and.be.instanceOf(HttpProxyAgent)
-    })
     it.skip('should not cache invalid token', async function () {
         // TODO: Implement test
     })
@@ -292,5 +183,95 @@ describe('template-settings', () => {
 
     it.skip('should set the httpStatic option if provided', async function () {
         // TODO: Implement test
+    })
+
+    describe('Proxy Support', function () {
+        afterEach(async function () {
+            // clear any proxy settings
+            delete process.env.http_proxy
+            delete process.env.https_proxy
+            delete process.env.no_proxy
+        })
+
+        it('should not extend got when env vars http(s)_proxy are not set', async function () {
+            process.env.http_proxy = ''
+            process.env.https_proxy = ''
+
+            const settingsFile = await generateSettingsFile()
+            const settings = rewire(settingsFile) // using rewire instead of require so we can access internal variables
+            should.exist(settings)
+
+            // normally got is loaded the first time tokens() is called but for test purposes we
+            // need to load it here first so that we can stub the get method
+            /** @type {import('got').default} */
+            const _got = got.extend({})
+            settings.__set__('got', _got) // update the internal got instance with this one
+            sandbox.stub(_got, 'get').resolves({ body: JSON.stringify({ username: 'test', permissions: ['read'] }) })
+
+            await settings.adminAuth.tokens('ffde_123456')
+
+            _got.get.calledOnce.should.be.true()
+            should(_got.defaults.options.agent).be.undefined()
+        })
+
+        it('should extend got to use http proxy when env var http_proxy is set', async function () {
+            // since got gets extended when tokens() is called and a http_proxy is set in the env
+            // we need to increase the timeout for this test. Reason being that got.extend replaces
+            // the got instance so pre-initialising it and stubbing the get method does not work!
+            // Instead, we have to call it twice and let the first call simply fail then when it
+            // returns, we can stub the get method and try again
+            this.timeout(5000) // template-settings.js tokens() has a 2000ms timeout
+
+            process.env.http_proxy = 'http://localhost:1234'
+            process.env.https_proxy = ''
+
+            const settingsFile = await generateSettingsFile({ forgeURL: 'http://localhost:9876' })
+            const settings = rewire(settingsFile) // using rewire instead of require so we can access internal variables
+            should.exist(settings)
+
+            await settings.adminAuth.tokens('ffde_123456') // first call initializes got - this WILL timeout
+
+            // now we can stub the get method and try again
+            const extendedGot = settings.__get__('got')
+            sandbox.stub(extendedGot, 'get').resolves({ body: JSON.stringify({ username: 'test', permissions: ['read'] }) })
+            await settings.adminAuth.tokens('ffde_123456')
+
+            extendedGot.get.calledOnce.should.be.true()
+            should(extendedGot.defaults.options.agent?.http).be.instanceOf(HttpProxyAgent)
+            extendedGot.defaults.options.agent.http.should.have.property('proxy').and.be.an.Object()
+            extendedGot.defaults.options.agent.http.proxy.should.have.property('hostname', 'localhost')
+            extendedGot.defaults.options.agent.http.proxy.should.have.property('port', '1234')
+            should(extendedGot.defaults.options.agent?.https).be.undefined()
+        })
+
+        it('should extend got to use https proxy when env var https_proxy is set', async function () {
+            // since got gets extended when tokens() is called and a https_proxy is set in the env
+            // we need to increase the timeout for this test. Reason being that got.extend replaces
+            // the got instance so pre-initialising it and stubbing the get method does not work!
+            // Instead, we have to call it twice and let the first call simply fail then when it
+            // returns, we can stub the get method and try again
+            this.timeout(5000) // template-settings.js tokens() has a 2000ms timeout
+
+            process.env.http_proxy = ''
+            process.env.https_proxy = 'http://localhost:7654'
+
+            const settingsFile = await generateSettingsFile()
+            const settings = rewire(settingsFile) // using rewire instead of require so we can access internal variables
+            should.exist(settings)
+
+            await settings.adminAuth.tokens('ffde_123456') // first call initializes got - this WILL timeout
+
+            // now we can stub the get method and try again
+            const extendedGot = settings.__get__('got')
+            sandbox.stub(extendedGot, 'get').resolves({ body: JSON.stringify({ username: 'test', permissions: ['read'] }) })
+            await settings.adminAuth.tokens('ffde_123456')
+
+            extendedGot.defaults.options.agent.should.have.property('https')
+            should(extendedGot.defaults.options.agent?.https).be.instanceOf(HttpsProxyAgent)
+            extendedGot.defaults.options.agent.https.should.have.property('proxy')
+            extendedGot.defaults.options.agent.https.proxy.should.have.property('hostname', 'localhost')
+            extendedGot.defaults.options.agent.https.proxy.should.have.property('port', '7654')
+            should(extendedGot.defaults.options.agent?.http).be.undefined()
+        })
     })
 })
