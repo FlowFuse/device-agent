@@ -73,6 +73,7 @@ describe('FFTeamLibraryPlugin', () => {
             delete process.env.http_proxy
             delete process.env.https_proxy
             delete process.env.no_proxy
+            delete process.env.all_proxy
         })
         it('should create an instance with valid configuration and no proxy', () => {
             const config = {

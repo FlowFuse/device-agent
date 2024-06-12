@@ -111,22 +111,26 @@ describe('utils', function () {
             delete process.env.http_proxy
             delete process.env.https_proxy
             delete process.env.no_proxy
+            delete process.env.all_proxy
         })
         it('should return null when there are no env vars set', function () {
             delete process.env.http_proxy
             delete process.env.https_proxy
             delete process.env.no_proxy
+            delete process.env.all_proxy
             should(utils.getWSProxyAgent('ws://test.com')).be.null()
             should(utils.getWSProxyAgent('wss://test.com')).be.null()
         })
         it('should not proxy any requests if they are excluded by no_local', function () {
             process.env.http_proxy = 'http://proxy:3128'
             process.env.https_proxy = 'http://proxy:3128'
+            process.env.all_proxy = 'http://proxy:3128'
             process.env.no_proxy = 'test.com'
             should(utils.getWSProxyAgent('ws://test.com')).be.null()
             should(utils.getWSProxyAgent('wss://test.com')).be.null()
             process.env.http_proxy = 'http://proxy:3128'
             process.env.https_proxy = 'http://proxy:3128'
+            process.env.all_proxy = 'http://proxy:3128'
             process.env.no_proxy = '192.168.0.100'
             should(utils.getWSProxyAgent('ws://192.168.0.100')).be.null()
             should(utils.getWSProxyAgent('wss://192.168.0.100')).be.null()
@@ -150,6 +154,24 @@ describe('utils', function () {
             agent.should.have.property('proxy')
             agent.proxy.should.have.property('hostname', 'proxy')
             agent.proxy.should.have.property('port', '3128')
+        })
+        it('should return a HttpProxyAgent when all_proxy is set and the URL is ws://', function () {
+            const url = 'ws://test.com'
+            process.env.http_proxy = ''
+            process.env.https_proxy = ''
+            process.env.all_proxy = 'https://all_proxy:7777'
+            const agent = utils.getWSProxyAgent(url, { timeout: 4444 })
+            agent.proxy.should.have.property('hostname', 'all_proxy')
+            agent.proxy.should.have.property('port', '7777')
+        })
+        it('should return a HttpsProxyAgent when all_proxy is set and the URL is wss://', function () {
+            const url = 'wss://test.com'
+            process.env.http_proxy = ''
+            process.env.https_proxy = ''
+            process.env.all_proxy = 'https://all_proxy:8888'
+            const agent = utils.getWSProxyAgent(url, { timeout: 4444 })
+            agent.proxy.should.have.property('hostname', 'all_proxy')
+            agent.proxy.should.have.property('port', '8888')
         })
         it('should set http proxy options', function () {
             const url = 'ws://test.com'
@@ -265,6 +287,24 @@ describe('utils', function () {
             agent.https.should.have.property('proxy')
             agent.https.proxy.should.have.property('hostname', 'proxy')
             agent.https.proxy.should.have.property('port', '8080')
+        })
+        it('should use all_proxy to set http proxy options', function () {
+            process.env.http_proxy = ''
+            process.env.https_proxy = ''
+            process.env.all_proxy = 'http://all_proxy:7777'
+            const agent = utils.getHTTPProxyAgent('http://127.0.0.1:3000')
+            agent.http.should.have.property('proxy')
+            agent.http.proxy.should.have.property('hostname', 'all_proxy')
+            agent.http.proxy.should.have.property('port', '7777')
+        })
+        it('should use all_proxy to set https proxy options', function () {
+            process.env.http_proxy = ''
+            process.env.https_proxy = ''
+            process.env.all_proxy = 'http://all_proxy:8888'
+            const agent = utils.getHTTPProxyAgent('https://127.0.0.1:3000')
+            agent.https.should.have.property('proxy')
+            agent.https.proxy.should.have.property('hostname', 'all_proxy')
+            agent.https.proxy.should.have.property('port', '8888')
         })
         it('should set http proxy options', function () {
             process.env.http_proxy = 'http://proxy:8080'

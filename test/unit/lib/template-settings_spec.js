@@ -191,6 +191,7 @@ describe('template-settings', () => {
             delete process.env.http_proxy
             delete process.env.https_proxy
             delete process.env.no_proxy
+            delete process.env.all_proxy
         })
 
         it('should not extend got when env vars http(s)_proxy are not set', async function () {

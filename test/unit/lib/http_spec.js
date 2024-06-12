@@ -113,6 +113,7 @@ describe('HTTP Comms', function () {
         delete process.env.http_proxy
         delete process.env.https_proxy
         delete process.env.no_proxy
+        delete process.env.all_proxy
         sinon.restore()
     })
 

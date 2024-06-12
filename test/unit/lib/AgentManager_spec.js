@@ -200,6 +200,7 @@ describe('Test the AgentManager', function () {
             delete process.env.http_proxy
             delete process.env.https_proxy
             delete process.env.no_proxy
+            delete process.env.all_proxy
         })
 
         it('Calls GOT with no agent when env vars are not set', async function () {
