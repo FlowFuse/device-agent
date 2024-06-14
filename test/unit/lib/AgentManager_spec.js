@@ -1,3 +1,4 @@
+const mocha = require('mocha') // eslint-disable-line
 const should = require('should') // eslint-disable-line
 const sinon = require('sinon')
 const agent = require('../../../lib/agent')
@@ -39,6 +40,13 @@ describe('Test the AgentManager', function () {
         AgentManager.init({})
         AgentManager.should.have.property('options').and.be.an.Object()
         AgentManager.state.should.eql('unknown')
+    })
+    it('Should not extend got with proxies if env vars are not set', function () {
+        process.env.http_proxy = ''
+        process.env.https_proxy = ''
+        AgentManager.init({})
+        should(AgentManager.client.defaults.options.agent?.http).be.undefined()
+        should(AgentManager.client.defaults.options.agent?.https).be.undefined()
     })
     it('Agent Manager should exit cleanly', async function () {
         AgentManager.init({})
@@ -167,5 +175,177 @@ describe('Test the AgentManager', function () {
         await AgentManager.startAgent()
         agent.newAgent.calledOnce.should.be.true()
         AgentManager.agent.start.calledOnce.should.be.true()
+    })
+    describe('Proxy Support', function () {
+        function getProvisioningOptions (https = false) {
+            return {
+                forgeURL: https ? 'https://testfuse.com' : 'http://localhost:9000',
+                provisioningTeam: 'team1',
+                provisioningToken: 'abcd',
+                dir: configDir,
+                deviceFile: path.join(configDir, 'project', 'device.yml')
+            }
+        }
+        function getOtcOptions (https = false) {
+            return {
+                ffUrl: https ? 'https://testfuse.com' : 'http://localhost:9000',
+                forgeURL: https ? 'https://testfuse.com' : 'http://localhost:9000',
+                otc: 'one-time-code',
+                dir: configDir,
+                deviceFile: path.join(configDir, 'project', 'device.yml')
+            }
+        }
+
+        afterEach(async function () {
+            delete process.env.http_proxy
+            delete process.env.https_proxy
+            delete process.env.no_proxy
+            delete process.env.all_proxy
+        })
+
+        it('Calls GOT with no agent when env vars are not set', async function () {
+            // const deviceFile = path.join(configDir, 'project', 'device.yml')
+            // await fs.writeFile(deviceFile, 'forgeURL: http://localhost:9000\nprovisioningTeam: team1\nprovisioningToken: abcd\n')
+            delete process.env.http_proxy
+            delete process.env.https_proxy
+
+            sinon.stub(AgentManager, 'canBeProvisioned').returns(true)
+            sinon.stub(AgentManager, '_provisionDevice').resolves()
+            sinon.stub(AgentManager, '_getDeviceInfo').resolves({ host: 'localhost', ip: '127.0.0.1', mac: '0:0:0:0:0:0', forgeOk: true })
+
+            // provisionDevice http
+            AgentManager.init(getProvisioningOptions())
+            sinon.stub(AgentManager.client, 'post').resolves({ statusCode: 200, body: '{}' })
+            await AgentManager.provisionDevice(AgentManager.options.forgeURL, AgentManager.options.provisioningTeam, AgentManager.options.provisioningToken)
+            AgentManager.client.post.calledOnce.should.be.true()
+            AgentManager.client.post.args[0][1].should.be.an.Object()
+            should(AgentManager.client.post.args[0][1].agent?.http).be.undefined()
+            should(AgentManager.client.post.args[0][1].agent?.https).be.undefined()
+
+            // provisionDevice https
+            AgentManager.init(getProvisioningOptions(true))
+            sinon.stub(AgentManager.client, 'post').resolves({ statusCode: 200, body: '{}' })
+            await AgentManager.provisionDevice(AgentManager.options.forgeURL, AgentManager.options.provisioningTeam, AgentManager.options.provisioningToken)
+            AgentManager.client.post.calledOnce.should.be.true()
+            AgentManager.client.post.args[0][1].should.be.an.Object()
+            should(AgentManager.client.post.args[0][1].agent?.http).be.undefined()
+            should(AgentManager.client.post.args[0][1].agent?.https).be.undefined()
+
+            // quickConnectDevice http
+            AgentManager.init(getOtcOptions())
+            sinon.stub(AgentManager.client, 'post').resolves({ statusCode: 200, body: '{}' })
+            await AgentManager.quickConnectDevice()
+            AgentManager.client.post.calledOnce.should.be.true()
+            AgentManager.client.post.args[0][1].should.be.an.Object()
+            should(AgentManager.client.post.args[0][1].agent?.http).be.undefined()
+            should(AgentManager.client.post.args[0][1].agent?.https).be.undefined()
+
+            // quickConnectDevice https
+            AgentManager.init(getOtcOptions(true))
+            sinon.stub(AgentManager.client, 'post').resolves({ statusCode: 200, body: '{}' })
+            await AgentManager.quickConnectDevice()
+            AgentManager.client.post.calledOnce.should.be.true()
+            AgentManager.client.post.args[0][1].should.be.an.Object()
+            should(AgentManager.client.post.args[0][1].agent?.http).be.undefined()
+            should(AgentManager.client.post.args[0][1].agent?.https).be.undefined()
+        })
+
+        it('Calls GOT with an http agent when env var is set (provisionDevice)', async function () {
+            const deviceFile = path.join(configDir, 'project', 'device.yml')
+            await fs.writeFile(deviceFile, 'forgeURL: http://localhost:9000\nprovisioningTeam: team1\nprovisioningToken: abcd\n')
+            process.env.http_proxy = 'http://http_proxy:1234'
+            AgentManager.init({ deviceFile })
+            await AgentManager.reloadConfig()
+
+            sinon.stub(AgentManager, 'canBeProvisioned').returns(true)
+            sinon.stub(AgentManager, '_provisionDevice').resolves()
+            sinon.stub(AgentManager, '_getDeviceInfo').resolves({ host: 'localhost', ip: '127.0.0.1', mac: '0:0:0:0:0:0', forgeOk: true })
+            sinon.stub(AgentManager.client, 'post').resolves({ statusCode: 200, body: '{}' })
+            await AgentManager.provisionDevice()
+
+            AgentManager.client.post.calledOnce.should.be.true()
+            AgentManager.client.post.args[0][1].should.be.an.Object()
+            AgentManager.client.post.args[0][1].should.have.property('agent').and.be.an.Object()
+            AgentManager.client.post.args[0][1].agent.should.have.property('http').instanceOf(require('http-proxy-agent').HttpProxyAgent)
+        })
+        it('Calls GOT with an https agent when env var is set (provisionDevice)', async function () {
+            const deviceFile = path.join(configDir, 'project', 'device.yml')
+            await fs.writeFile(deviceFile, 'forgeURL: https://testfuse.com\nprovisioningTeam: team1\nprovisioningToken: abcd\n')
+            process.env.https_proxy = 'http://http_proxy:1234'
+            AgentManager.init({ deviceFile })
+            await AgentManager.reloadConfig()
+
+            sinon.stub(AgentManager, 'canBeProvisioned').returns(true)
+            sinon.stub(AgentManager, '_provisionDevice').resolves()
+            sinon.stub(AgentManager, '_getDeviceInfo').resolves({ host: 'localhost', ip: '127.0.0.1', mac: '0:0:0:0:0:0', forgeOk: true })
+            sinon.stub(AgentManager.client, 'post').resolves({ statusCode: 200, body: '{}' })
+            await AgentManager.provisionDevice()
+
+            AgentManager.client.post.calledOnce.should.be.true()
+            AgentManager.client.post.args[0][1].should.be.an.Object()
+            AgentManager.client.post.args[0][1].should.have.property('agent').and.be.an.Object()
+            AgentManager.client.post.args[0][1].agent.should.have.property('https').instanceOf(require('https-proxy-agent').HttpsProxyAgent)
+        })
+        it('Calls GOT with an http agent when env var is set (quickConnectDevice)', async function () {
+            process.env.http_proxy = 'http://http_proxy:1234'
+            AgentManager.init(getOtcOptions())
+
+            sinon.stub(AgentManager, 'canBeProvisioned').returns(true)
+            sinon.stub(AgentManager, '_provisionDevice').resolves()
+            sinon.stub(AgentManager, '_getDeviceInfo').resolves({ host: 'localhost', ip: '127.0.0.1', mac: '0:0:0:0:0:0', forgeOk: true })
+            sinon.stub(AgentManager.client, 'post').resolves({ statusCode: 200, body: '{}' })
+            await AgentManager.quickConnectDevice()
+
+            AgentManager.client.post.calledOnce.should.be.true()
+            AgentManager.client.post.args[0][1].should.be.an.Object()
+            AgentManager.client.post.args[0][1].should.have.property('agent').and.be.an.Object()
+            AgentManager.client.post.args[0][1].agent.should.have.property('http').instanceOf(require('http-proxy-agent').HttpProxyAgent)
+        })
+
+        it('Calls GOT with an https agent when env var is set (quickConnectDevice)', async function () {
+            process.env.https_proxy = 'http://https_proxy:4567'
+            AgentManager.init(getOtcOptions(true))
+
+            sinon.stub(AgentManager, 'canBeProvisioned').returns(true)
+            sinon.stub(AgentManager, '_provisionDevice').resolves()
+            sinon.stub(AgentManager, '_getDeviceInfo').resolves({ host: 'localhost', ip: '127.0.0.1', mac: '0:0:0:0:0:0', forgeOk: true })
+            sinon.stub(AgentManager.client, 'post').resolves({ statusCode: 200, body: '{}' })
+            await AgentManager.quickConnectDevice()
+
+            AgentManager.client.post.calledOnce.should.be.true()
+            AgentManager.client.post.args[0][1].should.be.an.Object()
+            AgentManager.client.post.args[0][1].should.have.property('agent').and.be.an.Object()
+            AgentManager.client.post.args[0][1].agent.should.have.property('https').instanceOf(require('https-proxy-agent').HttpsProxyAgent)
+        })
+        it('Calls GOT with an http agent when env var is set (_getDeviceInfo)', async function () {
+            const deviceFile = path.join(configDir, 'project', 'device.yml')
+            await fs.writeFile(deviceFile, 'forgeURL: http://localhost:9000\nprovisioningTeam: team1\nprovisioningToken: abcd\n')
+            process.env.http_proxy = 'http://http_proxy:1234'
+            AgentManager.init({ deviceFile })
+            await AgentManager.reloadConfig()
+
+            sinon.stub(AgentManager.client, 'get').resolves({ socket: { localAddress: '127.0.0.1' }, body: '{}', statusCode: 200 })
+            await AgentManager._getDeviceInfo('http://localhost:9000', 'abcd')
+
+            AgentManager.client.get.calledOnce.should.be.true()
+            AgentManager.client.get.args[0][1].should.be.an.Object()
+            AgentManager.client.get.args[0][1].should.have.property('agent').and.be.an.Object()
+            AgentManager.client.get.args[0][1].agent.should.have.property('http').instanceOf(require('http-proxy-agent').HttpProxyAgent)
+        })
+        it('Calls GOT with an https agent when env var is set (_getDeviceInfo)', async function () {
+            const deviceFile = path.join(configDir, 'project', 'device.yml')
+            await fs.writeFile(deviceFile, 'forgeURL: https://testfuse.com\nprovisioningTeam: team1\nprovisioningToken: abcd\n')
+            process.env.https_proxy = 'http://http_proxy:1234'
+            AgentManager.init({ deviceFile })
+            await AgentManager.reloadConfig()
+
+            sinon.stub(AgentManager.client, 'get').resolves({ socket: { localAddress: '127.0.0.1' }, body: '{}', statusCode: 200 })
+            await AgentManager._getDeviceInfo('https://testfuse.com', 'abcd')
+
+            AgentManager.client.get.calledOnce.should.be.true()
+            AgentManager.client.get.args[0][1].should.be.an.Object()
+            AgentManager.client.get.args[0][1].should.have.property('agent').and.be.an.Object()
+            AgentManager.client.get.args[0][1].agent.should.have.property('https').instanceOf(require('https-proxy-agent').HttpsProxyAgent)
+        })
     })
 })

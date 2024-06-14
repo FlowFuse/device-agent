@@ -1,14 +1,21 @@
+const mocha = require('mocha') // eslint-disable-line
 const should = require('should') // eslint-disable-line
 const sinon = require('sinon')
 const path = require('path')
 const fs = require('fs/promises')
 const os = require('os')
 const Aedes = require('aedes')
-
+const { createProxy } = require('proxy')
+const HttpProxyAgent = require('http-proxy-agent').HttpProxyAgent
+const HttpsProxyAgent = require('https-proxy-agent').HttpsProxyAgent
 const { createServer } = require('aedes-server-factory')
 const MQTT = require('mqtt')
 const { MQTTClient: MQTTClientComms } = require('../../../lib/mqtt')
 const EditorTunnel = require('../../../lib/editor/tunnel')
+const port = 9800 // MQTT broker port
+const proxyPort = port + 1 // HTTP(s) proxy port for MQTT
+const proxyHost = '127.0.0.2' // works for localhost
+let currentId = 0 // incrementing id for each agent
 
 /** creates a mock Agent with sinon fakes for the methods
  * getState, setState, getCurrentFlows, getCurrentCredentials, getCurrentPackage
@@ -62,6 +69,87 @@ function createAgent (opts) {
     return newAgent()
 }
 
+/**
+ * Create a new MQTTClientComms instance
+ * @param {*} opts - lib/mqtt options
+ * @param {string} opts.team - team id
+ * @param {string} opts.device - device id
+ * @param {string} opts.project - project id
+ * @param {string} opts.snapshotId - snapshot id
+ * @param {string} opts.settingsId - settings id
+ * @param {string} opts.mode - mode
+ * @param {string} opts.editorToken - editor token
+ * @param {string} opts.state - state
+ * @param {object} opts.flows - flows
+ * @param {string} opts.credentials - credentials
+ * @param {string} opts.package - package
+ */
+function createMQTTClient (configDir, opts) {
+    opts = opts || {}
+    currentId++
+    const team = opts.team || `team${currentId}`
+    const device = opts.device || `device${currentId}`
+    const project = opts.project !== null ? `project${currentId}` : null
+    const snapshot = opts.snapshotId !== null ? { id: opts.snapshotId } : null
+    const settings = opts.settingsId !== null ? { hash: opts.settingsId } : null
+    const mode = opts.mode || 'developer'
+    const editorToken = opts.editorToken || null
+
+    const agent = createAgent({
+        currentMode: mode,
+        editorToken,
+        currentProject: project,
+        currentSettings: settings,
+        currentSnapshot: snapshot,
+        state: opts.state || 'stopped',
+        flows: opts.flows,
+        credentials: opts.credentials,
+        package: opts.package
+    })
+
+    const daMQTT = new MQTTClientComms(agent, {
+        dir: configDir,
+        forgeURL: 'http://localhost:9000',
+        brokerURL: 'ws://localhost:' + port,
+        brokerUsername: `device:${team}:${device}`,
+        brokerPassword: 'pass'
+    })
+
+    sinon.stub(daMQTT.heartbeat, 'start')
+    return daMQTT
+}
+
+async function _mqttPubAndAwait (mqttClient, topic, payload, responseTopic) {
+    return new Promise((resolve, reject) => {
+        // if timeout, reject
+        const timeOver = setTimeout(() => {
+            cleanUp()
+            reject(new Error('mqttPubAndAwait timed out'))
+        }, 500)
+        const onMessage = (topic, message) => {
+            const m = JSON.parse(message.toString())
+            // console.log('mqtt.on(message => received message %s %s', topic, m)
+            cleanUp(timeOver)
+            resolve(m)
+        }
+        const cleanUp = () => {
+            mqttClient.unsubscribe(responseTopic || topic)
+            mqttClient.off('message', onMessage)
+            clearTimeout(timeOver)
+        }
+        // if message received, resolve
+        mqttClient.subscribe(responseTopic || topic)
+        mqttClient.on('message', onMessage)
+        // publish message
+        mqttClient.publish(topic, payload, function (err) {
+            if (err) {
+                cleanUp()
+                reject(err)
+            }
+        })
+    })
+}
+
 describe('MQTT Comms', function () {
     // common variables
     /** @type {string} agent config dir */ let configDir
@@ -69,44 +157,11 @@ describe('MQTT Comms', function () {
     /** @type {Aedes} MQTT Broker */ let aedes = null
     /** @type {MQTT.MqttClient} MQTT Client */ let mqtt
     /** @type {import('../../../lib/mqtt').MQTTClient} Agent mqttClient comms */ let mqttClient = null
-    let currentId = 0 // incrementing id for each agent
+    // let currentId = 0 // incrementing id for each agent
     const sockets = {} // Maintain a hash of all connected sockets (for closing them later)
-
-    function createMQTTClient (opts) {
-        opts = opts || {}
-        currentId++
-        const team = opts.team || `team${currentId}`
-        const device = opts.device || `device${currentId}`
-        const project = opts.project !== null ? `project${currentId}` : null
-        const snapshot = opts.snapshotId !== null ? { id: opts.snapshotId } : null
-        const settings = opts.settingsId !== null ? { hash: opts.settingsId } : null
-        const mode = opts.mode || 'developer'
-        const editorToken = opts.editorToken || null
-
-        const agent = createAgent({
-            currentMode: mode,
-            editorToken,
-            currentProject: project,
-            currentSettings: settings,
-            currentSnapshot: snapshot,
-            state: opts.state || 'stopped',
-            flows: opts.flows,
-            credentials: opts.credentials,
-            package: opts.package
-        })
-
-        return new MQTTClientComms(agent, {
-            dir: configDir,
-            forgeURL: 'http://localhost:9000',
-            brokerURL: 'ws://localhost:9800',
-            brokerUsername: `device:${team}:${device}`,
-            brokerPassword: 'pass'
-        })
-    }
 
     before(async function () {
         aedes = new Aedes()
-        const port = 9800
         httpServer = createServer(aedes, { ws: true })
         httpServer.listen(port, function () {
             // console.log('websocket server listening on port ', port)
@@ -164,7 +219,7 @@ describe('MQTT Comms', function () {
     beforeEach(async function () {
         configDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ff-launcher-'))
         await fs.mkdir(path.join(configDir, 'project'))
-        mqttClient = createMQTTClient()
+        mqttClient = createMQTTClient(configDir)
         sinon.stub(console, 'log') // hush console.log
         sinon.stub(console, 'info') // hush console.info
     })
@@ -175,37 +230,13 @@ describe('MQTT Comms', function () {
         mqttClient = null
         console.log.restore()
         console.info.restore()
+        if (process.env.restore) {
+            process.env.restore()
+        }
     })
 
     async function mqttPubAndAwait (topic, payload, responseTopic) {
-        return new Promise((resolve, reject) => {
-            // if timeout, reject
-            const timeOver = setTimeout(() => {
-                cleanUp()
-                reject(new Error('mqttPubAndAwait timed out'))
-            }, 500)
-            const onMessage = (topic, message) => {
-                const m = JSON.parse(message.toString())
-                // console.log('mqtt.on(message => received message %s %s', topic, m)
-                cleanUp(timeOver)
-                resolve(m)
-            }
-            const cleanUp = () => {
-                mqtt.unsubscribe(responseTopic || topic)
-                mqtt.off('message', onMessage)
-                clearTimeout(timeOver)
-            }
-            // if message received, resolve
-            mqtt.subscribe(responseTopic || topic)
-            mqtt.on('message', onMessage)
-            // publish message
-            mqtt.publish(topic, payload, function (err) {
-                if (err) {
-                    cleanUp()
-                    reject(err)
-                }
-            })
-        })
+        return _mqttPubAndAwait(mqtt, topic, payload, responseTopic)
     }
 
     it('Creates the MQTT Comms Client', async function () {
@@ -491,5 +522,185 @@ describe('MQTT Comms', function () {
         res.should.have.a.property('success', false)
         res.should.have.a.property('error').and.be.an.Object()
         res.error.should.have.a.property('code', 'unsupported_action')
+    })
+
+    describe('Proxy Support', function () {
+        // common variables
+        const port2 = port + 1 // MQTT broker port
+        /** @type {import('aedes-server-factory').Server} MQTT WS */ let httpServerProxied
+        /** @type {Aedes} MQTT Broker */ let aedesProxied = null
+        /** @type {MQTT.MqttClient} MQTT Client */ let mqttProxied
+
+        before(async function () {
+            aedesProxied = new Aedes()
+            httpServerProxied = createProxy(createServer(aedesProxied, { ws: true }))
+            httpServerProxied.localAddress = '127.0.0.99' // REF: https://gist.github.com/ttodua/7a66e5ca28e55deebc58b0dd8e0c39a2
+            httpServerProxied.listen(proxyPort, proxyHost, function () {
+                // console.log('websocket server listening on port ', port2)
+            })
+            let nextSocketId = 0
+            httpServerProxied.on('connection', function (socket) {
+                // Add a newly connected socket
+                const socketId = nextSocketId++
+                sockets[socketId] = socket
+                // console.log('socket', socketId, 'opened')
+
+                // Remove the socket when it closes
+                socket.on('close', function () {
+                    // console.log('socket', socketId, 'closed')
+                    delete sockets[socketId]
+                })
+            })
+            const agent = new HttpProxyAgent('http://' + proxyHost + ':' + proxyPort)
+
+            mqttProxied = MQTT.connect(`ws://localhost:${port2}`, {
+                wsOptions: {
+                    agent
+                },
+                clientId: 'testsuite-' + Date.now(),
+                username: 'device:team:device',
+                password: 'pass',
+                protocol: 'ws'
+            })
+        })
+
+        after(async function () {
+            mqttProxied && mqttProxied.end()
+            aedesProxied.close()
+            aedesProxied.removeAllListeners()
+            if (httpServerProxied) {
+                // Close the server
+                httpServerProxied.close(function () { /* console.log('Server closed!') */ })
+                // Destroy all open sockets
+                for (const socketId in sockets) {
+                    // console.log('socket', socketId, 'destroyed')
+                    sockets[socketId].destroy()
+                }
+            }
+            sinon.restore()
+        })
+
+        afterEach(async function () {
+            delete process.env.http_proxy
+            delete process.env.https_proxy
+            delete process.env.no_proxy
+            delete process.env.all_proxy
+        })
+
+        async function mqttPubAndAwait (topic, payload, responseTopic) {
+            return _mqttPubAndAwait(mqttProxied, topic, payload, responseTopic)
+        }
+
+        it('MQTT Comms Client does not set a proxy agent if process env does not contain proxy settings', async function () {
+            process.env.http_proxy = ''
+            process.env.https_proxy = ''
+
+            // initialise the mqtt client
+            mqttClient.start()
+
+            // the client and agent should have been created without proxy agent settings
+            mqttClient.should.have.a.property('client').and.be.an.Object()
+            mqttClient.client.options.hostname.should.equal('localhost')
+            mqttClient.client.options.port.should.equal(port)
+
+            mqttClient.brokerConfig.should.not.have.a.property('wsOptions')
+            mqttClient.client.options.wsOptions.should.not.have.a.property('agent')
+        })
+
+        it('MQTT Comms Client has a HttpProxyAgent for ws connection', async function () {
+            process.env.http_proxy = `http://${proxyHost}:${proxyPort}`
+            process.env.https_proxy = `http://${proxyHost}:${proxyPort}`
+
+            // initialise the mqtt client
+            mqttClient.config.brokerURL = 'ws://localhost:' + port
+            mqttClient.start()
+
+            // the client and agent should have been created without proxy agent settings
+            mqttClient.should.have.a.property('client').and.be.an.Object()
+            mqttClient.client.options.hostname.should.equal('localhost')
+            mqttClient.client.options.port.should.equal(port)
+
+            mqttClient.brokerConfig.should.have.a.property('wsOptions')
+            mqttClient.brokerConfig.wsOptions.should.have.a.property('agent').and.be.an.Object()
+            should(mqttClient.brokerConfig.wsOptions.agent instanceof HttpProxyAgent).be.true()
+        })
+
+        it('MQTT Comms Client has a HttpsProxyAgent for wss connection', async function () {
+            process.env.http_proxy = `http://${proxyHost}:${proxyPort}`
+            process.env.https_proxy = `http://${proxyHost}:${proxyPort}`
+
+            // initialise the mqtt client
+            mqttClient.config.brokerURL = 'wss://localhost:' + port
+            mqttClient.start()
+
+            // the client and agent should have been created without proxy agent settings
+            mqttClient.should.have.a.property('client').and.be.an.Object()
+            mqttClient.client.options.hostname.should.equal('localhost')
+            mqttClient.client.options.port.should.equal(port)
+
+            mqttClient.brokerConfig.should.have.a.property('wsOptions')
+            mqttClient.brokerConfig.wsOptions.should.have.a.property('agent').and.be.an.Object()
+            should(mqttClient.brokerConfig.wsOptions.agent instanceof HttpsProxyAgent).be.true()
+        })
+
+        it('MQTT Comms Client can connect with proxy', async function () {
+            process.env.http_proxy = `http://${proxyHost}:${proxyPort}`
+            process.env.https_proxy = `http://${proxyHost}:${proxyPort}`
+
+            // start and send test message
+            mqttClient.start()
+
+            // the client and agent should have been created with the correct settings
+            mqttClient.should.have.a.property('client').and.be.an.Object()
+            mqttClient.client.options.hostname.should.equal('localhost')
+            mqttClient.client.options.port.should.equal(port)
+
+            mqttClient.brokerConfig.should.have.a.property('wsOptions').and.be.an.Object()
+            mqttClient.brokerConfig.wsOptions.should.have.a.property('agent').and.be.an.Object()
+            mqttClient.client.options.should.have.a.property('wsOptions').and.be.an.Object()
+            mqttClient.client.options.wsOptions.should.have.a.property('agent').and.be.an.Object()
+            mqttClient.client.options.wsOptions.agent.proxy.hostname.should.equal(proxyHost)
+            mqttClient.client.options.wsOptions.agent.proxy.port.should.equal('' + proxyPort)
+
+            // a short async delay to permit mqtt to connect
+            await new Promise(resolve => setTimeout(resolve, 500))
+
+            mqttClient.client.connected.should.be.true()
+        })
+
+        it('MQTT command gets a response when proxy is set', async function () {
+            process.env.http_proxy = `http://${proxyHost}:${proxyPort}`
+            process.env.https_proxy = `http://${proxyHost}:${proxyPort}`
+
+            mqttClient.start()
+
+            const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
+            const responseTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/response`
+            // console.log('commandTopic', commandTopic)
+            // console.log('responseTopic', responseTopic)
+            mqttClient.should.have.a.property('client').and.be.an.Object()
+            mqttClient.should.have.a.property('commandTopic').and.be.a.String().and.equal(commandTopic)
+            mqttClient.should.have.a.property('responseTopic').and.be.a.String().and.equal(responseTopic)
+
+            const payload = {
+                command: 'startEditor',
+                correlationData: 'correlationData-test',
+                responseTopic,
+                payload: {
+                    token: 'token-test'
+                }
+            }
+            const payloadStr = JSON.stringify(payload)
+
+            // short delay to allow mqtt to connect and stack to unwind
+            await new Promise(resolve => setTimeout(resolve, 500))
+            const response = await mqttPubAndAwait(commandTopic, payloadStr, responseTopic)
+            await new Promise(resolve => setTimeout(resolve, 50))
+            response.should.have.a.property('command', 'startEditor')
+            response.should.have.a.property('correlationData', 'correlationData-test')
+            response.should.have.a.property('payload').and.be.an.Object()
+            response.payload.should.have.a.property('connected', false)
+            response.payload.should.have.a.property('token', 'token-test')
+        })
     })
 })
