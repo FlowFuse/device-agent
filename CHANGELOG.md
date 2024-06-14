@@ -1,3 +1,11 @@
+#### 2.5.0: Release
+
+ - Proxy support (#272) @Steve-Mcl
+ - Bump actions/setup-node from 3 to 4 (#261) @dependabot
+ - Bump actions/checkout from 3 to 4 (#260) @dependabot
+ - Bump peter-evans/dockerhub-description from 3 to 4 (#262) @dependabot
+ - Enable dependabot for github actions (#257) @ppawlowski
+
 #### 2.4.1: Release
 
  - Ensure local ws connections are closed on disconnect (#255) @knolleary
