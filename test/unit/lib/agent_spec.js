@@ -1182,6 +1182,61 @@ describe('Agent', function () {
             agent.launcher.start.called.should.be.false('start was called following switch to autonomous mode') // false because flows are unchanged
             agent.currentSnapshot.should.have.property('id', 'original-snapshot-id') // stub would have returned `a-snapshot-id`, so no change to snapshot
         })
+        it('Updates when nr-assistant is required but settings does not yet have assistant configuration', async function () {
+            const agent = createHTTPAgent()
+            agent.currentProject = 'projectId'
+            agent.currentApplication = null
+            agent.currentSnapshot = { id: 'snapshotId', modules: { '@flowfuse/nr-assistant': '0.1.0' } }
+            agent.currentSettings = { hash: 'settingsId' }
+
+            const testLauncher = Launcher.newLauncher()
+            agent.launcher = testLauncher
+            agent.httpClient.getSettings.resolves({ hash: 'settingsId', assistant: { enabled: true } })
+            agent.httpClient.getSnapshot.resolves({ id: 'should-not-be-called' })
+
+            Launcher.newLauncher.resetHistory()
+            await agent.setState({
+                settings: 'settingsId'
+            })
+
+            // Launcher should be stopped and a new one created with assistant enabled
+            Launcher.newLauncher.called.should.be.true('newLauncher was not called when assistant configuration was missing')
+            Launcher.newLauncher.lastCall.args[4].should.have.property('assistant', { enabled: true })
+            agent.httpClient.getSettings.called.should.be.true('getSettings was not called when assistant configuration was missing')
+            agent.currentSettings.should.have.property('assistant', { enabled: true })
+            testLauncher.stop.called.should.be.true()
+            should.exist(agent.launcher)
+            agent.launcher.should.not.eql(testLauncher)
+            agent.launcher.writeConfiguration.called.should.be.true()
+            agent.launcher.start.called.should.be.true()
+            agent.httpClient.getSnapshot.called.should.be.false()
+            // check the logs for appropriate entries
+            should(findInLogs('info', 'Assistant settings not found')).be.an.Object()
+            should(findInLogs('info', 'Launching with new settings...')).be.an.Object()
+        })
+        it('Does not update settings when nr-assistant is required and settings already has assistant configuration', async function () {
+            const agent = createHTTPAgent()
+            agent.currentProject = 'projectId'
+            agent.currentApplication = null
+            agent.currentSnapshot = { id: 'snapshotId', modules: { '@flowfuse/nr-assistant': '0.1.0' } }
+            agent.currentSettings = { hash: 'settingsId', assistant: {} }
+
+            const testLauncher = Launcher.newLauncher()
+            agent.launcher = testLauncher
+            agent.httpClient.getSettings.resolves({ hash: 'settingsId', assistant: { enabled: true } })
+            agent.httpClient.getSnapshot.resolves({ id: 'should-not-be-called' })
+
+            Launcher.newLauncher.resetHistory()
+            await agent.setState({
+                settings: 'settingsId'
+            })
+
+            // getSettings should not be called when assistant configuration is present
+            agent.httpClient.getSettings.called.should.be.false('getSettings was called when assistant configuration was present')
+            agent.httpClient.getSnapshot.called.should.be.false()
+            // check the logs for appropriate entries
+            should(findInLogs('info', 'Assistant settings not found')).be.undefined()
+        })
     })
 
     describe('provisioning', function () {
