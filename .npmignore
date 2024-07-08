@@ -1,6 +1,6 @@
-docker/*
+/docker/*
 .github
 .gitmodules
 .browserslistrc
-test/
-var/
+/test/
+/var/
