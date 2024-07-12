@@ -1,3 +1,16 @@
+#### 2.6.0: Release
+
+ - Bump docker/setup-qemu-action from 2.2.0 to 3.0.0 (#264) @app/dependabot
+ - Bump docker/metadata-action from 3 to 5 (#259) @app/dependabot
+ - Bump docker/login-action from 2.2.0 to 3.2.0 (#269) @app/dependabot
+ - Bump ws from 7.5.9 to 8.18.0 (#287) @app/dependabot
+ - Bump ws from 8.13.0 to 8.17.1 (#279) @app/dependabot
+ - Support for nr-assistant (#285) @Steve-Mcl
+ - Update release-publish to NodeJS 18 (#286) @hardillb
+ - Bump JS-DevTools/npm-publish from 2.2.0 to 3.1.1 (#258) @app/dependabot
+ - Bump docker base to Node 18 (#282) @knolleary
+ - Bump braces from 3.0.2 to 3.0.3 (#276) @app/dependabot
+
 #### 2.5.0: Release
 
  - Proxy support (#272) @Steve-Mcl
