@@ -1,3 +1,9 @@
+#### 2.7.0: Release
+
+ - Add HOME env var to passed through list (#299) @hardillb
+ - Add heartbeat to Editor WebSocket Tunnel (#293) @hardillb
+ - Bump docker/setup-qemu-action from 3.0.0 to 3.1.0 (#292) @dependabot
+
 #### 2.6.0: Release
 
  - Bump docker/setup-qemu-action from 2.2.0 to 3.0.0 (#264) @app/dependabot
