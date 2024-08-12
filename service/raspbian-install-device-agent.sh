@@ -94,7 +94,7 @@ User=$USER
 WorkingDirectory=/opt/flowfuse-device
 
 Environment="NODE_OPTIONS=--max_old_space_size=512"
-ExecStart=/usr/bin/env flowfuse-device-agent
+ExecStart=/usr/bin/env -S flowfuse-device-agent
 # Use SIGINT to stop
 KillSignal=SIGINT
 # Auto restart on crash
