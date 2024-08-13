@@ -13,6 +13,8 @@ Group=pi
 WorkingDirectory=/opt/flowfuse-device
 
 Environment="NODE_OPTIONS=--max_old_space_size=512"
+# If you need port specifications:
+# ExecStart=/usr/bin/env -S flowforge-device-agent -p 1881
 ExecStart=/usr/bin/env -S flowfuse-device-agent
 # Use SIGINT to stop
 KillSignal=SIGINT
