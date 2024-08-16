@@ -601,7 +601,7 @@ describe('MQTT Comms', function () {
             // the client and agent should have been created without proxy agent settings
             mqttClient.should.have.a.property('client').and.be.an.Object()
             mqttClient.client.options.hostname.should.equal('localhost')
-            mqttClient.client.options.port.should.equal(port)
+            mqttClient.client.options.port.should.equal('' + port)
 
             mqttClient.brokerConfig.should.not.have.a.property('wsOptions')
             mqttClient.client.options.wsOptions.should.not.have.a.property('agent')
@@ -618,7 +618,7 @@ describe('MQTT Comms', function () {
             // the client and agent should have been created without proxy agent settings
             mqttClient.should.have.a.property('client').and.be.an.Object()
             mqttClient.client.options.hostname.should.equal('localhost')
-            mqttClient.client.options.port.should.equal(port)
+            mqttClient.client.options.port.should.equal('' + port)
 
             mqttClient.brokerConfig.should.have.a.property('wsOptions')
             mqttClient.brokerConfig.wsOptions.should.have.a.property('agent').and.be.an.Object()
@@ -636,7 +636,7 @@ describe('MQTT Comms', function () {
             // the client and agent should have been created without proxy agent settings
             mqttClient.should.have.a.property('client').and.be.an.Object()
             mqttClient.client.options.hostname.should.equal('localhost')
-            mqttClient.client.options.port.should.equal(port)
+            mqttClient.client.options.port.should.equal('' + port)
 
             mqttClient.brokerConfig.should.have.a.property('wsOptions')
             mqttClient.brokerConfig.wsOptions.should.have.a.property('agent').and.be.an.Object()
@@ -653,7 +653,7 @@ describe('MQTT Comms', function () {
             // the client and agent should have been created with the correct settings
             mqttClient.should.have.a.property('client').and.be.an.Object()
             mqttClient.client.options.hostname.should.equal('localhost')
-            mqttClient.client.options.port.should.equal(port)
+            mqttClient.client.options.port.should.equal('' + port)
 
             mqttClient.brokerConfig.should.have.a.property('wsOptions').and.be.an.Object()
             mqttClient.brokerConfig.wsOptions.should.have.a.property('agent').and.be.an.Object()
