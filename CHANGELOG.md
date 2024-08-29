@@ -1,3 +1,10 @@
+#### 2.8.0: Release
+
+ - Audit log crashes (#310) @Steve-Mcl
+ - Ensure NODE_EXTRA_CA_CERTS is passed to NR (#308) @hardillb
+ - Update flowfuse-device.service with Example for port (#304) @gdziuba
+ - Allow arguments to device agent (#303) @hardillb
+
 #### 2.7.0: Release
 
  - Add HOME env var to passed through list (#299) @hardillb
