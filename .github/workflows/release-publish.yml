@@ -33,7 +33,7 @@ jobs:
           images: |
             flowfuse/device-agent
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3.1.0
+        uses: docker/setup-qemu-action@v3.2.0
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@v2.6.0
       - name: docker login
@@ -85,7 +85,7 @@ jobs:
           images: |
             flowforge/device-agent
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3.1.0
+        uses: docker/setup-qemu-action@v3.2.0
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@v2.6.0
       - name: docker login
