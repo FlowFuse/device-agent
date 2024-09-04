@@ -207,7 +207,10 @@ Please ensure the parent directory is writable, or set a different path with -d`
         return {
             AgentManager,
             webServer,
-            options
+            options: {
+                ...ConfigLoader.defaults,
+                ...options
+            }
         }
     }
     return null
