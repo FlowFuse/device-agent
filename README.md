@@ -5,8 +5,10 @@ FlowFuse platform.
 
 ## Prerequisites
 
- - NodeJS v14 or later
+ - NodeJS v18 or later
  - A FlowFuse platform to connect to
+
+ For users that require NodeJS v14 and v16 support the v2.x stream will work.
 
 ## Supported Operating Systems
 
