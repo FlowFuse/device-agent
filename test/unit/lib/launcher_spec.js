@@ -32,10 +32,16 @@ describe('Launcher', function () {
         await fs.mkdir(path.join(config.dir, 'project'))
 
         sinon.replace(childProcess, 'spawn', sinon.fake(() => {
+            const callbacks = {}
             return {
-                on: (event, cb) => {},
+                on: (event, cb) => {
+                    callbacks[event] = cb
+                },
                 stdout: { on: (event, cb) => {} },
-                stderr: { on: (event, cb) => {} }
+                stderr: { on: (event, cb) => {} },
+                kill: () => {
+                    callbacks.exit && callbacks.exit(0)
+                }
             }
         }))
     })
@@ -331,6 +337,31 @@ describe('Launcher', function () {
         runtimeSettings.logging.auditLogger.should.have.property('handler').and.be.a.Function()
         runtimeSettings.logging.auditLogger.should.have.property('loggingURL', expectedURL)
         runtimeSettings.logging.auditLogger.should.have.property('token', configWithPlatformInfo.token)
+    })
+    it('calls logAuditEvent when it crashes', async function () {
+        const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
+        should(launcher).be.an.Object()
+        await launcher.writeFlow()
+        await launcher.writeCredentials()
+
+        // stub the call to the audit logger function `logAuditEvent (event, body)`
+        const logAuditEventStub = sinon.stub(launcher, 'logAuditEvent').resolves()
+
+        // stub installDependencies so we don't actually install anything when starting
+        sinon.stub(launcher, 'installDependencies').resolves()
+
+        // simulate 5 recent start times so that it detects a boot loop and halts the restart process and reports a crash
+        launcher.startTime.push(Date.now())
+        launcher.startTime.push(Date.now())
+        launcher.startTime.push(Date.now())
+        launcher.startTime.push(Date.now())
+        launcher.startTime.push(Date.now())
+
+        await launcher.start() // childProcess.spawn is faked in beforeEach
+        launcher.proc.kill()
+        logAuditEventStub.calledOnce.should.be.true()
+        logAuditEventStub.args[0][0].should.eql('crashed')
+        logAuditEventStub.args[0][1].should.be.an.Object()
     })
 
     describe('Proxy Support', function () {
