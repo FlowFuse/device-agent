@@ -116,6 +116,8 @@ describe('template-settings', () => {
         settings.logging.console.should.have.a.property('audit', false)
         settings.logging.console.should.have.a.property('handler').and.be.a.Function()
         settings.should.have.a.property('nodesDir', null)
+
+        settings.should.have.a.property('httpNodeAuth', false) // by default, this is false
     })
 
     it('should call got.get with the correct parameters when verifying token', async function () {
@@ -183,6 +185,21 @@ describe('template-settings', () => {
 
     it.skip('should set the httpStatic option if provided', async function () {
         // TODO: Implement test
+    })
+
+    it('should set the httpNodeAuth option if provided', async function () {
+        const extraConfig = {
+            httpNodeAuth: {
+                user: 'test',
+                pass: '$123456789'
+            }
+        }
+        const settingsFile = await generateSettingsFile(extraConfig)
+        const settings = require(settingsFile)
+        should.exist(settings)
+        settings.should.have.a.property('httpNodeAuth').and.be.an.Object()
+        settings.httpNodeAuth.should.have.a.property('user', 'test')
+        settings.httpNodeAuth.should.have.a.property('pass', '$123456789')
     })
 
     describe('Proxy Support', function () {
