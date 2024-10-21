@@ -113,6 +113,7 @@ Extra options   | Description
 `interval`      | How often, in seconds, the agent checks in with the platform. Default: 60s
 `intervalJitter`| How much, in seconds, to vary the heartbeat +/- `intervalJitter`. Default: 10s
 `moduleCache`   | If the device can not access npmjs.org then use the node modules cache in `module_cache` directory. Default `false`
+`httpNodeAuth`  | If set, the endpoints created in Node-RED flows will require this username and password to access them. Default: `false`
 
 
 #### Node-RED options
