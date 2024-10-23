@@ -153,7 +153,7 @@ describe('config loader', () => {
     })
 
     describe('config', () => {
-        it('should return a valid config', async function () {
+        it('should return a valid runtime config', async function () {
             await generateYamlFile()
 
             const options = {
@@ -179,6 +179,74 @@ describe('config loader', () => {
             result.should.have.a.property('deviceFile', configFilePath)
             result.should.have.a.property('config', 'blah blah')
             result.should.have.a.property('dummy', 'dummy')
+            // since this is a regular device yaml, it should not contain any provisioning extras
+            result.should.not.have.a.property('provisioningExtras')
+        })
+        it('should return a valid provisioning config and any extras', async function () {
+            const provisioningYaml = `
+### PROVISIONING TOKEN ###
+provisioningName: dt1
+provisioningTeam: 12345ABCDE
+provisioningToken: ffadp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+forgeURL: https://forge.flowfuse.io
+httpStatic: /data
+httpNodeAuth:
+    user: user
+    pass: $2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN.
+random: 123456
+my_data:
+    name: Alice
+    address: "1234 Main St"
+`
+            await fs.writeFile(configFilePath, provisioningYaml)
+
+            const options = {
+                deviceFile: configFilePath
+            }
+
+            const result = await config(options)
+            should.exist(result)
+            result.should.have.a.property('version').and.match(/^\d+\.\d+\.\d+$/)
+            result.should.have.a.property('port', 1880)
+            result.should.have.a.property('ui', false)
+            result.should.have.a.property('uiHost')
+            result.should.have.a.property('uiPort')
+            result.should.have.a.property('provisioningMode', true)
+            result.should.not.have.a.property('cliSetup')
+            result.should.have.a.property('token', 'ffadp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            result.should.have.a.property('forgeURL', 'https://forge.flowfuse.io')
+            result.should.have.a.property('deviceFile', configFilePath)
+
+            result.should.have.a.property('provisioningExtras')
+            // provisioningExtras is anything extra in the device yaml that is not part of the provisioning or device agent regular device yaml
+            // e.g. a user may add extra settings like `httpStatic` or `httpNodeAuth` that should be carried over
+            // So, it should not contain any of:
+            //      'provisioningMode', 'provisioningName', 'provisioningTeam', 'provisioningToken',
+            //      'token', 'forgeURL', 'deviceId', 'credentialSecret', 'deviceFile', 'brokerURL',
+            //      'brokerUsername', 'brokerPassword', 'autoProvisioned', 'cliSetup'
+            result.provisioningExtras.should.not.have.a.property('provisioningMode')
+            result.provisioningExtras.should.not.have.a.property('provisioningName')
+            result.provisioningExtras.should.not.have.a.property('provisioningTeam')
+            result.provisioningExtras.should.not.have.a.property('provisioningToken')
+            result.provisioningExtras.should.not.have.a.property('token')
+            result.provisioningExtras.should.not.have.a.property('forgeURL')
+            result.provisioningExtras.should.not.have.a.property('deviceId')
+            result.provisioningExtras.should.not.have.a.property('credentialSecret')
+            result.provisioningExtras.should.not.have.a.property('deviceFile')
+            result.provisioningExtras.should.not.have.a.property('brokerURL')
+            result.provisioningExtras.should.not.have.a.property('brokerUsername')
+            result.provisioningExtras.should.not.have.a.property('brokerPassword')
+            result.provisioningExtras.should.not.have.a.property('autoProvisioned')
+            result.provisioningExtras.should.not.have.a.property('cliSetup')
+
+            result.provisioningExtras.should.only.have.keys('httpStatic', 'httpNodeAuth', 'random', 'my_data')
+            result.provisioningExtras.should.have.a.property('httpStatic', '/data')
+            result.provisioningExtras.should.have.a.property('httpNodeAuth').and.be.an.Object()
+            result.provisioningExtras.httpNodeAuth.should.have.a.property('user', 'user')
+            result.provisioningExtras.httpNodeAuth.should.have.a.property('pass', '$2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN.')
+            result.provisioningExtras.should.have.a.property('random', 123456)
+            result.provisioningExtras.should.have.a.property('my_data').and.be.an.Object()
+            result.provisioningExtras.my_data.should.deepEqual({ name: 'Alice', address: '1234 Main St' })
         })
         it('should throw for missing config file', async function () {
             await generateYamlFile()
