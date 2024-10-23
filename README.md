@@ -124,6 +124,7 @@ Node-RED options | Description
 `port`           | The port to listen on. Default: 1880
 `https`          | Enable HTTPS. See below for details
 `httpStatic`     | Enable serving of static content from a local path
+`httpNodeAuth`   | If set, any endpoints created in Node-RED flows will require this username and password to access them. Default: `false`
 
 ##### `https` configuration
 
@@ -163,6 +164,20 @@ httpStatic:
   - path: /opt/flowfuse-device/static-content/js
     root: /js
 ```
+
+##### `httpNodeAuth` configuration
+
+This option can be used to apply basic auth to HTTP endpoints created in Node-RED.
+This will also protect node-red-dashboard.
+Full details can be found in [HTTP Node security documentation](https://nodered.org/docs/user-guide/runtime/securing-node-red#http-node-security).
+
+Example:
+```yml
+httpStatic:
+   user: user
+   pass: $2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN.
+```
+
 
 ### `device.yml` - for provisioning
 
