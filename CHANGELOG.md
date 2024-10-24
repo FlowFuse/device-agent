@@ -1,3 +1,18 @@
+#### 3.0.0: Release
+
+ - Update mqttjs to latest (#322) @Steve-Mcl
+ - Add support for picking up `httpNodeAuth` from device yaml (#320) @Steve-Mcl
+ - Bump docker/setup-buildx-action from 3.6.1 to 3.7.1 (#319) @dependabot
+ - Bump docker/build-push-action from 6.7.0 to 6.9.0 (#318) @dependabot
+ - Upgrade to latest MQTT.js (#306) @hardillb
+ - Bump minimum nodejs version (#316) @hardillb
+ - Randomise reconnect timing (#315) @Steve-Mcl
+ - Use port from config file (#313) @hardillb
+ - Bump docker/build-push-action from 4.0.0 to 6.7.0 (#307) @dependabot
+ - Bump docker/setup-buildx-action from 2.6.0 to 3.6.1 (#301) @dependabot
+ - Bump docker/login-action from 3.2.0 to 3.3.0 (#297) @dependabot
+ - Bump docker/setup-qemu-action from 3.1.0 to 3.2.0 (#295) @dependabot
+
 #### 2.8.0: Release
 
  - Audit log crashes (#310) @Steve-Mcl
