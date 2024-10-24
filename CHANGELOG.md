@@ -1,5 +1,10 @@
 #### 3.0.0: Release
 
+IMPORTANT NOTES:
+ - This release drops support for NodeJS versions below 18.
+ - If you need NodeJS v14 or v16 support, use the latest v2.x version of Device Agent.
+
+UPDATES:
  - Update mqttjs to latest (#322) @Steve-Mcl
  - Add support for picking up `httpNodeAuth` from device yaml (#320) @Steve-Mcl
  - Bump docker/setup-buildx-action from 3.6.1 to 3.7.1 (#319) @dependabot
