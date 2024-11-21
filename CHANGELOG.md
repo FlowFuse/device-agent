@@ -1,3 +1,8 @@
+#### 3.0.1: Release
+
+ - Pass through teamBroker feature flag to project nodes (#328) @knolleary
+ - Log reason Provisioning failed (#325) @hardillb
+
 #### 3.0.0: Release
 
 IMPORTANT NOTES:
