@@ -493,7 +493,7 @@ describe('Agent', function () {
     describe('getState', function () {
         it('returns partial state', async function () {
             const agent = createHTTPAgent()
-            const state = await agent.getState()
+            const state = agent.getState()
             state.should.have.property('ownerType', 'none')
             state.should.have.property('snapshot', null)
             state.should.have.property('settings', null)
@@ -506,7 +506,7 @@ describe('Agent', function () {
         it('returns partial state with developer mode', async function () {
             const agent = createHTTPAgent()
             agent.currentMode = 'developer'
-            const state = await agent.getState()
+            const state = agent.getState()
             state.should.have.property('ownerType', 'none')
             state.should.have.property('project', null)
             state.should.have.property('snapshot', null)
@@ -525,7 +525,7 @@ describe('Agent', function () {
             agent.currentSettings = { hash: 'settingsId' }
             agent.config = { licensed: true }
             agent.launcher = { state: 'running' }
-            const state = await agent.getState()
+            const state = agent.getState()
             state.should.have.property('ownerType', 'project')
             state.should.have.property('project', 'projectId')
             state.should.have.property('snapshot', 'snapshotId')
@@ -543,7 +543,7 @@ describe('Agent', function () {
             agent.currentSettings = { hash: 'settingsId' }
             agent.config = { licensed: true }
             agent.launcher = { state: 'running' }
-            const state = await agent.getState()
+            const state = agent.getState()
             state.should.have.property('ownerType', 'application')
             state.should.have.property('application', 'applicationId')
             state.should.have.property('snapshot', 'snapshotId')
@@ -562,7 +562,7 @@ describe('Agent', function () {
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'developer'
             agent.launcher = { state: 'running' }
-            const state = await agent.getState()
+            const state = agent.getState()
             state.should.have.property('project', 'projectId')
             state.should.have.property('snapshot', 'snapshotId')
             state.should.have.property('settings', 'settingsId')
@@ -581,7 +581,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.currentMode = 'developer'
-            const state = await agent.getState()
+            const state = agent.getState()
             state.should.have.property('project', 'projectId')
             state.should.have.property('snapshot', 'snapshotId')
             state.should.have.property('settings', 'settingsId')
@@ -598,7 +598,7 @@ describe('Agent', function () {
             agent.currentSnapshot = { id: 'snapshotId' }
             agent.currentSettings = { hash: 'settingsId' }
             agent.launcher = { state: 'running' }
-            const state = await agent.getState()
+            const state = agent.getState()
             ;(state === null).should.be.true()
         })
     })
@@ -1273,7 +1273,7 @@ describe('Agent', function () {
 
             const agent2 = createMQTTAgent() // load the project file
             await agent2.loadProject()
-            const state = await agent2.getState()
+            const state = agent2.getState()
             state.should.have.property('project', null)
             state.should.have.property('snapshot', null)
             state.should.have.property('settings', null)
@@ -1301,7 +1301,7 @@ describe('Agent', function () {
                 await agent2.start()
 
                 // fake a check-in what will start the launcher and the attempt to start the tunnel
-                const state = await agent2.getState()
+                const state = agent2.getState()
                 await agent2.setState(state)
 
                 // fail safe this test by checking the launcher was created and start was called
@@ -1339,7 +1339,7 @@ describe('Agent', function () {
                 await agent2.start()
 
                 // fake a check-in what will start the launcher
-                const state = await agent2.getState()
+                const state = agent2.getState()
                 await agent2.setState(state)
 
                 // fail safe this test by checking the launcher was created and start was called
