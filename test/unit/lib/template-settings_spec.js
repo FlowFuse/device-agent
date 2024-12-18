@@ -55,10 +55,7 @@ describe('template-settings', () => {
         const settings = require(settingsFile)
         should.exist(settings)
         settings.should.have.a.property('adminAuth').and.be.an.Object()
-        settings.adminAuth.should.have.a.property('type', 'credentials')
-        settings.adminAuth.should.have.a.property('users').and.be.a.Function()
-        settings.adminAuth.should.have.a.property('authenticate').and.be.a.Function()
-        settings.adminAuth.should.have.a.property('tokens').and.be.a.Function()
+        settings.adminAuth.should.not.have.a.property('type')
 
         settings.should.have.a.property('contextStorage').and.be.an.Object()
         settings.contextStorage.should.have.a.property('default', 'memory')
@@ -76,6 +73,9 @@ describe('template-settings', () => {
         settings.editorTheme.codeEditor.should.have.a.property('lib', 'monaco')
         settings.editorTheme.tours.should.be.false()
         settings.editorTheme.should.have.a.property('palette').and.be.an.Object()
+        settings.editorTheme.should.have.a.property('login').and.be.an.Object()
+        settings.editorTheme.login.should.have.a.property('message').and.be.an.String()
+        settings.editorTheme.login.should.have.a.property('button').and.be.an.Object()
 
         settings.should.have.a.property('externalModules').and.be.an.Object()
         settings.externalModules.should.have.a.property('autoInstall', true)
