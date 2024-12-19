@@ -1,3 +1,10 @@
+#### 3.0.2: Release
+
+ - Apply custom message in login dialog on direct access (#332) @knolleary
+ - Bump docker/setup-buildx-action from 3.7.1 to 3.8.0 (#331) @app/dependabot
+ - Send nr version (#327) @hardillb
+ - Bump docker/build-push-action from 6.9.0 to 6.10.0 (#330) @app/dependabot
+
 #### 3.0.1: Release
 
  - Pass through teamBroker feature flag to project nodes (#328) @knolleary
