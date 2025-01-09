@@ -173,7 +173,7 @@ Full details can be found in [HTTP Node security documentation](https://nodered.
 
 Example:
 ```yml
-httpStatic:
+httpNodeAuth:
    user: user
    pass: $2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN.
 ```
