@@ -1,3 +1,14 @@
+#### 3.1.0: Release
+
+ - Reload device settings when restarting in dev mode (#348) @knolleary
+ - Add support for httpNodeAuth (#341) @knolleary
+ - Bump docker/build-push-action from 6.12.0 to 6.13.0 (#340) @app/dependabot
+ - Bump docker/build-push-action from 6.11.0 to 6.12.0 (#339) @app/dependabot
+ - Better error logging when provisioning devices with token (#338) @hardillb
+ - Bump docker/build-push-action from 6.10.0 to 6.11.0 (#335) @app/dependabot
+ - Bump docker/setup-qemu-action from 3.2.0 to 3.3.0 (#336) @app/dependabot
+ - Correction to httpNodeAuth config example (#334) @Steve-Mcl
+
 #### 3.0.2: Release
 
  - Apply custom message in login dialog on direct access (#332) @knolleary
