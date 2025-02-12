@@ -7,6 +7,7 @@ RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python
 RUN mkdir -m 777 /opt/flowforge-device
 RUN npm config set cache /opt/flowforge-device/.npm --global
 RUN npm install -g @flowfuse/device-agent@${VERSION}
+RUN chmod -R 777 /opt/flowforge-device/.npm
 
 EXPOSE 1880
 

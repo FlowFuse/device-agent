@@ -4,9 +4,10 @@ ARG VERSION=latest
 
 RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python3
 
-RUN mkdir -m 777 /opt/flowfuse-device
+RUN mkdir -m 777 -p /opt/flowfuse-device
 RUN npm config set cache /opt/flowfuse-device/.npm --global
 RUN npm install -g @flowfuse/device-agent@${VERSION}
+RUN chmod -R 777 /opt/flowfuse-device/.npm
 
 EXPOSE 1880
 
