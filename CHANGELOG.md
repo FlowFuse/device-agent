@@ -1,5 +1,6 @@
 #### 3.1.0: Release
 
+ - Reload device settings when restarting in dev mode (#348) @knolleary
  - Add support for httpNodeAuth (#341) @knolleary
  - Bump docker/build-push-action from 6.12.0 to 6.13.0 (#340) @app/dependabot
  - Bump docker/build-push-action from 6.11.0 to 6.12.0 (#339) @app/dependabot
