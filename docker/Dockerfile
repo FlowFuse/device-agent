@@ -2,7 +2,7 @@ FROM node:18-alpine
 
 ARG VERSION=latest
 
-RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python3
+RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python3 openssl
 
 RUN mkdir -m 777 -p /opt/flowfuse-device
 RUN npm config set cache /opt/flowfuse-device/.npm --global
