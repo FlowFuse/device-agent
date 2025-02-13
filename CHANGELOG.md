@@ -1,3 +1,8 @@
+#### 3.1.1: Release
+
+ - Add openssl to the docker dependencies (#350) @hardillb
+ - Docker as none root user (#349) @hardillb
+
 #### 3.1.0: Release
 
  - Reload device settings when restarting in dev mode (#348) @knolleary
