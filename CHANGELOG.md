@@ -1,3 +1,8 @@
+#### 3.1.2: Release
+
+ - Remove custom callback resolve function (#353) @knolleary
+ - Bump serialize-javascript and mocha (#352) @app/dependabot
+
 #### 3.1.1: Release
 
  - Add openssl to the docker dependencies (#350) @hardillb
