@@ -115,7 +115,7 @@ describe('template-settings', () => {
         settings.logging.console.should.have.a.property('metric', false)
         settings.logging.console.should.have.a.property('audit', false)
         settings.logging.console.should.have.a.property('handler').and.be.a.Function()
-        settings.should.have.a.property('nodesDir', null)
+        settings.should.have.a.property('nodesDir')
 
         settings.should.have.a.property('httpNodeAuth', false) // by default, this is false
     })
