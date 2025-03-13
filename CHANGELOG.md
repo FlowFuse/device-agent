@@ -1,3 +1,9 @@
+#### 3.1.3: Release
+
+ - Do not copy theme into project node_modules (#358) @knolleary
+ - Add user role in auth object (#363) @knolleary
+ - Bump docker/build-push-action from 6.13.0 to 6.14.0 (#355) @app/dependabot
+
 #### 3.1.2: Release
 
  - Remove custom callback resolve function (#353) @knolleary
