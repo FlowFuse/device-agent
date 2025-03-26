@@ -100,6 +100,9 @@ httpStatic: /data
 httpNodeAuth:
     user: user
     pass: $2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN.
+localAuth:
+    user: localuser
+    pass: $2y$08$/IyMCURWoRc4l0ctpJDlJedccKQDftGHC/4iGbKylVGKjUFdW5h3K
 random: 123456
 my_data:
     name: Alice
@@ -181,6 +184,9 @@ my_data:
             deviceConfig.should.match(/httpNodeAuth:/)
             deviceConfig.should.match(/ +user: user/)
             deviceConfig.should.match(/ +pass: \$2a\$08\$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN./)
+            deviceConfig.should.match(/localAuth:/)
+            deviceConfig.should.match(/ +user: localuser/)
+            deviceConfig.should.match(/ +pass: \$2y\$08\$\/IyMCURWoRc4l0ctpJDlJedccKQDftGHC\/4iGbKylVGKjUFdW5h3K/)
             deviceConfig.should.match(/random: 123456/)
             deviceConfig.should.match(/my_data:/)
             deviceConfig.should.match(/ +name: Alice/)
