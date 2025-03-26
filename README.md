@@ -125,6 +125,7 @@ Node-RED options | Description
 `https`          | Enable HTTPS. See below for details
 `httpStatic`     | Enable serving of static content from a local path
 `httpNodeAuth`   | If set, any endpoints created in Node-RED flows will require this username and password to access them. Default: `false`
+`localAuth`      | When configured, local login is possible
 
 ##### `https` configuration
 
@@ -177,6 +178,20 @@ httpNodeAuth:
    user: user
    pass: $2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN.
 ```
+
+##### `localAuth` configuration
+
+The recommended way to securely access the Node-RED editor is via FlowFuse platform.
+However, if you want to enable local login within Node-RED, you can use the `localAuth` configuration.
+
+Example:
+```yml
+localAuth:
+   user: user
+   pass: $2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN.
+```
+
+NOTE: `localAuth.enabled` can be set to `false` to disable local login without the need to remove the `user` and `pass` properties.
 
 
 ### `device.yml` - for provisioning
