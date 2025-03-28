@@ -1,3 +1,8 @@
+#### 3.2.0: Release
+
+ - Implement Local Login support (#371) @Steve-Mcl
+ - chore: Pin external actions to commit hash (#369) @ppawlowski
+
 #### 3.1.3: Release
 
  - Do not copy theme into project node_modules (#358) @knolleary
