@@ -70,6 +70,7 @@ describe('config loader', () => {
             parsed.should.have.a.property('dir', deviceConfig.dir)
             parsed.should.have.a.property('verbose', true)
             parsed.should.not.have.a.property('httpNodeAuth')
+            parsed.should.not.have.a.property('localAuth')
         })
         describe('httpNodeAuth', () => {
             it('should parse config with httpNodeAuth set false', async function () {
@@ -127,6 +128,81 @@ describe('config loader', () => {
                 parsed.should.have.a.property('valid', false)
                 parsed.should.have.a.property('message').and.be.a.String()
                 parsed.message.should.match(/missing required options.*httpNodeAuth\.pass*/s)
+            })
+        })
+        describe('localAuth', () => {
+            it('should parse config with localAuth set false', async function () {
+                const extraSettings = {
+                    localAuth: false
+                }
+                const ymlData = await generateYaml(extraSettings)
+                const result = parseDeviceConfig(ymlData)
+                should.exist(result)
+                result.should.have.a.property('valid', true)
+                result.should.have.a.property('deviceConfig').and.be.an.Object()
+
+                const parsed = result.deviceConfig
+                parsed.should.have.a.property('localAuth', false)
+            })
+            it('should parse config with valid localAuth settings', async function () {
+                const extraSettings = {
+                    localAuth: {
+                        user: 'user',
+                        pass: 'pass'
+                    }
+                }
+                const ymlData = await generateYaml(extraSettings)
+                const result = parseDeviceConfig(ymlData)
+                should.exist(result)
+                result.should.have.a.property('valid', true)
+                result.should.have.a.property('deviceConfig').and.be.an.Object()
+
+                const parsed = result.deviceConfig
+                parsed.should.have.a.property('localAuth').and.be.an.Object()
+                parsed.localAuth.should.have.a.property('user', 'user')
+                parsed.localAuth.should.have.a.property('pass', 'pass')
+            })
+            it('should parse config with localAuth settings but not enabled', async function () {
+                const extraSettings = {
+                    localAuth: {
+                        enabled: false,
+                        user: 'user',
+                        pass: 'pass'
+                    }
+                }
+                const ymlData = await generateYaml(extraSettings)
+                const result = parseDeviceConfig(ymlData)
+                should.exist(result)
+                result.should.have.a.property('valid', true)
+                result.should.have.a.property('deviceConfig').and.be.an.Object()
+
+                const parsed = result.deviceConfig
+                parsed.should.have.a.property('localAuth').and.be.an.Object()
+                parsed.localAuth.should.have.a.property('enabled', false)
+            })
+            it('should not validate invalid localAuth (string)', async function () {
+                const extraSettings = {
+                    localAuth: 'invalid'
+                }
+                const ymlData = await generateYaml(extraSettings)
+                const result = parseDeviceConfig(ymlData)
+                should.exist(result)
+                result.should.have.a.property('valid', false)
+                result.should.have.a.property('message').and.be.a.String()
+                result.message.should.match(/missing required options.*localAuth\.user*/s)
+            })
+            it('should not validate invalid localAuth (missing pass)', async function () {
+                const extraSettings = {
+                    localAuth: {
+                        user: 'user'
+                    }
+                }
+                const ymlData = await generateYaml(extraSettings)
+                const result = parseDeviceConfig(ymlData)
+                should.exist(result)
+                result.should.have.a.property('valid', false)
+                result.should.have.a.property('message').and.be.a.String()
+                result.message.should.match(/missing required options.*localAuth\.pass*/s)
             })
         })
     })

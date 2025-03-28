@@ -56,6 +56,7 @@ describe('template-settings', () => {
         should.exist(settings)
         settings.should.have.a.property('adminAuth').and.be.an.Object()
         settings.adminAuth.should.not.have.a.property('type')
+        settings.adminAuth.should.not.have.a.property('users') // no users array unless localAuth options are provided
 
         settings.should.have.a.property('contextStorage').and.be.an.Object()
         settings.contextStorage.should.have.a.property('default', 'memory')
@@ -200,6 +201,40 @@ describe('template-settings', () => {
         settings.should.have.a.property('httpNodeAuth').and.be.an.Object()
         settings.httpNodeAuth.should.have.a.property('user', 'test')
         settings.httpNodeAuth.should.have.a.property('pass', '$123456789')
+    })
+
+    it('should set adminAuth.type and users array when valid localAuth options are provided and enabled', async function () {
+        const extraConfig = {
+            localAuth: {
+                enabled: true,
+                user: 'local',
+                pass: '$987654321'
+            }
+        }
+        const settingsFile = await generateSettingsFile(extraConfig)
+        const settings = require(settingsFile)
+        should.exist(settings)
+        settings.should.have.a.property('adminAuth').and.be.an.Object()
+        settings.adminAuth.should.have.a.property('type', 'credentials')
+        settings.adminAuth.should.have.a.property('users').and.be.an.Array()
+        settings.adminAuth.users.should.have.length(1)
+        settings.adminAuth.users[0].should.have.a.property('username', 'local')
+        settings.adminAuth.users[0].should.have.a.property('password', '$987654321')
+    })
+    it('should not set adminAuth.type or users array when localAuth options are not enabled', async function () {
+        const extraConfig = {
+            localAuth: {
+                enabled: false,
+                user: 'local',
+                pass: '$987654321'
+            }
+        }
+        const settingsFile = await generateSettingsFile(extraConfig)
+        const settings = require(settingsFile)
+        should.exist(settings)
+        settings.should.have.a.property('adminAuth').and.be.an.Object()
+        settings.adminAuth.should.not.have.a.property('type')
+        settings.adminAuth.should.not.have.a.property('users')
     })
 
     describe('Proxy Support', function () {
