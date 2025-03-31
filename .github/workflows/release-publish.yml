@@ -50,7 +50,7 @@ jobs:
           push: true
           platforms: linux/amd64, linux/arm64, linux/arm/v7
       - name: Publish README.md to Docker hub
-        uses: peter-evans/dockerhub-description@e98e4d1628a5f3be2be7c231e50981aee98723ae # v4.0.0
+        uses: peter-evans/dockerhub-description@0505d8b04853a30189aee66f5bb7fd1511bbac71 # v4.0.1
         with:
           repository: flowfuse/device-agent
           username: flowfuse
@@ -102,7 +102,7 @@ jobs:
           push: true
           platforms: linux/amd64, linux/arm64, linux/arm/v7
       - name: Publish README.md to Docker hub
-        uses: peter-evans/dockerhub-description@e98e4d1628a5f3be2be7c231e50981aee98723ae # v4.0.0
+        uses: peter-evans/dockerhub-description@0505d8b04853a30189aee66f5bb7fd1511bbac71 # v4.0.1
         with:
           repository: flowforge/device-agent
           username: flowforge
