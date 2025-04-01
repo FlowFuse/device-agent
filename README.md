@@ -193,6 +193,8 @@ localAuth:
 
 NOTE: `localAuth.enabled` can be set to `false` to disable local login without the need to remove the `user` and `pass` properties.
 
+The editor is located on the path `/device-editor` e.g. `http://localhost:1880/device-editor`
+
 
 ### `device.yml` - for provisioning
 
