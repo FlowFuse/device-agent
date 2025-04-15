@@ -125,14 +125,18 @@ Please ensure the parent directory is writable, or set a different path with -d`
                 info('Device setup was successful')
                 info('To start the Device Agent with the new configuration run the following command:')
                 info(runCommandInfo.join(' '))
-                const answer = readLineSync.keyInYNStrict('Do you want to start the Device Agent now?')
-                if (answer) {
-                    // need to build the correct options object
-                    info('Starting Device Agent with new configuration')
-                    delete options.otc
-                    delete options.ffUrl
-                    options.deviceFile = path.join(options.dir, 'device.yml')
-                    start(options, true)
+                if (!options.otcDontStart) {
+                    const answer = readLineSync.keyInYNStrict('Do you want to start the Device Agent now?')
+                    if (answer) {
+                        // need to build the correct options object
+                        info('Starting Device Agent with new configuration')
+                        delete options.otc
+                        delete options.ffUrl
+                        options.deviceFile = path.join(options.dir, 'device.yml')
+                        start(options, true)
+                    } else {
+                        quit()
+                    }
                 } else {
                     quit()
                 }
