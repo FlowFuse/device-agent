@@ -47,6 +47,7 @@
         "passport": "0.6.0",
         "passport-oauth2": "^1.6.1",
         "proxy-from-env": "^1.1.0",
+        "readline-sync": "^1.4.10",
         "semver": "^7.3.8",
         "ws": "^8.13.0",
         "yaml": "^2.1.1"
