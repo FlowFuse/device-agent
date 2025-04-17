@@ -15,7 +15,7 @@ const { AgentManager } = require('./lib/AgentManager')
 const { WebServer } = require('./frontend/server')
 const ConfigLoader = require('./lib/config')
 const webServer = new WebServer()
-const readLineSync = require('readline-sync')
+const confirm = require('@inquirer/confirm').default
 
 function main (testOptions) {
     const pkg = require('./package.json')
@@ -126,23 +126,23 @@ Please ensure the parent directory is writable, or set a different path with -d`
                 info('To start the Device Agent with the new configuration run the following command:')
                 info(runCommandInfo.join(' '))
                 if (!options.otcDontStart) {
-                    const answer = readLineSync.keyInYNStrict('Do you want to start the Device Agent now?')
-                    if (answer) {
-                        // need to build the correct options object
-                        info('Starting Device Agent with new configuration')
-                        delete options.otc
-                        delete options.ffUrl
-                        options.deviceFile = path.join(options.dir, 'device.yml')
-                        start(options, true)
-                    } else {
-                        quit()
-                    }
+                    return confirm({ message: 'Do you want to start the Device Agent now?' })
                 } else {
                     quit()
                 }
             } else {
                 warn('Device setup was unsuccessful')
                 quit(null, 2)
+            }
+        }).then((startNow) => {
+            if (startNow) {
+                info('Starting Device Agent with new configuration')
+                delete options.otc
+                delete options.ffUrl
+                options.deviceFile = path.join(options.dir, 'device.yml')
+                start(options, true)
+            } else {
+                quit()
             }
         }).catch((err) => {
             quit(err.message, 2)
