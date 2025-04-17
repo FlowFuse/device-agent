@@ -15,6 +15,7 @@ const { AgentManager } = require('./lib/AgentManager')
 const { WebServer } = require('./frontend/server')
 const ConfigLoader = require('./lib/config')
 const webServer = new WebServer()
+const confirm = require('@inquirer/confirm').default
 
 function main (testOptions) {
     const pkg = require('./package.json')
@@ -124,10 +125,24 @@ Please ensure the parent directory is writable, or set a different path with -d`
                 info('Device setup was successful')
                 info('To start the Device Agent with the new configuration run the following command:')
                 info(runCommandInfo.join(' '))
-                quit()
+                if (!options.otcDontStart) {
+                    return confirm({ message: 'Do you want to start the Device Agent now?' })
+                } else {
+                    quit()
+                }
             } else {
                 warn('Device setup was unsuccessful')
                 quit(null, 2)
+            }
+        }).then((startNow) => {
+            if (startNow) {
+                info('Starting Device Agent with new configuration')
+                delete options.otc
+                delete options.ffUrl
+                options.deviceFile = path.join(options.dir, 'device.yml')
+                start(options, true)
+            } else {
+                quit()
             }
         }).catch((err) => {
             quit(err.message, 2)
@@ -135,54 +150,58 @@ Please ensure the parent directory is writable, or set a different path with -d`
         return
     }
 
-    info('FlowFuse Device Agent')
-    info('----------------------')
+    start(options, configFound)
 
-    if (options.ui) {
-        info('Starting Web UI')
-        if (!options.uiUser || !options.uiPass) {
-            quit('Web UI cannot run without a username and password. These are set via with --ui-user and --ui-pass', 2)
+    function start (options, configFound) {
+        info('FlowFuse Device Agent')
+        info('----------------------')
+
+        if (options.ui) {
+            info('Starting Web UI')
+            if (!options.uiUser || !options.uiPass) {
+                quit('Web UI cannot run without a username and password. These are set via with --ui-user and --ui-pass', 2)
+            }
+            const uiRuntime = Number(options.uiRuntime)
+            if (isNaN(uiRuntime) || uiRuntime === Infinity || uiRuntime < 0) {
+                quit('Web UI runtime must be 0 or greater', 2)
+            }
+            const opts = {
+                port: options.uiPort || 1879,
+                host: options.uiHost || '0.0.0.0',
+                credentials: {
+                    username: options.uiUser,
+                    password: options.uiPass
+                },
+                runtime: uiRuntime,
+                dir: options.dir,
+                config: options.config,
+                deviceFile: options.deviceFile
+            }
+            webServer.initialize(AgentManager, opts)
+            webServer.start().then().catch((err) => {
+                info(`Web UI failed to start: ${err.message}`)
+            })
         }
-        const uiRuntime = Number(options.uiRuntime)
-        if (isNaN(uiRuntime) || uiRuntime === Infinity || uiRuntime < 0) {
-            quit('Web UI runtime must be 0 or greater', 2)
-        }
-        const opts = {
-            port: options.uiPort || 1879,
-            host: options.uiHost || '0.0.0.0',
-            credentials: {
-                username: options.uiUser,
-                password: options.uiPass
-            },
-            runtime: uiRuntime,
-            dir: options.dir,
-            config: options.config,
-            deviceFile: options.deviceFile
-        }
-        webServer.initialize(AgentManager, opts)
-        webServer.start().then().catch((err) => {
-            info(`Web UI failed to start: ${err.message}`)
-        })
-    }
 
-    process.on('SIGINT', closeAgentAndQuit)
-    process.on('SIGTERM', closeAgentAndQuit)
-    process.on('SIGQUIT', closeAgentAndQuit)
+        process.on('SIGINT', closeAgentAndQuit)
+        process.on('SIGTERM', closeAgentAndQuit)
+        process.on('SIGQUIT', closeAgentAndQuit)
 
-    const parsedConfig = configFound && (ConfigLoader.parseDeviceConfigFile(options.deviceFile) || { valid: false })
-    const isValidDeviceConfig = !!parsedConfig.valid
+        const parsedConfig = configFound && (ConfigLoader.parseDeviceConfigFile(options.deviceFile) || { valid: false })
+        const isValidDeviceConfig = !!parsedConfig.valid
 
-    if (isValidDeviceConfig) {
-        AgentManager.startAgent()
-    } else if (configFound && options.ui === true) {
-        info(`Invalid config file '${options.deviceFile}'.`)
-    } else if (!configFound && options.ui === true) {
-        info(`No config file found at '${deviceFile1}' or '${deviceFile2}'`)
-    } else {
-        if (configFound) {
-            quit(`Invalid config file '${options.deviceFile}': ${parsedConfig?.message || 'Unknown error'}'.`, 9) // Exit Code 9 - Invalid config file
+        if (isValidDeviceConfig) {
+            AgentManager.startAgent()
+        } else if (configFound && options.ui === true) {
+            info(`Invalid config file '${options.deviceFile}'.`)
+        } else if (!configFound && options.ui === true) {
+            info(`No config file found at '${deviceFile1}' or '${deviceFile2}'`)
         } else {
-            quit(`No config file found at '${deviceFile1}' or '${deviceFile2}'`, 2) // No such file or directory
+            if (configFound) {
+                quit(`Invalid config file '${options.deviceFile}': ${parsedConfig?.message || 'Unknown error'}'.`, 9) // Exit Code 9 - Invalid config file
+            } else {
+                quit(`No config file found at '${deviceFile1}' or '${deviceFile2}'`, 2) // No such file or directory
+            }
         }
     }
 
