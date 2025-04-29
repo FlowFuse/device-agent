@@ -352,29 +352,36 @@ describe('utils', function () {
 
     describe('extractKeyValueFromJsContent', function () {
         it('should extract the correct value for a given key', function () {
-            const jsContent = `
+            const jsContent = `module.exports = {
                 /* A comment */
                 credentialSecret: 'my-secret',
                 anotherKey: 'another-value'
-            `
+            }`
+            const result = utils.extractKeyValueFromJsContent(jsContent, 'credentialSecret')
+            result.should.equal('my-secret')
+        })
+
+        // Test for a minified JS content - currently not supported
+        it.skip('should extract the correct value for a given key in a minified settings file', function () {
+            const jsContent = "module.exports={/* A comment */ credentialSecret: 'my-secret'}"
             const result = utils.extractKeyValueFromJsContent(jsContent, 'credentialSecret')
             result.should.equal('my-secret')
         })
 
         it('should return null if the key is not found', function () {
-            const jsContent = `
+            const jsContent = `module.exports = {
                 /* A comment */
                 anotherKey: 'another-value'
-            `
+        }`
             const result = utils.extractKeyValueFromJsContent(jsContent, 'missingKey')
             should(result).be.null()
         })
-        it('should return null if the key is commented out', function () {
-            const jsContent = `
+        it('should return null if the key is // commented out', function () {
+            const jsContent = `module.exports = {
                 /* A comment */
                 // credentialSecret: 'my-secret',
                 anotherKey: 'another-value'
-            `
+            }`
             const result = utils.extractKeyValueFromJsContent(jsContent, 'credentialSecret')
             should(result).be.null()
         })
