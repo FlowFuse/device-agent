@@ -385,6 +385,15 @@ describe('utils', function () {
             const result = utils.extractKeyValueFromJsContent(jsContent, 'credentialSecret')
             should(result).be.null()
         })
+        it('should return null if the key is /* commented */ out', function () {
+            const jsContent = `module.exports = {
+                /* A comment */
+                /* credentialSecret: 'my-secret', */
+                anotherKey: 'another-value'
+            }`
+            const result = utils.extractKeyValueFromJsContent(jsContent, 'credentialSecret')
+            should(result).be.null()
+        })
     })
 
     describe('loadAndParseJsonFile', function () {
