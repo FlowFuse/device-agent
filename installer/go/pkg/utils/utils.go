@@ -209,3 +209,13 @@ func RemoveWorkingDirectory(workDir string) error {
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
 }
+
+
+// GetOSDetails returns the current operating system and architecture.
+// 
+// Returns:
+//   - string: The operating system (e.g., "linux", "darwin", "windows")
+//   - string: The architecture (e.g., "amd64", "arm64", "386")
+func GetOSDetails() (string, string) {
+	return runtime.GOOS, runtime.GOARCH
+}
