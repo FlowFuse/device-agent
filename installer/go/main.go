@@ -17,6 +17,7 @@ var (
 	flowfuseOneTimeCode string
 	nodeVersion         string
 	serviceUsername     string
+	help								bool
 	uninstall           bool
 	update              bool
 	debugMode           bool
@@ -28,10 +29,18 @@ func init() {
 	flag.StringVar(&serviceUsername, "user", "flowfuse", "Username for the service account")
 	flag.StringVar(&flowfuseURL, "url", "https://app.flowfuse.com", "FlowFuse URL")
 	flag.StringVar(&flowfuseOneTimeCode, "otc", "", "FlowFuse one time code for authentication (required)")
+	flag.BoolVar(&help, "help", false, "Display help information")
 	flag.BoolVar(&uninstall, "uninstall", false, "Uninstall the device agent")
 	flag.BoolVar(&update, "update", false, "Update the device agent")
 	flag.BoolVar(&debugMode, "debug", false, "Enable debug logging")
 	flag.Parse()
+
+	if help {
+		fmt.Println("FlowFuse Device Agent Installer")
+		fmt.Println("Usage:")
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
 
 	if (!uninstall && !update && flowfuseOneTimeCode == "") {
 		fmt.Println("[ERROR]: FlowFuse one time code is required for installation")
