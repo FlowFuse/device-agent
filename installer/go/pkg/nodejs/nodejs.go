@@ -66,9 +66,11 @@ func isNodeInstalled(versionStr string) bool {
 	if _, err := os.Stat(nodeBinPath); os.IsNotExist(err) {
 		return false
 	}
+	logger.Debug("Node.js binary found at %s", nodeBinPath)
 
 	cmd := exec.Command(nodeBinPath, "-v")
 	output, err := cmd.CombinedOutput()
+	logger.Debug("Node.js version command output: %s", string(output))
 	if err != nil {
 		return false
 	}
@@ -399,6 +401,8 @@ func extractTarGz(tarGzFile, destDir, version string) error {
 			archSuffix = "x64"
 		} else if runtime.GOARCH == "386" {
 			archSuffix = "x86"
+		} else if runtime.GOARCH == "arm" {
+			archSuffix = "armv7l"
 		} else {
 			archSuffix = runtime.GOARCH
 		}
