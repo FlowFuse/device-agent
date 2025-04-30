@@ -61,6 +61,8 @@ func main() {
 	// Log startup information
 	logger.Debug("Command line arguments: node=%s, agent=%s, user=%s, url=%s, debug=%v",
 		nodeVersion, agentVersion, serviceUsername, flowfuseURL, debugMode)
+	operatingSystem, architecture := utils.GetOSDetails()
+	logger.Debug("Detected system: %s, detected architecture: %s", operatingSystem, architecture)
 
 	logger.Info("****************************************************************")
 	logger.Info("*            FlowFuse Device Agent Installer                   *")
