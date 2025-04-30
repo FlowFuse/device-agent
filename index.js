@@ -132,7 +132,7 @@ Please ensure the parent directory is writable, or set a different path with -d`
             }
             print('Success! This Device can be launched at any time using the following command:', figures.tick)
             print(runCommandInfo.join(' '), ' ')
-            if (!options.otcDontImport) {
+            if (!options.otcNoImport) {
                 // Support for importing flows during initial state check-in was added after 2.15.0.
                 const ffVersion = deviceSettings.meta?.ffVersion?.replace(/[^0-9.]/g, '') || '0.0.0' // Strip suffixes like -beta.1
                 const ffSupportsImport = (ffVersion && semver.gt(ffVersion, '2.15.0'))
@@ -192,8 +192,8 @@ Please ensure the parent directory is writable, or set a different path with -d`
                     print(`Snapshot import was unsuccessful (${importResponse.statusCode})`, figures.cross)
                 }
             }
-            // If the user has set otcDontStart, then we don't want to start the agent
-            if (!options.otcDontStart) {
+            // If the user has set otcNoStart, then we don't want to start the agent
+            if (!options.otcNoStart) {
                 return confirm({ message: 'Do you want to start the Device Agent now?' })
             } else {
                 quit()
