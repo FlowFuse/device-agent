@@ -32,14 +32,22 @@ func CheckPermissions() error {
 
 // checkUnixPermissions checks if the current user has sudo access without requiring a password.
 // It runs 'sudo -nv' command which will succeed if the user has sudo privileges without needing
-// to enter a password. If the command fails, it logs informational messages notifying the user
-// that they will be prompted for a password when sudo operations are performed.
-// This function always returns nil as it's only used for informational purposes.
+// to enter a password. If the command fails, it checks if sudo is available on the system at all.
+// If sudo is not available, it returns an error; otherwise it just logs informational messages.
+//
+// Returns:
+//   - nil if sudo is available (either with or without password)
+//   - error if sudo is not available on the system
 func checkUnixPermissions() error {
 	cmd := exec.Command("sudo", "-nv")
 	err := cmd.Run()
 
 	if err != nil {
+		_, err := exec.LookPath("sudo")
+		if err != nil {
+			return fmt.Errorf("sudo command not found on this system: %w", err)
+		}
+
 		logger.Info("This installer requires sudo access for some operations.")
 		logger.Info("You will be prompted for your password when needed.")
 	}
@@ -130,7 +138,7 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 // createServiceUser creates a system user with the given username if it doesn't already exist.
 // For Linux systems, it checks if the user exists by calling the "id" command.
 // If the user doesn't exist, it creates the user with a home directory and no shell.
-// 
+//
 // Parameters:
 //   - username: the name of the user to create
 //
@@ -161,7 +169,7 @@ func createServiceUser(username string) (string, error) {
 
 // RemoveServiceUser deletes the specified service user account from the system.
 // On Linux, it executes "userdel -r" with sudo to remove the user and their home directory.
-// 
+//
 // Parameters:
 //   - username: the name of the user account to be removed
 //
@@ -210,9 +218,8 @@ func RemoveWorkingDirectory(workDir string) error {
 	}
 }
 
-
 // GetOSDetails returns the current operating system and architecture.
-// 
+//
 // Returns:
 //   - string: The operating system (e.g., "linux", "darwin", "windows")
 //   - string: The architecture (e.g., "amd64", "arm64", "386")
