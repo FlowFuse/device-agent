@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
@@ -96,23 +95,4 @@ func IsInstalled(serviceName string) bool {
 		logger.Info("Service installation check not supported on %s", runtime.GOOS)
 		return false
 	}
-}
-
-// WriteServiceFile writes the provided content to a service file at the specified path.
-// It creates the file with permissions 0644. If the file already exists, it will be overwritten.
-// The function logs debug information about the operation and detailed error information if the write fails.
-//
-// Parameters:
-//   - path: The file path where the service file will be written.
-//   - content: The byte slice containing the data to be written to the file.
-//
-// Returns:
-//   - error: nil if successful, otherwise an error wrapped with additional context.
-func WriteServiceFile(path string, content []byte) error {
-	logger.Debug("Writing service file to %s", path)
-	if err := os.WriteFile(path, content, 0644); err != nil {
-		logger.Error("Failed to write service file: %v", err)
-		return fmt.Errorf("failed to write service file: %w", err)
-	}
-	return nil
 }

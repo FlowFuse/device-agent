@@ -13,12 +13,51 @@ import (
 
 // ServiceConfig holds the data for the service template
 type ServiceConfig struct {
-	User       string
-	WorkDir    string
-	NodeBinDir string
+	User        string
+	WorkDir     string
+	NodeBinDir  string
+	ServiceName string // Used for sysvinit scripts
 }
 
-// InstallLinux creates and installs a systemd service on Linux systems.
+// IsSystemd returns true if the system uses systemd, false otherwise
+// This is determined by checking if the "systemctl" command is available
+func IsSystemd() bool {
+	logger.LogFunctionEntry("IsSystemd", nil)
+	_, err := exec.LookPath("systemctl")
+	logger.LogFunctionExit("IsSystemd", nil, nil)
+	return err == nil
+}
+
+// IsSysVInit returns true if the system uses SysV init, false otherwise
+// This is determined by checking if the "service" command is available
+func IsSysVInit() bool {
+	logger.LogFunctionEntry("IsSysVInit", nil)
+	_, err := os.Stat("/etc/init.d")
+	logger.LogFunctionExit("IsSysVInit", nil, err)
+	return err == nil
+}
+
+// InstallLinux creates and installs a service on Linux systems.
+// It detects whether to use systemd or sysvinit based on the system configuration.
+//
+// Parameters:
+//   - serviceName: the name of the service to create
+//   - workDir: the working directory for the service
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+func InstallLinux(serviceName, workDir string) error {
+	if IsSystemd() {
+		return InstallSystemd(serviceName, workDir)
+	} else if IsSysVInit() {
+		return InstallSysVInit(serviceName, workDir)
+	} else {
+		logger.Error("No supported init system found (systemd or sysvinit)")
+		return fmt.Errorf("no supported init system found (systemd or sysvinit)")
+	}
+}
+
+// InstallSystemd creates and installs a systemd service on Linux systems.
 //
 // The function checks if systemd is available, creates a service configuration,
 // generates a service file from a template, and installs it using systemd commands.
@@ -31,18 +70,7 @@ type ServiceConfig struct {
 //
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
-//
-// The function requires sudo privileges to:
-//   - Copy the service file to /etc/systemd/system/
-//   - Set permissions on the service file
-//   - Reload the systemd daemon
-//   - Enable and start the service
-func InstallLinux(serviceName, workDir string) error {
-	if _, err := exec.LookPath("systemctl"); err != nil {
-		logger.Error("systemd is not available on this system")
-		return fmt.Errorf("systemd is not available on this system")
-	}
-
+func InstallSystemd(serviceName, workDir string) error {
 	config := ServiceConfig{
 		User:       utils.ServiceUsername,
 		WorkDir:    workDir,
@@ -51,7 +79,7 @@ func InstallLinux(serviceName, workDir string) error {
 
 	serviceFilePath := "/etc/systemd/system/" + serviceName + ".service"
 
- 	tmpl, err := template.New("service").Parse(SystemdServiceTemplate)
+	tmpl, err := template.New("service").Parse(SystemdServiceTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse service template: %w", err)
 	}
@@ -95,21 +123,113 @@ func InstallLinux(serviceName, workDir string) error {
 	return nil
 }
 
-// StartLinux attempts to start a systemd service with the given serviceName on Linux systems.
-// It uses systemctl commands to start the service and verify that it is active.
+// InstallSysVInit creates and installs a SysVInit service script on Linux systems.
 //
-// The function executes the following steps:
-// 1. Runs 'sudo systemctl start serviceName' to start the service
-// 2. Verifies the service is active with 'sudo systemctl is-active --quiet serviceName'
-// 3. If the service is not active, it collects and logs the full status output
+// The function checks if /etc/init.d exists, creates a service configuration,
+// generates a service script from a template, and installs it using appropriate commands.
+// It also sets appropriate permissions and enables the service to start on boot.
+//
+// Parameters:
+//   - serviceName: the name of the service to create
+//   - workDir: the working directory for the service
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+//
+// The function requires sudo privileges to:
+//   - Copy the service script to /etc/init.d/
+//   - Set permissions on the service script
+//   - Enable and start the service
+func InstallSysVInit(serviceName, workDir string) error {
+	config := ServiceConfig{
+		User:        utils.ServiceUsername,
+		WorkDir:     workDir,
+		NodeBinDir:  nodejs.GetNodeBinDir(),
+		ServiceName: serviceName,
+	}
+
+	serviceFilePath := "/etc/init.d/" + serviceName
+
+	tmpl, err := template.New("service").Parse(SysVInitServiceTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse service template: %w", err)
+	}
+
+	tmpFile, err := os.CreateTemp("", "flowfuse-service-")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if err := tmpl.Execute(tmpFile, config); err != nil {
+		return fmt.Errorf("failed to execute service template: %w", err)
+	}
+	tmpFile.Close()
+
+	// Copy the service file to init.d directory
+	copyCmd := exec.Command("sudo", "cp", tmpFile.Name(), serviceFilePath)
+	if output, err := copyCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to copy service file: %w\nOutput: %s", err, output)
+	}
+
+	// Make the script executable
+	chmodCmd := exec.Command("sudo", "chmod", "+x", serviceFilePath)
+	if err := chmodCmd.Run(); err != nil {
+		return fmt.Errorf("failed to set service file permissions: %w", err)
+	}
+
+	// Enable the service with update-rc.d or chkconfig
+	var enableCmd *exec.Cmd
+	if _, err := exec.LookPath("update-rc.d"); err == nil {
+		enableCmd = exec.Command("sudo", "update-rc.d", serviceName, "defaults")
+	} else if _, err := exec.LookPath("chkconfig"); err == nil {
+		enableCmd = exec.Command("sudo", "chkconfig", "--add", serviceName)
+	} else {
+		logger.Debug("Could not find update-rc.d or chkconfig, service may not start on boot")
+	}
+
+	if enableCmd != nil {
+		if output, err := enableCmd.CombinedOutput(); err != nil {
+			logger.Debug("Failed to enable service: %s", output)
+			return fmt.Errorf("failed to enable service: %w\nOutput: %s", err, output)
+		}
+	}
+
+	if err := StartLinux(serviceName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// StartLinux starts a service on Linux systems.
+// It detects whether to use systemd or sysvinit based on the service location.
+//
+// Parameters:
+//   - serviceName: The name of the service to start
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+func StartLinux(serviceName string) error {
+	if IsSystemd() && IsInstalledSystemd(serviceName) {
+		return StartSystemd(serviceName)
+	} else if IsSysVInit() && IsInstalledSysVInit(serviceName) {
+		return StartSysVInit(serviceName)
+	}
+	logger.Error("No supported init system found or service not installed")
+	return fmt.Errorf("no supported init system found or service not installed")
+}
+
+// StartSystemd starts a systemd service
+// The function checks if the service is active after starting it.
+// If the service is not active, it retrieves the status and logs it.
 //
 // Parameters:
 //   - serviceName: The name of the systemd service to start
 //
 // Returns:
-//   - error: nil if the service starts successfully and is active,
-//            otherwise returns an error with details about the failure
-func StartLinux(serviceName string) error {
+//   - error: nil if successful, otherwise an error describing what went wrong
+func StartSystemd(serviceName string) error {
 	startCmd := exec.Command("sudo", "systemctl", "start", serviceName)
 	if output, err := startCmd.CombinedOutput(); err != nil {
 		logger.Error("Failed to start service: %s", output)
@@ -128,16 +248,59 @@ func StartLinux(serviceName string) error {
 	return nil
 }
 
-// StopLinux stops a systemd service on Linux systems.
-// It uses the systemctl command with sudo to stop the specified service.
+// StartSysVInit starts a sysvinit service
+// The function checks if the service is active after starting it.
+// If the service is not active, it retrieves the status and logs it.
 //
+// Parameters:
+//   - serviceName: The name of the sysvinit service to start
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+func StartSysVInit(serviceName string) error {
+	startCmd := exec.Command("sudo", "service", serviceName, "start")
+	if output, err := startCmd.CombinedOutput(); err != nil {
+		logger.Error("Failed to start service: %s", output)
+		return fmt.Errorf("failed to start service: %w\nOutput: %s", err, output)
+	}
+
+	// Check if the service is running
+	statusCmd := exec.Command("sudo", "service", serviceName, "status")
+	if output, err := statusCmd.CombinedOutput(); err != nil {
+		logger.Debug("Service status:\n%s", output)
+		logger.Error("Service is not active")
+		return fmt.Errorf("service is not active: %w", err)
+	}
+
+	return nil
+}
+
+// StopLinux stops a service on Linux systems.
+// It detects whether to use systemd or sysvinit based on the service location.
+//
+// Parameters:
+//   - serviceName: The name of the service to stop
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+func StopLinux(serviceName string) error {
+	if IsSystemd() && IsInstalledSystemd(serviceName) {
+		return StopSystemd(serviceName)
+	} else if IsSysVInit() && IsInstalledSysVInit(serviceName) {
+		return StopSysVInit(serviceName)
+	}
+	logger.Error("No supported init system found or service not installed")
+	return fmt.Errorf("no supported init system found or service not installed")
+}
+
+// StopSystemd stops a systemd service
+// 
 // Parameters:
 //   - serviceName: The name of the systemd service to stop
 //
 // Returns:
-//   - error: nil if the service was successfully stopped,
-//            an error with the command output if the stop operation failed
-func StopLinux(serviceName string) error {
+//   - error: nil if successful, otherwise an error describing what went wrong
+func StopSystemd(serviceName string) error {
 	stopCmd := exec.Command("sudo", "systemctl", "stop", serviceName)
 	if output, err := stopCmd.CombinedOutput(); err != nil {
 		logger.Error("Failed to stop service: %s", output)
@@ -146,23 +309,51 @@ func StopLinux(serviceName string) error {
 	return nil
 }
 
-// UninstallLinux removes a systemd service from a Linux system.
-// It performs the following steps:
-// 1. Attempts to stop the service (ignoring any errors)
-// 2. Disables the service in systemd
-// 3. Removes the service file from /etc/systemd/system/
-// 4. Reloads the systemd daemon configuration
+// StopSysVInit stops a sysvinit service
 //
 // Parameters:
-//   - serviceName: the name of the service to uninstall (without the .service extension)
+//   - serviceName: The name of the sysvinit service to stop
 //
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
-//     during the removal of the service file or daemon reload
+func StopSysVInit(serviceName string) error {
+	stopCmd := exec.Command("sudo", "service", serviceName, "stop")
+	if output, err := stopCmd.CombinedOutput(); err != nil {
+		logger.Error("Failed to stop service: %s", output)
+		return fmt.Errorf("failed to stop service: %w\nOutput: %s", err, output)
+	}
+	return nil
+}
+
+// UninstallLinux removes a service from a Linux system.
+// It detects whether to use systemd or sysvinit based on the service location.
 //
-// Note: This function requires sudo privileges as it runs commands with sudo.
+// Parameters:
+//   - serviceName: the name of the service to uninstall
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
 func UninstallLinux(serviceName string) error {
-	_ = StopLinux(serviceName)
+	if IsSystemd() && IsInstalledSystemd(serviceName) {
+		return UninstallSystemd(serviceName)
+	} else if IsSysVInit() && IsInstalledSysVInit(serviceName) {
+		return UninstallSysVInit(serviceName)
+	}
+	logger.Error("No supported init system found or service not installed")
+	return fmt.Errorf("no supported init system found or service not installed")
+}
+
+// UninstallSystemd removes a systemd service
+// The function stops the service, disables it, removes the service file,
+// and reloads the systemd daemon.
+//
+// Parameters:
+//   - serviceName: the name of the systemd service to uninstall
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+func UninstallSystemd(serviceName string) error {
+	_ = StopSystemd(serviceName)
 
 	disableCmd := exec.Command("sudo", "systemctl", "disable", serviceName)
 	_ = disableCmd.Run()
@@ -183,17 +374,77 @@ func UninstallLinux(serviceName string) error {
 	return nil
 }
 
-// IsInstalledLinux checks if a systemd service is installed on a Linux system.
-// It verifies the existence of the service file in the systemd directory.
+// UninstallSysVInit removes a sysvinit service
+// The function stops the service, disables it, removes the service script,
+// and reloads the init system.
+//
+// Parameters:
+//   - serviceName: the name of the sysvinit service to uninstall
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+func UninstallSysVInit(serviceName string) error {
+	_ = StopSysVInit(serviceName)
+
+	// Disable service using update-rc.d for Debian/Ubuntu or chkconfig for RedHat
+	var disableCmd *exec.Cmd
+	if _, err := exec.LookPath("update-rc.d"); err == nil {
+		disableCmd = exec.Command("sudo", "update-rc.d", serviceName, "remove")
+	} else if _, err := exec.LookPath("chkconfig"); err == nil {
+		disableCmd = exec.Command("sudo", "chkconfig", "--del", serviceName)
+	}
+
+	if disableCmd != nil {
+		_ = disableCmd.Run()
+	}
+
+	serviceFilePath := "/etc/init.d/" + serviceName
+	rmCmd := exec.Command("sudo", "rm", "-f", serviceFilePath)
+	if output, err := rmCmd.CombinedOutput(); err != nil {
+		logger.Error("Failed to remove service file: %s", output)
+		return fmt.Errorf("failed to remove service file: %w\nOutput: %s", err, output)
+	}
+
+	return nil
+}
+
+// IsInstalledLinux checks if a service is installed on a Linux system.
+// It checks both systemd and sysvinit locations.
 //
 // Parameters:
 //   - serviceName: the name of the service to check for
 //
 // Returns:
-//   - true if the service is installed (service file exists)
-//   - false if the service is not installed (service file doesn't exist)
+//   - true if the service is installed
+//   - false if the service is not installed
 func IsInstalledLinux(serviceName string) bool {
+	return IsInstalledSystemd(serviceName) || IsInstalledSysVInit(serviceName)
+}
+
+// IsInstalledSystemd checks if a systemd service is installed
+//
+// Parameters:
+//   - serviceName: the name of the systemd service to check for
+//
+// Returns:
+//   - true if the service is installed
+//   - false if the service is not installed
+func IsInstalledSystemd(serviceName string) bool {
 	serviceFilePath := "/etc/systemd/system/" + serviceName + ".service"
+	_, err := os.Stat(serviceFilePath)
+	return err == nil
+}
+
+// IsInstalledSysVInit checks if a sysvinit service is installed
+//
+// Parameters:
+//   - serviceName: the name of the sysvinit service to check for
+//
+// Returns:
+//   - true if the service is installed
+//   - false if the service is not installed
+func IsInstalledSysVInit(serviceName string) bool {
+	serviceFilePath := "/etc/init.d/" + serviceName
 	_, err := os.Stat(serviceFilePath)
 	return err == nil
 }
