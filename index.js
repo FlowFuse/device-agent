@@ -133,9 +133,9 @@ Please ensure the parent directory is writable, or set a different path with -d`
             print('Success! This Device can be launched at any time using the following command:', figures.tick)
             print(runCommandInfo.join(' '), ' ')
             if (!options.otcNoImport) {
-                // Support for importing flows during initial state check-in was added after 2.15.0.
+                // Support for importing flows during initial state check-in was added after 2.16.0.
                 const ffVersion = deviceSettings.meta?.ffVersion?.replace(/[^0-9.]/g, '') || '0.0.0' // Strip suffixes like -beta.1
-                const ffSupportsImport = (ffVersion && semver.gt(ffVersion, '2.15.0'))
+                const ffSupportsImport = (ffVersion && semver.gt(ffVersion, '2.16.0'))
 
                 if (ffSupportsImport) {
                     const home = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH || '/'
