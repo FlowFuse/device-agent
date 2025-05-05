@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +8,7 @@ import (
 	"github.com/flowfuse/device-agent-installer/cmd"
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -17,35 +17,37 @@ var (
 	flowfuseOneTimeCode string
 	nodeVersion         string
 	serviceUsername     string
-	help								bool
+	help                bool
 	uninstall           bool
 	update              bool
 	debugMode           bool
 )
 
 func init() {
-	flag.StringVar(&nodeVersion, "node", "20.19.0", "Node.js version to install (minimum)")
-	flag.StringVar(&agentVersion, "agent", "latest", "Device agent version to install")
-	flag.StringVar(&serviceUsername, "user", "flowfuse", "Username for the service account")
-	flag.StringVar(&flowfuseURL, "url", "https://app.flowfuse.com", "FlowFuse URL")
-	flag.StringVar(&flowfuseOneTimeCode, "otc", "", "FlowFuse one time code for authentication (required)")
-	flag.BoolVar(&help, "help", false, "Display help information")
-	flag.BoolVar(&uninstall, "uninstall", false, "Uninstall the device agent")
-	flag.BoolVar(&update, "update", false, "Update the device agent")
-	flag.BoolVar(&debugMode, "debug", false, "Enable debug logging")
-	flag.Parse()
+	pflag.StringVarP(&nodeVersion, "node", "n", "20.19.0", "Node.js version to install (minimum)")
+	pflag.StringVarP(&agentVersion, "agent", "a", "latest", "Device agent version to install")
+	pflag.StringVarP(&serviceUsername, "service-user", "s", "flowfuse", "Username for the service account")
+	pflag.StringVarP(&flowfuseURL, "url", "u", "https://app.flowfuse.com", "FlowFuse URL")
+	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (required)")
+	pflag.BoolVarP(&help, "help", "h", false, "Display help information")
+	pflag.BoolVar(&uninstall, "uninstall", false, "Uninstall the device agent")
+	pflag.BoolVar(&update, "update", false, "Update the device agent")
+	pflag.BoolVar(&debugMode, "debug", false, "Enable debug logging")
+	pflag.Parse()
 
 	if help {
 		fmt.Println("FlowFuse Device Agent Installer")
+		fmt.Print("\n")
 		fmt.Println("Usage:")
-		flag.PrintDefaults()
+		pflag.PrintDefaults()
 		os.Exit(0)
 	}
 
-	if (!uninstall && !update && flowfuseOneTimeCode == "") {
+	if !uninstall && !update && flowfuseOneTimeCode == "" {
 		fmt.Println("[ERROR]: FlowFuse one time code is required for installation")
+		fmt.Print("\n")
 		fmt.Println("Usage:")
-		flag.PrintDefaults()
+		pflag.PrintDefaults()
 		os.Exit(1)
 	}
 }
