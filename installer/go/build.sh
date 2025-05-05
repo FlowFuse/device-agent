@@ -8,8 +8,8 @@ cd "$(dirname "$0")"
 # Create output directories
 mkdir -p build/{linux,macos,windows}
 
-# Get the version from package.json
-VERSION=$(node -e "console.log(require('../../package.json').version)")
+# Get the version from package.json using grep and sed instead of node
+VERSION=$(grep -o '"version": "[^"]*"' ../../package.json | sed 's/"version": "//;s/"//')
 echo "Building installers for FlowFuse Device Agent v$VERSION"
 
 # Build Linux (amd64)
