@@ -14,7 +14,7 @@ User={{.User}}
 WorkingDirectory={{.WorkDir}}
 
 Environment="NODE_OPTIONS=--max_old_space_size=512"
-Environment="PATH={{.NodeBinDir}}:$PATH"
+Environment="PATH={{.NodeBinDir}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ExecStart=/usr/bin/env -S flowfuse-device-agent
 # Use SIGINT to stop
 KillSignal=SIGINT
@@ -42,7 +42,7 @@ const SysVInitServiceTemplate = `#!/bin/sh
 # Source function library.
 . /lib/lsb/init-functions
 
-PATH={{.NodeBinDir}}:$PATH
+PATH={{.NodeBinDir}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 DAEMON="{{.NodeBinDir}}/flowfuse-device-agent"
 DAEMON_ARGS=""
 NAME="{{.ServiceName}}"
