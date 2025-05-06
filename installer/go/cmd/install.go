@@ -47,33 +47,34 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 	}
 	logger.Debug("Node.js check/installation successful")
 
-	// Install the device agent package
-	logger.Info("Installing FlowFuse Device Agent package...")
-	if err := nodejs.InstallDeviceAgent(agentVersion, workDir); err != nil {
-		logger.Error("Device Agent package installation failed: %v", err)
-		logger.LogFunctionExit("Install", nil, err)
-		return fmt.Errorf("device agent installation failed: %w", err)
-	}
-	logger.Debug("Device Agent installation successful")
+		// Install the device agent package
+		logger.Info("Installing FlowFuse Device Agent package...")
+		if err := nodejs.InstallDeviceAgent(agentVersion, workDir); err != nil {
+			logger.Error("Device Agent package installation failed: %v", err)
+			logger.LogFunctionExit("Install", nil, err)
+			return fmt.Errorf("device agent installation failed: %w", err)
+		}
+		logger.Debug("Device Agent installation successful")
 
-	// Configure the device agent
-	logger.Info("Configuring FlowFuse Device Agent...")
-	if err := nodejs.ConfigureDeviceAgent(url, otc, workDir); err != nil {
-		logger.Error("Device agent configuration failed: %v", err)
-		logger.LogFunctionExit("Install", nil, err)
-		return fmt.Errorf("device agent configuration failed: %w", err)
+		// Configure the device agent
+		logger.Info("Configuring FlowFuse Device Agent...")
+		if err := nodejs.ConfigureDeviceAgent(url, otc, workDir); err != nil {
+			logger.Error("Device agent configuration failed: %v", err)
+			logger.LogFunctionExit("Install", nil, err)
+			return fmt.Errorf("device agent configuration failed: %w", err)
+		}
+		logger.Debug("Device agent configuration successful")
+		
+	if false {
+		// Create service configuration
+		logger.Info("Configuring FlowFuse Device Agent to run as system service...")
+		if err := service.Install("flowfuse-device-agent", workDir); err != nil {
+			logger.Error("Service setup failed: %v", err)
+			logger.LogFunctionExit("Install", nil, err)
+			return fmt.Errorf("service setup failed: %w", err)
+		}
+		logger.Debug("Service setup successful")
 	}
-	logger.Debug("Device agent configuration successful")
-
-	// Create service configuration
-	logger.Info("Configuring FlowFuse Device Agent to run as system service...")
-	if err := service.Install("flowfuse-device-agent", workDir); err != nil {
-		logger.Error("Service setup failed: %v", err)
-		logger.LogFunctionExit("Install", nil, err)
-		return fmt.Errorf("service setup failed: %w", err)
-	}
-	logger.Debug("Service setup successful")
-
 	// Save the configuration
 	cfg := &config.InstallerConfig{
 		ServiceUsername: utils.ServiceUsername,

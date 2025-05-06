@@ -22,6 +22,8 @@ func Install(serviceName, workDir string) error {
 	switch runtime.GOOS {
 	case "linux":
 		return InstallLinux(serviceName, workDir)
+	case "windows":
+		return InstallWindows(serviceName, workDir)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -41,6 +43,8 @@ func Start(serviceName string) error {
 	switch runtime.GOOS {
 	case "linux":
 		return StartLinux(serviceName)
+	case "windows":
+		return StartWindows(serviceName)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -54,6 +58,8 @@ func Stop(serviceName string) error {
 	switch runtime.GOOS {
 	case "linux":
 		return StopLinux(serviceName)
+	case "windows":
+		return StopWindows(serviceName)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -73,6 +79,8 @@ func Uninstall(serviceName string) error {
 	switch runtime.GOOS {
 	case "linux":
 		return UninstallLinux(serviceName)
+	case "windows":
+		return UninstallWindows(serviceName)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -91,6 +99,8 @@ func IsInstalled(serviceName string) bool {
 	switch runtime.GOOS {
 	case "linux":
 		return IsInstalledLinux(serviceName)
+	case "windows":
+		return IsInstalledWindows(serviceName)
 	default:
 		logger.Info("Service installation check not supported on %s", runtime.GOOS)
 		return false
