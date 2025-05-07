@@ -1,6 +1,6 @@
-# FlowForge Device Agent Installer
+# Flowfuse Device Agent Installer
 
-This directory contains the Go-based installer for the FlowForge Device Agent.
+This directory contains the Go-based installer for the Flowfuse Device Agent.
 
 ## Building
 
@@ -21,8 +21,12 @@ This will create a set of binaries for each supported operating system and archi
 For usage instructions, run:
 
 ```bash
-./flowforge-device-installer --help
+./flowfuse-device-installer --help
 ```
+
+> [!TIP]
+> Ensure the binary is executable. 
+> Give it a proper permissions by running `chmod +x flowfuse-device-installer`.
 
 ## Development
 To develop the installer, you will need to have Go installed on your system. You can find instructions for installing Go on the [official Go website](https://golang.org/doc/install).
@@ -33,9 +37,9 @@ go run main.go
 ```
 
 ## Uninstalling
-To uninstall the FlowForge Device Agent, you can use the `uninstall` flag:
+To uninstall the Flowfuse Device Agent, you can use the `uninstall` flag:
 
 ```bash
 go run main.go --uninstall
 ```
-This will result in removing the FlowForge Device Agent and all related files from your system.
+This will result in removing the Flowfuse Device Agent and all related files from your system.
