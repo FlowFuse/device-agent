@@ -1,3 +1,13 @@
+#### 3.3.0: Release
+
+ - Import snapshot during otc setup (#390) @Steve-Mcl
+ - Ask to start if quick config used (#381) @hardillb
+ - Update README.md to mention /device-editor (#374) @hardillb
+ - Bump @babel/runtime from 7.25.9 to 7.26.10 (#367) @app/dependabot
+ - Bump peter-evans/dockerhub-description from 4.0.0 to 4.0.1 (#373) @app/dependabot
+ - Bump docker/build-push-action from 6.15.0 to 6.16.0 (#389)
+ - Bump actions/setup-node from 4.3.0 to 4.4.0 (#380)
+
 #### 3.2.0: Release
 
  - Implement Local Login support (#371) @Steve-Mcl
