@@ -15,7 +15,10 @@ const { AgentManager } = require('./lib/AgentManager')
 const { WebServer } = require('./frontend/server')
 const ConfigLoader = require('./lib/config')
 const webServer = new WebServer()
+const figures = require('@inquirer/figures').default
 const confirm = require('@inquirer/confirm').default
+const print = (message, /** @type {figures} */ figure = figures.info) => console.info(figure ?? figures.info, message)
+const flowImport = require('./lib/cli/flowsImporter').flowImport
 
 function main (testOptions) {
     const pkg = require('./package.json')
@@ -111,28 +114,89 @@ Please ensure the parent directory is writable, or set a different path with -d`
             warn('Device setup requires parameter --otc to be 8 or more characters')
             quit(null, 2)
         }
-        info('Entering Device setup...')
+        print('Starting Device setup...')
         if (!options.ffUrl) {
             warn('Device setup requires parameter --ff-url to be set')
             quit(null, 2)
         }
-        AgentManager.quickConnectDevice().then((success) => {
-            if (success) {
-                const runCommandInfo = ['flowfuse-device-agent']
-                if (options.dir !== '/opt/flowfuse-device') {
-                    runCommandInfo.push(`-d ${options.dir}`)
-                }
-                info('Device setup was successful')
-                info('To start the Device Agent with the new configuration run the following command:')
-                info(runCommandInfo.join(' '))
-                if (!options.otcDontStart) {
-                    return confirm({ message: 'Do you want to start the Device Agent now?' })
-                } else {
-                    quit()
-                }
-            } else {
+        let deviceSettings = null
+        AgentManager.quickConnectDevice().then((provisioningData) => {
+            deviceSettings = provisioningData
+            if (!deviceSettings) {
                 warn('Device setup was unsuccessful')
                 quit(null, 2)
+            }
+            const runCommandInfo = ['flowfuse-device-agent']
+            if (options.dir !== '/opt/flowfuse-device') {
+                runCommandInfo.push(`-d ${options.dir}`)
+            }
+            print('Success! This Device can be launched at any time using the following command:', figures.tick)
+            print(runCommandInfo.join(' '), ' ')
+            if (!options.otcNoImport) {
+                // Support for importing flows during initial state check-in was added after 2.16.0.
+                const ffVersion = deviceSettings.meta?.ffVersion?.replace(/[^0-9.]/g, '') || '0.0.0' // Strip suffixes like -beta.1
+                const ffSupportsImport = (ffVersion && semver.gt(ffVersion, '2.16.0'))
+
+                if (ffSupportsImport) {
+                    const home = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH || '/'
+                    const suggestedDirs = [path.join(home, '.node-red'), '/opt/flowfuse-device/project']
+                    if (options.dir && options.dir !== '/opt/flowfuse-device') {
+                        suggestedDirs.push(options.dir)
+                        suggestedDirs.push(path.join(options.dir, 'project'))
+                    }
+                    return flowImport(suggestedDirs)
+                }
+            }
+            return Promise.resolve()
+        }).then((importOptions) => {
+            if (importOptions) {
+                const deviceConfig = {
+                    flows: importOptions.flows || [],
+                    credentials: importOptions.credentials || {},
+                    package: importOptions.package || {}
+                }
+                print('Uploading snapshot as the target for this Device...', figures.arrowUp)
+                return AgentManager.postState(
+                    { token: deviceSettings.credentials.token, deviceId: deviceSettings.id, forgeURL: options.ffUrl },
+                    {
+                        provisioning: {
+                            deviceConfig,
+                            credentialSecret: importOptions.credentialSecret,
+                            description: `Flows imported from '${importOptions.flowsFile}' at ${new Date().toISOString()}`,
+                            name: 'Existing Flows Imported'
+                        },
+                        agentVersion: pkg.version,
+                        state: 'provisioning'
+                    }
+                )
+            }
+            return Promise.resolve()
+        }).then((importResponse) => {
+            if (importResponse) {
+                if (importResponse.statusCode === 200) {
+                    // at this point, flowImport has successfully created a snapshot on the platform - we can safely clean up the local files
+                    // check to see if project dir exists & if so, clean it up
+                    const projectDir = path.join(options.dir, 'project')
+                    if (fs.existsSync(projectDir)) {
+                        print('Cleaning up existing project directory...')
+                        fs.rmSync(projectDir, { force: true, recursive: true })
+                    }
+                    const projectJson = path.join(options.dir, 'flowforge-project.json')
+                    if (fs.existsSync(projectJson)) {
+                        print('Cleaning up existing project file...')
+                        fs.rmSync(projectJson, { force: true })
+                    }
+
+                    print('Success', figures.tick)
+                } else {
+                    print(`Snapshot import was unsuccessful (${importResponse.statusCode})`, figures.cross)
+                }
+            }
+            // If the user has set otcNoStart, then we don't want to start the agent
+            if (!options.otcNoStart) {
+                return confirm({ message: 'Do you want to start the Device Agent now?' })
+            } else {
+                quit()
             }
         }).then((startNow) => {
             if (startNow) {
