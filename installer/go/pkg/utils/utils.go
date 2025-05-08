@@ -4,10 +4,8 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
-	"crypto/rand"
 	"fmt"
 	"io"
-	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +17,6 @@ import (
 
 // Global variable to store the service username
 var ServiceUsername = "flowfuse"
-var ServiceUserPassword, _ = generateSecurePassword()
 
 // CheckPermissions checks if the user who executed the installer has the necessary permissions to operate
 // based on the current operating system.
@@ -119,9 +116,10 @@ func GetWorkingDirectory() (string, error) {
 
 // createDirWithPermissions creates a directory at the specified path with the given permissions.
 // If the directory already exists, no action is taken.
+// Before creating directory, it creates a service user with the specified username and password.
 // On Linux systems, the function first attempts to create the directory without sudo. If that fails, it tries with sudo. After creation, it sets
 // the ownership of the directory to a service user.
-// On Windows systems, it creates the directory with the specified permissions.
+// On Windows systems, it creates the directory. 
 //
 // Parameters:
 //   - path: The file system path where the directory should be created
@@ -132,6 +130,12 @@ func GetWorkingDirectory() (string, error) {
 //
 // Note: Currently, this function only supports Linux. Other operating systems will return an error.
 func createDirWithPermissions(path string, permissions os.FileMode) error {
+	serviceUser, err := CreateServiceUser(ServiceUsername)
+	if err != nil {
+		return fmt.Errorf("failed to create service user: %w", err)
+	}
+	logger.Debug("Service user %s created successfully", serviceUser)
+
 	switch runtime.GOOS {
 	case "linux":
 		if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -145,11 +149,6 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 					return fmt.Errorf("failed to create directory %s: %w\nOutput: %s", path, err, output)
 				}
 			}
-		}
-
-		serviceUser, err := CreateServiceUser(ServiceUsername, ServiceUserPassword)
-		if err != nil {
-			return fmt.Errorf("failed to create service user: %w", err)
 		}
 
 		logger.Debug("Setting ownership of %s to %s...", path, serviceUser)
@@ -174,8 +173,7 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 // CreateServiceUser creates a system user with the given username if it doesn't already exist.
 // For Linux systems, it checks if the user exists by calling the "id" command.
 // If the user doesn't exist, it creates the user with a home directory and no shell.
-// For Windows systems, it checks if the user exists by calling the "net user" command.
-// If the user doesn't exist, it creates the user using the "net user /add" command with a secure password.
+// For Windows systems, we do not create a user.
 //
 // Parameters:
 //   - username: the name of the user to create
@@ -184,7 +182,7 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 // Returns:
 //   - string: the username of the created or existing service user
 //   - error: an error if the user creation failed or if the operating system is not supported
-func CreateServiceUser(username, password string) (string, error) {
+func CreateServiceUser(username string) (string, error) {
 	switch runtime.GOOS {
 	case "linux":
 		checkUserCmd := exec.Command("id", username)
@@ -200,18 +198,8 @@ func CreateServiceUser(username, password string) (string, error) {
 		return username, nil
 
 	case "windows":
-		checkUserCmd := exec.Command("net", "user", username)
-		if err := checkUserCmd.Run(); err == nil {
-			logger.Debug("Service user %s already exists", username)
-			return username, nil
-		} else {
-			logger.Info("Creating service user %s with secure password...", username)
-			createUserCmd := exec.Command("net", "user", username, password, "/add")
-			if output, err := createUserCmd.CombinedOutput(); err != nil {
-				return "", fmt.Errorf("failed to create user: %w\nOutput: %s", err, output)
-			}
-			return username, nil
-		}
+		logger.Debug("On Windows, we do not create a service user.")
+		return username, nil
 
 	default:
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
@@ -220,15 +208,13 @@ func CreateServiceUser(username, password string) (string, error) {
 
 // RemoveServiceUser deletes the specified service user account from the system.
 // On Linux, it executes "userdel -r" with sudo to remove the user and their home directory.
-// On Windows, it uses the "net user /delete" command to delete the user.
+// On Windows, we do not create a service user.
 //
 // Parameters:
 //   - username: the name of the user account to be removed
 //
 // Returns:
 //   - error: nil on success, or an error describing what went wrong
-//
-// Note: Currently only supported on Linux operating systems.
 func RemoveServiceUser(username string) error {
 	logger.Debug("Removing service user %s...", username)
 
@@ -241,10 +227,7 @@ func RemoveServiceUser(username string) error {
 		return nil
 
 	case "windows":
-		removeUserCmd := exec.Command("net", "user", username, "/delete")
-		if output, err := removeUserCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to remove user %s: %w\nOutput: %s", username, err, output)
-		}
+		logger.Debug("On Windows, we have not created a service user.")
 		return nil
 
 	default:
@@ -283,28 +266,6 @@ func RemoveWorkingDirectory(workDir string) error {
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
-}
-
-// generateSecurePassword creates a random password of the specified length that includes
-// uppercase letters, lowercase letters, and numbers.
-//
-// Returns:
-//   - string: A random password meeting the complexity requirements
-func generateSecurePassword() (string, error) {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"
-	const length = 24
-
-	password := make([]byte, length)
-	charsetLength := big.NewInt(int64(len(charset)))
-	for i := range password {
-		index, err := rand.Int(rand.Reader, charsetLength)
-		if err != nil {
-			return "", fmt.Errorf("error generating random index: %v", err)
-		}
-		password[i] = charset[index.Int64()]
-	}
-
-	return string(password), nil
 }
 
 // extractZip extracts a Node.js zip archive to a destination directory.
@@ -378,78 +339,6 @@ func ExtractZip(zipFile, destDir, version string) error {
 	}
 
 	return nil
-}
-
-// DownloadAndInstallPsExec downloads and installs the PsExec tool from Sysinternals.
-// This is used on Windows to run commands as a specific user without requiring
-// interactive password prompts.
-//
-// The function:
-// 1. Downloads the PSTools.zip archive from the Sysinternals website
-// 2. Creates a directory for PSTools based on the working directory
-// 3. Extracts the zip archive to the designated directory
-//
-// Parameters:
-//
-//	None
-//
-// Returns:
-//   - string: The path to the psexec.exe executable
-//   - error: An error if download or extraction fails
-func DownloadAndInstallPsExec() (string, error) {
-	if runtime.GOOS != "windows" {
-		return "", fmt.Errorf("psexec is only needed on Windows")
-	}
-
-	// Get the working directory where we'll install PsTools
-	workDir, err := GetWorkingDirectory()
-	if err != nil {
-		return "", err
-	}
-
-	psToolsDir := filepath.Join(workDir, "pstools")
-	psExecPath := filepath.Join(psToolsDir, "psexec.exe")
-
-	// Check if psexec already exists
-	if _, err := os.Stat(psExecPath); err == nil {
-		logger.Debug("PsExec already installed at %s", psExecPath)
-		return psExecPath, nil
-	}
-
-	// Create pstools directory if it doesn't exist
-	if err := os.MkdirAll(psToolsDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create directory for PsTools: %w", err)
-	}
-
-	// Download URL for PSTools
-	psToolsUrl := "https://download.sysinternals.com/files/PSTools.zip"
-	zipPath := filepath.Join(psToolsDir, "PSTools.zip")
-
-	// Download the PSTools.zip file
-	logger.Debug("Downloading PsExec from %s", psToolsUrl)
-	cmd := exec.Command("curl", "-L", "-o", zipPath, psToolsUrl)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("failed to download PsTools: %w\nOutput: %s", err, output)
-	}
-
-	// Extract the zip file
-	logger.Debug("Extracting PsTools to %s", psToolsDir)
-	if err := ExtractZip(zipPath, psToolsDir, ""); err != nil {
-		return "", fmt.Errorf("failed to extract PSTools: %w", err)
-	}
-
-	// Clean up the zip file
-	if err := os.Remove(zipPath); err != nil {
-		logger.Debug("Failed to remove downloaded zip file: %v", err)
-	}
-
-	// Verify PsExec exists after extraction
-	if _, err := os.Stat(psExecPath); err != nil {
-		return "", fmt.Errorf("psexec.exe not found after extraction: %w", err)
-	}
-
-	logger.Info("PsExec installed successfully at %s", psExecPath)
-	return psExecPath, nil
 }
 
 // extractTarGz extracts a Node.js tar.gz archive to the specified destination directory.
@@ -594,4 +483,13 @@ func ExtractTarGz(tarGzFile, destDir, version string) error {
 	}
 
 	return nil
+}
+
+// GetOSDetails returns the current operating system and architecture.
+//
+// Returns:
+//   - string: The operating system (e.g., "linux", "darwin", "windows")
+//   - string: The architecture (e.g., "amd64", "arm64", "386")
+func GetOSDetails() (string, string) {
+	return runtime.GOOS, runtime.GOARCH
 }
