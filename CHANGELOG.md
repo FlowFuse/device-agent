@@ -1,3 +1,7 @@
+#### 3.3.1: Release
+
+ - Fix ffVersion parsing to handle version suffixes properly (#398) @knolleary
+
 #### 3.3.0: Release
 
  - Import snapshot during otc setup (#390) @Steve-Mcl
