@@ -15,23 +15,19 @@ const packageName = "@flowfuse/device-agent"
 
 // InstallDeviceAgent installs the FlowFuse Device Agent with the specified version
 // to the given base directory. It requires Node.js to be already installed.
-//
-// Parameters:
-//   - version: The version of the Device Agent to install (use "latest" for the latest version)
-//   - baseDir: The base directory where Node.js is installed and where the Device Agent will be installed
-//
 // The function will:
 // 1. Check if Node.js is installed
 // 2. Install the Device Agent globally using npm with the appropriate version
 // 3. The installation runs as the service user
 //
+// Parameters:
+//   - version: The version of the Device Agent to install (use "latest" for the latest version)
+//   - baseDir: The base directory where Node.js is installed and where the Device Agent will be installed
+//
 // Returns an error if:
 // - Node.js is not found
 // - The operating system is not supported
 // - The installation process fails
-//
-// Note: For Linux, the installation uses sudo to run npm as the service user.
-// For Windows, it uses PsExec to run as the service user.
 func InstallDeviceAgent(version string, baseDir string) error {
 	setNodeDirectories(baseDir)
 
@@ -40,7 +36,6 @@ func InstallDeviceAgent(version string, baseDir string) error {
 	}
 
 	serviceUser := utils.ServiceUsername
-
 	packageName := packageName
 	if version != "latest" {
 		packageName += "@" + version
@@ -59,15 +54,9 @@ func InstallDeviceAgent(version string, baseDir string) error {
 		env := os.Environ()
 		installCmd.Env = append(env, npmPrefix, newPath)
 	case "windows":
-		psexecPath, err := utils.DownloadAndInstallPsExec()
-		if err != nil {
-			return fmt.Errorf("failed to set up PsExec: %w", err)
-		}
-
-		installCmd = exec.Command(psexecPath, "-accepteula", "-u", serviceUser, "-p", utils.ServiceUserPassword, npmBinPath, "install", "-g", packageName)
+		installCmd = exec.Command("cmd", "/C", npmBinPath, "install", "-g", packageName)
 		env := os.Environ()
 		installCmd.Env = append(env, npmPrefix, newPath)
-		logger.Debug("Using PsExec to install as user %s", serviceUser)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -110,17 +99,16 @@ func UninstallDeviceAgent(baseDir string) error {
 		env := os.Environ()
 		uninstallCmd.Env = append(env, npmPrefix, newPath)
 	case "windows":
-		// Download and install PsExec if on Windows
-		psexecPath, err := utils.DownloadAndInstallPsExec()
+		workDir, err := utils.GetWorkingDirectory()
 		if err != nil {
-			return fmt.Errorf("failed to set up PsExec: %w", err)
+			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
-		// Use PsExec to run the npm uninstall command as the service user
-		uninstallCmd = exec.Command(psexecPath, "-accepteula", "-u", serviceUser, "-p", utils.ServiceUserPassword, npmBinPath, "uninstall", "-g", packageName)
+		deviceAgentPath := filepath.Join(workDir, "node", "node_modules", "@flowfuse", "device-agent")
+		uninstallCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", deviceAgentPath)
 		env := os.Environ()
 		uninstallCmd.Env = append(env, npmPrefix, newPath)
-		logger.Debug("Using PsExec to uninstall as user %s", serviceUser)
+
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -148,7 +136,7 @@ func UninstallDeviceAgent(baseDir string) error {
 //
 // The function skips configuration if device.yml already exists in the base directory.
 // For Linux, the configuration uses sudo to run as the service user.
-// For Windows, it uses PsExec to run as the service user.
+// For Windows, it uses cmd.exe .
 func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 
 	var deviceAgentPath string
@@ -156,7 +144,6 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	setNodeDirectories(baseDir)
 	nodeBinDir := GetNodeBinDir()
 	serviceUser := utils.ServiceUsername
-	serviceUserPassword := utils.ServiceUserPassword
 
 	deviceConfigPath := filepath.Join(baseDir, "device.yml")
 	if _, err := os.Stat(deviceConfigPath); !os.IsNotExist(err) {
@@ -185,19 +172,13 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	// Create configure command
 	switch runtime.GOOS {
 	case "linux":
-		configureCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, deviceAgentPath, "-o", token, "-u", url)
+		configureCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--otc-no-import")
 		env := os.Environ()
 		configureCmd.Env = append(env, newPath)
 	case "windows":
-		psexecPath, err := utils.DownloadAndInstallPsExec()
-		if err != nil {
-			return fmt.Errorf("failed to set up PsExec: %w", err)
-		}
-
-		configureCmd = exec.Command(psexecPath, "-accepteula", "-u", serviceUser, "-p", serviceUserPassword, deviceAgentPath, "-o", token, "-u", url)
+		configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--otc-no-import")
 		env := os.Environ()
 		configureCmd.Env = append(env, newPath)
-		logger.Debug("Using PsExec to configure device agent as user %s", serviceUser)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
