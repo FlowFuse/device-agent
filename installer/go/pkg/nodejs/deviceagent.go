@@ -15,22 +15,19 @@ const packageName = "@flowfuse/device-agent"
 
 // InstallDeviceAgent installs the FlowFuse Device Agent with the specified version
 // to the given base directory. It requires Node.js to be already installed.
-//
-// Parameters:
-//   - version: The version of the Device Agent to install (use "latest" for the latest version)
-//   - baseDir: The base directory where Node.js is installed and where the Device Agent will be installed
-//
 // The function will:
 // 1. Check if Node.js is installed
 // 2. Install the Device Agent globally using npm with the appropriate version
 // 3. The installation runs as the service user
 //
+// Parameters:
+//   - version: The version of the Device Agent to install (use "latest" for the latest version)
+//   - baseDir: The base directory where Node.js is installed and where the Device Agent will be installed
+//
 // Returns an error if:
 // - Node.js is not found
-// - The operating system is not supported (currently only Linux is supported)
+// - The operating system is not supported
 // - The installation process fails
-//
-// Note: For Linux, the installation uses sudo to run npm as the service user.
 func InstallDeviceAgent(version string, baseDir string) error {
 	setNodeDirectories(baseDir)
 
@@ -39,7 +36,6 @@ func InstallDeviceAgent(version string, baseDir string) error {
 	}
 
 	serviceUser := utils.ServiceUsername
-
 	packageName := packageName
 	if version != "latest" {
 		packageName += "@" + version
@@ -57,6 +53,10 @@ func InstallDeviceAgent(version string, baseDir string) error {
 		installCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "install", "-g", packageName)
 		env := os.Environ()
 		installCmd.Env = append(env, npmPrefix, newPath)
+	case "windows":
+		installCmd = exec.Command("cmd", "/C", npmBinPath, "install", "-g", packageName)
+		env := os.Environ()
+		installCmd.Env = append(env, npmPrefix, newPath)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -72,7 +72,7 @@ func InstallDeviceAgent(version string, baseDir string) error {
 }
 
 // UninstallDeviceAgent removes the FlowFuse Device Agent package from the system.
-// It uninstalls the package using the local npm, running the uninstall command with 
+// It uninstalls the package using the local npm, running the uninstall command with
 // the appropriate permissions based on the operating system.
 //
 // Parameters:
@@ -98,6 +98,17 @@ func UninstallDeviceAgent(baseDir string) error {
 		uninstallCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "uninstall", "-g", packageName)
 		env := os.Environ()
 		uninstallCmd.Env = append(env, npmPrefix, newPath)
+	case "windows":
+		workDir, err := utils.GetWorkingDirectory()
+		if err != nil {
+			return fmt.Errorf("failed to get working directory: %w", err)
+		}
+
+		deviceAgentPath := filepath.Join(workDir, "node", "node_modules", "@flowfuse", "device-agent")
+		uninstallCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", deviceAgentPath)
+		env := os.Environ()
+		uninstallCmd.Env = append(env, npmPrefix, newPath)
+
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -124,7 +135,8 @@ func UninstallDeviceAgent(baseDir string) error {
 //   - error: An error if configuration fails, or nil if successful
 //
 // The function skips configuration if device.yml already exists in the base directory.
-// Currently, only Linux operating systems are supported.
+// For Linux, the configuration uses sudo to run as the service user.
+// For Windows, it uses cmd.exe .
 func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 
 	var deviceAgentPath string
@@ -153,12 +165,18 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	// Getting full path to flowfuse-device-agent binary
 	if runtime.GOOS == "linux" {
 		deviceAgentPath = filepath.Join(nodeBinDir, "flowfuse-device-agent")
+	} else {
+		deviceAgentPath = filepath.Join(nodeBaseDir, "flowfuse-device-agent.cmd")
 	}
 
 	// Create configure command
 	switch runtime.GOOS {
 	case "linux":
-		configureCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, deviceAgentPath, "-o", token, "-u", url)
+		configureCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--otc-no-import")
+		env := os.Environ()
+		configureCmd.Env = append(env, newPath)
+	case "windows":
+		configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--otc-no-import")
 		env := os.Environ()
 		configureCmd.Env = append(env, newPath)
 	default:
