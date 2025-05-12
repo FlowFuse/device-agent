@@ -28,5 +28,14 @@ GOOS=linux GOARCH=arm go build -ldflags "-X main.version=$VERSION" -o build/linu
 echo "Building Windows (amd64) installer..."
 GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$VERSION" -o build/windows/flowfuse-device-installer-windows-amd64.exe main.go
 
+# Build macOS (amd64)
+echo "Building macOS (amd64) installer..."
+GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=$VERSION" -o build/macos/flowfuse-device-installer-macos-amd64 main.go
+
+# Build macOS (arm64)
+echo "Building macOS (arm64) installer..."
+GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=$VERSION" -o build/macos/flowfuse-device-installer-macos-arm64 main.go
+
+
 echo "All builds completed!"
 echo "Installers available in the build/ directory"
