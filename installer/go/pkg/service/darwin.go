@@ -1,0 +1,165 @@
+package service
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"text/template"
+
+	"github.com/flowfuse/device-agent-installer/pkg/logger"
+	"github.com/flowfuse/device-agent-installer/pkg/nodejs"
+	"github.com/flowfuse/device-agent-installer/pkg/utils"
+)
+
+// LaunchdConfig holds the data for the launchd template
+type LaunchdConfig struct {
+	Label   	string
+	WorkDir 	string
+	LogDir  	string
+	User 			string
+	NodeBinDir string
+}
+
+// Global variables
+const serviceLabel = "com.flowfuse.device-agent"
+const serviceFilePath = "/Library/LaunchAgents/" + serviceLabel + ".plist"
+
+// InstallDarwin installs the service on macOS using launchd
+// It creates a plist file in the LaunchAgents directory and sets the necessary permissions
+// It also creates a log directory for the service
+// 
+// Parameters:
+//   - workDir: The working directory where the service will operate
+//
+// Returns:
+//   - error: nil if successful, otherwise an error explaining what went wrong
+func InstallDarwin(workDir string) error {
+	serviceUser := utils.ServiceUsername
+
+	// Create the log directory
+	logDir := filepath.Join(workDir, "logs")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return fmt.Errorf("failed to create log directory: %w", err)
+	}
+	logger.Debug("Setting ownership of %s to %s...", logDir, serviceUser)
+	chownCmd := exec.Command("sudo", "chown", "-R", serviceUser, logDir)
+	if output, err := chownCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to set logs directory ownership: %w\nOutput: %s", err, output)
+	}
+
+	config := LaunchdConfig{
+		Label:   serviceLabel,
+		WorkDir: workDir,
+		LogDir:  logDir,
+		User:    serviceUser,
+		NodeBinDir: nodejs.GetNodeBinDir(),
+	}
+
+	tmpl, err := template.New("launchd").Parse(launchdTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse launchd template: %w", err)
+	}
+
+	tmpFile, err := os.CreateTemp("", "flowfuse-service-")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if err := tmpl.Execute(tmpFile, config); err != nil {
+		return fmt.Errorf("failed to execute service template: %w", err)
+	}
+	tmpFile.Close()
+
+	copyCmd := exec.Command("sudo", "cp", tmpFile.Name(), serviceFilePath)
+	if output, err := copyCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to copy service file: %w\nOutput: %s", err, output)
+	}
+
+	chownCmd = exec.Command("sudo", "chown", "root:wheel", serviceFilePath)
+	if output, err := chownCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to set service file ownership: %w\nOutput: %s", err, output)
+	}
+
+	chmodCmd := exec.Command("sudo", "chmod", "644", serviceFilePath)
+	if err := chmodCmd.Run(); err != nil {
+		return fmt.Errorf("failed to set service file permissions: %w", err)
+	}
+
+	loadCmd := exec.Command("sudo", "launchctl", "load", "-w", serviceFilePath)
+	if output, err := loadCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to load launchd service: %w\nOutput: %s", err, output)
+	}
+
+	return nil
+}
+
+// StartDarwin starts the service on macOS
+// It uses launchctl to start the service and checks its status
+//
+// Returns:
+//   - error: nil if successful, otherwise an error explaining what went wrong
+func StartDarwin() error {
+	startCmd := exec.Command("sudo", "launchctl", "start", serviceLabel)
+	if output, err := startCmd.CombinedOutput(); err != nil {
+		logger.Error("Failed to start service: %s", err)
+		return fmt.Errorf("failed to start service: %w\nOutput: %s", err, output)
+	}
+
+	listCmd := exec.Command("launchctl", "list", serviceLabel)
+	listOutput, _ := listCmd.CombinedOutput()
+	logger.Debug("Service status:\n%s", listOutput)
+
+	return nil
+}
+
+// StopDarwin stops the service on macOS
+// It uses launchctl to stop the service
+//
+// Returns:
+//   - error: nil if successful, otherwise an error explaining what went wrong
+func StopDarwin() error {
+	stopCmd := exec.Command("sudo", "launchctl", "stop", serviceLabel)
+	if output, err := stopCmd.CombinedOutput(); err != nil {
+		logger.Error("Failed to stop service: %s", err)
+		return fmt.Errorf("failed to stop service: %w\nOutput: %s", err, output)
+	}
+	return nil
+}
+
+// UninstallDarwin removes the service on macOS
+// It stops and unloads the service using launchctl and removes the plist file
+//
+// Returns:
+//   - error: nil if successful, otherwise an error explaining what went wrong
+func UninstallDarwin() error {
+	if IsInstalledDarwin() {
+		StopDarwin()
+		unloadCmd := exec.Command("sudo", "launchctl", "unload", "-w", serviceFilePath)
+		_ = unloadCmd.Run() // Ignore errors
+	}
+
+	if err := os.Remove(serviceFilePath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove plist file: %w", err)
+	}
+
+	return nil
+}
+
+// IsInstalledDarwin checks if the service is installed on macOS
+// It checks if the service is running and if the plist file exists
+//
+// Returns:
+//   - bool: true if the service is installed, false otherwise
+func IsInstalledDarwin() bool {
+	listCmd := exec.Command("launchctl", "list", serviceLabel)
+	// Check if service is running
+	serviceRunning := listCmd.Run() == nil
+
+	// Check if service file exists
+	_, err := os.Stat(serviceFilePath)
+	fileExists := err == nil
+
+	return serviceRunning && fileExists
+}
