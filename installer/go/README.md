@@ -37,7 +37,7 @@ go run main.go
 ```
 
 ## Uninstalling
-To uninstall the Flowfuse Device Agent, you can use the `uninstall` flag:
+To uninstall the FlowFuse Device Agent, you can use the `uninstall` flag:
 
 ```bash
 go run main.go --uninstall
