@@ -193,7 +193,7 @@ func setEnvPath() (string, error) {
 // installNodeJs installs the specified version of Node.js.
 // It creates the necessary installation directory with appropriate permissions,
 // downloads the Node.js binary from the official source, and extracts it.
-// On Linux, it uses sudo to create the installation directory and set permissions.
+// On Linux and MacOS, it uses sudo to create the installation directory and set permissions.
 //
 // Parameters:
 //   - version: The Node.js version to install (e.g., "16.14.2")
@@ -204,7 +204,7 @@ func installNodeJs(version string) error {
 	logger.Info("Installing Node.js %s...", version)
 
 	// Create the installation directory
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		logger.Debug("Creating directory %s (requires sudo)...", nodeBaseDir)
 		mkdirCmd := exec.Command("sudo", "mkdir", "-p", nodeBaseDir)
 		if output, err := mkdirCmd.CombinedOutput(); err != nil {
@@ -273,6 +273,8 @@ func getNodeDownloadURL(version string) (string, error) {
 		return fmt.Sprintf("%s/node-v%s-linux-%s.tar.gz", baseURL, version, arch), nil
 	case "windows":
 		return fmt.Sprintf("%s/node-v%s-win-%s.zip", baseURL, version, arch), nil
+	case "darwin":
+		return fmt.Sprintf("%s/node-v%s-darwin-%s.tar.gz", baseURL, version, arch), nil
 	default:
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -338,7 +340,7 @@ func downloadAndExtractNode(url, version string) error {
 	}
 
 	// Set the correct permissions for executable files
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		logger.Debug("Setting execute permissions for Node.js binaries...")
 
 		chownCmd := exec.Command("sudo", "chown", "-R", utils.ServiceUsername, nodeBaseDir)
