@@ -21,7 +21,7 @@ var ServiceUsername = "flowfuse"
 // CheckPermissions checks if the user who executed the installer has the necessary permissions to operate
 // based on the current operating system.
 //
-// For Linux systems, it delegates to checkUnixPermissions to verify specific Unix permissions.
+// For Unix systems, it delegates to checkUnixPermissions to verify specific Unix permissions.
 // For Windows systems, it checks if the user has administrator privileges by executing a command that
 // requires elevated permissions.
 // For other operating systems, it returns an error indicating the OS is not supported.
@@ -31,7 +31,7 @@ var ServiceUsername = "flowfuse"
 //   - error if permissions are insufficient or the operating system is not supported
 func CheckPermissions() error {
 	switch runtime.GOOS {
-	case "linux":
+	case "linux", "darwin":
 		return checkUnixPermissions()
 	case "windows":
 		return checkWindowsPermissions()
@@ -78,15 +78,18 @@ func checkWindowsPermissions() error {
 }
 
 // CreateWorkingDirectory creates and returns the working directory path for the FlowFuse device agent.
-// On Linux systems, it creates the directory at "/opt/flowfuse-device" with 0755 permissions.
+// On Unix systems, it creates the directory at "/opt/flowfuse-device" with 0755 permissions.
 // On Windows systems, it creates the directory at "c:\opt\flowfuse-device".
 // For other operating systems, it returns an error indicating the OS is not supported.
-// Returns the working directory path as a string and any error encountered during directory creation.
+//
+// Returns:
+//   - string: The path to the created working directory
+//   - error: nil if successful, otherwise an error describing what went wrong
 func CreateWorkingDirectory() (string, error) {
 	var workDir string
 
 	switch runtime.GOOS {
-	case "linux":
+	case "linux", "darwin":
 		workDir = "/opt/flowfuse-device"
 	case "windows":
 		workDir = `c:\opt\flowfuse-device`
@@ -102,10 +105,13 @@ func CreateWorkingDirectory() (string, error) {
 }
 
 // GetWorkingDirectory returns the default working directory for the FlowFuse device agent based on the operating system.
-// For unsupported operating systems, it returns an error.
+// 
+// Returns:
+//   - string: The path to the working directory
+//   - error: nil if successful, otherwise an error describing what went wrong
 func GetWorkingDirectory() (string, error) {
 	switch runtime.GOOS {
-	case "linux":
+	case "linux", "darwin":
 		return "/opt/flowfuse-device", nil
 	case "windows":
 		return `c:\opt\flowfuse-device`, nil
@@ -137,7 +143,7 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 	logger.Debug("Service user %s created successfully", serviceUser)
 
 	switch runtime.GOOS {
-	case "linux":
+	case "linux", "darwin":
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			// Try to create without sudo first
 			logger.Debug("Creating directory %s...", path)
@@ -171,13 +177,14 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 }
 
 // CreateServiceUser creates a system user with the given username if it doesn't already exist.
-// For Linux systems, it checks if the user exists by calling the "id" command.
+// For Unix systems, it checks if the user exists by calling the "id" command.
 // If the user doesn't exist, it creates the user with a home directory and no shell.
+// On Linux, it uses "useradd" to create the user.
+// On macOS, it uses "sysadminctl" to create the user.
 // For Windows systems, we do not create a user.
 //
 // Parameters:
 //   - username: the name of the user to create
-//   - password: the password to set for the user (only used on Windows)
 //
 // Returns:
 //   - string: the username of the created or existing service user
@@ -197,6 +204,21 @@ func CreateServiceUser(username string) (string, error) {
 		}
 		return username, nil
 
+	case "darwin":
+		checkUserCmd := exec.Command("id", username)
+		if err := checkUserCmd.Run(); err == nil {
+			logger.Debug("Service user %s already exists", username)
+		} else {
+			// Create the user
+			logger.Info("Creating service user %s...", username)
+			createUserCmd := exec.Command("sudo", "sysadminctl", "-addUser", username, "-shell", "/usr/bin/false", "-home", "/var/empty")
+			if output, err := createUserCmd.CombinedOutput(); err != nil {
+				return "", fmt.Errorf("failed to create user: %w\nOutput: %s", err, output)
+			}
+		}
+
+		return username, nil
+
 	case "windows":
 		logger.Debug("On Windows, we do not create a service user.")
 		return username, nil
@@ -208,6 +230,7 @@ func CreateServiceUser(username string) (string, error) {
 
 // RemoveServiceUser deletes the specified service user account from the system.
 // On Linux, it executes "userdel -r" with sudo to remove the user and their home directory.
+// On macOS, it uses "sysadminctl -deleteUser" to remove the user.
 // On Windows, we do not create a service user.
 //
 // Parameters:
@@ -221,6 +244,13 @@ func RemoveServiceUser(username string) error {
 	switch runtime.GOOS {
 	case "linux":
 		removeUserCmd := exec.Command("sudo", "userdel", "-r", username)
+		if output, err := removeUserCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to remove user %s: %w\nOutput: %s", username, err, output)
+		}
+		return nil
+
+	case "darwin":
+		removeUserCmd := exec.Command("sudo", "sysadminctl", "-deleteUser", username)
 		if output, err := removeUserCmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to remove user %s: %w\nOutput: %s", username, err, output)
 		}
@@ -249,7 +279,7 @@ func RemoveWorkingDirectory(workDir string) error {
 	logger.Debug("Removing working directory: %s", workDir)
 
 	switch runtime.GOOS {
-	case "linux":
+	case "linux", "darwin":
 		removeWorkDirCmd := exec.Command("sudo", "rm", "-rf", workDir)
 		if output, err := removeWorkDirCmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to remove working directory: %w\nOutput: %s", err, output)
@@ -344,7 +374,7 @@ func ExtractZip(zipFile, destDir, version string) error {
 // extractTarGz extracts a Node.js tar.gz archive to the specified destination directory.
 //
 // This function handles the extraction of a Node.js tar.gz archive and manages the necessary permissions.
-// On Linux, it first extracts the archive to a temporary directory and then uses sudo to move the files
+// It first extracts the archive to a temporary directory and then uses sudo to move the files
 // to the destination directory with proper ownership and permissions.
 //
 // Parameters:
@@ -356,7 +386,7 @@ func ExtractZip(zipFile, destDir, version string) error {
 //   - error: If any step in the extraction process fails, an error is returned with details.
 //
 // Notes:
-//   - Currently only supports Linux platforms.
+//   - This function has heavily assumes, that there are no tar.gz files for Windows.
 //   - Requires sudo privileges to set proper ownership and permissions.
 //   - Handles directory creation, file extraction, symbolic links, and permission setting.
 func ExtractTarGz(tarGzFile, destDir, version string) error {
@@ -388,98 +418,101 @@ func ExtractTarGz(tarGzFile, destDir, version string) error {
 		archSuffix = runtime.GOARCH
 		}
 		rootDir = fmt.Sprintf("node-v%s-linux-%s", version, archSuffix)
+	} else { // MacOS since there is no tar.gz for Windows
+		if runtime.GOARCH == "amd64" {
+			archSuffix = "x64"
+		} else {
+			archSuffix = runtime.GOARCH
+		}
+		rootDir = fmt.Sprintf("node-v%s-darwin-%s", version, archSuffix)
 	}
 
-	if runtime.GOOS == "linux" {
-		// Create a temporary directory
-		tempExtractDir, err := os.MkdirTemp("", "nodejs-extract-")
-		if err != nil {
-			return fmt.Errorf("failed to create temporary extraction directory: %w", err)
-		}
-		defer os.RemoveAll(tempExtractDir)
+	// Create a temporary directory
+	tempExtractDir, err := os.MkdirTemp("", "nodejs-extract-")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary extraction directory: %w", err)
+	}
+	defer os.RemoveAll(tempExtractDir)
 
-		// First, extract to a temporary directory that doesn't require elevated privileges
-		for {
-			header, err := tarReader.Next()
-			if err == io.EOF {
-				break
+	// First, extract to a temporary directory that doesn't require elevated privileges
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		// Skip if it's the root directory
+		if header.Name == rootDir || header.Name == rootDir+"/" {
+			continue
+		}
+
+		// Remove root directory from path
+		relPath := strings.TrimPrefix(header.Name, rootDir)
+		relPath = strings.TrimPrefix(relPath, "/")
+
+		if relPath == "" {
+			continue
+		}
+
+		tempPath := filepath.Join(tempExtractDir, relPath)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(tempPath, 0755); err != nil {
+				return err
 			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(tempPath), 0755); err != nil {
+				return err
+			}
+
+			outFile, err := os.Create(tempPath)
 			if err != nil {
 				return err
 			}
 
-			// Skip if it's the root directory
-			if header.Name == rootDir || header.Name == rootDir+"/" {
-				continue
-			}
-
-			// Remove root directory from path
-			relPath := strings.TrimPrefix(header.Name, rootDir)
-			relPath = strings.TrimPrefix(relPath, "/")
-
-			if relPath == "" {
-				continue
-			}
-
-			tempPath := filepath.Join(tempExtractDir, relPath)
-
-			switch header.Typeflag {
-			case tar.TypeDir:
-				if err := os.MkdirAll(tempPath, 0755); err != nil {
-					return err
-				}
-			case tar.TypeReg:
-				if err := os.MkdirAll(filepath.Dir(tempPath), 0755); err != nil {
-					return err
-				}
-
-				outFile, err := os.Create(tempPath)
-				if err != nil {
-					return err
-				}
-
-				if _, err := io.Copy(outFile, tarReader); err != nil {
-					outFile.Close()
-					return err
-				}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
 				outFile.Close()
+				return err
+			}
+			outFile.Close()
 
-				if err := os.Chmod(tempPath, os.FileMode(header.Mode)); err != nil {
-					return err
-				}
-			case tar.TypeSymlink:
-				if err := os.Symlink(header.Linkname, tempPath); err != nil {
-					return err
-				}
+			if err := os.Chmod(tempPath, os.FileMode(header.Mode)); err != nil {
+				return err
+			}
+		case tar.TypeSymlink:
+			if err := os.Symlink(header.Linkname, tempPath); err != nil {
+				return err
 			}
 		}
+	}
 
-		// Copy the content from temp dir to the destination using sudo
-		logger.Debug("Moving extracted files to %s (requires sudo)...", destDir)
+	// Copy the content from temp dir to the destination using sudo
+	logger.Debug("Moving extracted files to %s (requires sudo)...", destDir)
 
-		// Ensure the destination directory exists with proper permissions
-		mkdirCmd := exec.Command("sudo", "mkdir", "-p", destDir)
-		if output, err := mkdirCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to create destination directory: %w\nOutput: %s", err, output)
-		}
+	// Ensure the destination directory exists with proper permissions
+	mkdirCmd := exec.Command("sudo", "mkdir", "-p", destDir)
+	if output, err := mkdirCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to create destination directory: %w\nOutput: %s", err, output)
+	}
 
-		// Copy the extracted files from temp dir to destination
-		cpCmd := exec.Command("sudo", "cp", "-a", tempExtractDir+"/.", destDir)
-		if output, err := cpCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to copy extracted files: %w\nOutput: %s", err, output)
-		}
+	// Copy the extracted files from temp dir to destination
+	cpCmd := exec.Command("sudo", "cp", "-a", tempExtractDir+"/.", destDir)
+	if output, err := cpCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to copy extracted files: %w\nOutput: %s", err, output)
+	}
 
-		// Set ownership of all files to the service user
-		chownCmd := exec.Command("sudo", "chown", "-R", ServiceUsername+":"+ServiceUsername, destDir)
-		chmodCmd := exec.Command("sudo", "chmod", "755", destDir)
-		if output, err := chmodCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to set directory permissions: %w\nOutput: %s", err, output)
-		}
-		if output, err := chownCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
-		}
-
-		return nil
+	// Set ownership of all files to the service user
+	chownCmd := exec.Command("sudo", "chown", "-R", ServiceUsername+":"+ServiceUsername, destDir)
+	chmodCmd := exec.Command("sudo", "chmod", "755", destDir)
+	if output, err := chmodCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to set directory permissions: %w\nOutput: %s", err, output)
+	}
+	if output, err := chownCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
 	}
 
 	return nil
