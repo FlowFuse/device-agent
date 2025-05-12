@@ -1,4 +1,4 @@
-# Flowfuse Device Agent Installer
+# FlowFuse Device Agent Installer
 
 This directory contains the Go-based installer for the Flowfuse Device Agent.
 
