@@ -20,12 +20,11 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 		"otc":          otc,
 	})
 
-	// Check if we have sufficient permissions
-	logger.Debug("Checking permissions...")
-	if err := utils.CheckPermissions(); err != nil {
-		logger.Error("Permission check failed: %v", err)
+	// Run pre-check
+	logger.Debug("Running pre-check...")
+	if err := utils.PreCheck(); err != nil {
 		logger.LogFunctionExit("Install", nil, err)
-		return fmt.Errorf("permission check failed: %w", err)
+		return fmt.Errorf("pre-check failed: %w", err)
 	}
 
 	// Create working directory
