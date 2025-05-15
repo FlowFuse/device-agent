@@ -168,7 +168,9 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 	if err != nil {
 		return fmt.Errorf("failed to create service user: %w", err)
 	}
-	logger.Debug("Service user %s created successfully", serviceUser)
+	if runtime.GOOS != "windows" {
+		logger.Debug("Service user %s created successfully", serviceUser)
+	}
 
 	switch runtime.GOOS {
 	case "linux":
