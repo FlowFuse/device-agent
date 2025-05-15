@@ -167,8 +167,16 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 
 	logger.Debug("Configure command: %s", configureCmd.String())
 
-	if output, err := configureCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to configure the device agent: %w\nOutput: %s", err, output)
+	// Connect stdin, stdout, and stderr for interactive processes
+	configureCmd.Stdin = os.Stdin
+	configureCmd.Stdout = os.Stdout
+	configureCmd.Stderr = os.Stderr
+
+	logger.Debug("Starting device agent configuration")
+
+	// Run the command interactively
+	if err := configureCmd.Run(); err != nil {
+		return fmt.Errorf("failed to configure the device agent: %w", err)
 	}
 
 	logger.Info("Configuration completed successfully!")
