@@ -101,7 +101,7 @@ func configureService(nssmPath, serviceName, workDir string) error {
 	serviceParams := map[string]string{
 		"AppDirectory":    							workDir,
 		"DisplayName":     							"FlowFuse Device Agent",
-		"Description":     							"FlowFuse Device Agent Service",
+		"Description":     							fmt.Sprintf("FlowFuse Device Agent Service running from %s", workDir),
 		"AppStdout":       							filepath.Join(workDir, "flowfuse-device-agent.log"),
 		"AppStderr":       							filepath.Join(workDir, "flowfuse-device-agent-error.log"),
 		"AppRestartDelay": 							"30000",
