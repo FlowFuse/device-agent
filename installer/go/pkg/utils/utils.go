@@ -18,6 +18,40 @@ import (
 // Global variable to store the service username
 var ServiceUsername = "flowfuse"
 
+// PreCheck performs validation steps before installation:
+// 1. Checks that device.yml doesn't exist in the working directory
+// 2. Ensures the working directory doesn't exist
+// 3. Verifies if user has the necessary permissions to run the installer
+//
+// Returns:
+//   - nil if all checks pass
+//   - error if any check fails
+func PreCheck() error {
+	workDir, err := GetWorkingDirectory()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	deviceYamlPath := fmt.Sprintf("%s/device.yml", workDir)
+	if _, err := os.Stat(deviceYamlPath); !os.IsNotExist(err) {
+		logger.Error("The %s already exists, please remove it and try again.", deviceYamlPath)
+		return fmt.Errorf("the device.yaml already exists: %s", deviceYamlPath)
+	}
+
+	if _, err := os.Stat(workDir); !os.IsNotExist(err) {
+		logger.Error("The working directory %s already exists, please remove it and try again.", workDir)
+		return fmt.Errorf("working directory already exists: %s ", workDir)
+	}
+
+	if err := checkPermissions(); err != nil {
+		logger.Error("Permission check failed: %v", err)
+		logger.LogFunctionExit("Install", nil, err)
+		return fmt.Errorf("permission check failed: %w", err)
+	}
+	
+	return nil
+}
+
 // CheckPermissions checks if the user who executed the installer has the necessary permissions to operate
 // based on the current operating system.
 //
@@ -29,7 +63,7 @@ var ServiceUsername = "flowfuse"
 // Returns:
 //   - nil if the application has sufficient permissions
 //   - error if permissions are insufficient or the operating system is not supported
-func CheckPermissions() error {
+func checkPermissions() error {
 	switch runtime.GOOS {
 	case "linux":
 		return checkUnixPermissions()

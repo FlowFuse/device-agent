@@ -73,6 +73,7 @@ func InstallDeviceAgent(version string, baseDir string) error {
 
 // UninstallDeviceAgent removes the FlowFuse Device Agent package from the system.
 // It uninstalls the package using the local npm, running the uninstall command with
+// It uninstalls the package using the local npm, running the uninstall command with
 // the appropriate permissions based on the operating system.
 //
 // Parameters:
@@ -172,11 +173,11 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	// Create configure command
 	switch runtime.GOOS {
 	case "linux":
-		configureCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--otc-no-import")
+		configureCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, deviceAgentPath, "-o", token, "-u", url, "--otc-no-start")
 		env := os.Environ()
 		configureCmd.Env = append(env, newPath)
 	case "windows":
-		configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--otc-no-import")
+		configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start")
 		env := os.Environ()
 		configureCmd.Env = append(env, newPath)
 	default:
@@ -185,8 +186,16 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 
 	logger.Debug("Configure command: %s", configureCmd.String())
 
-	if output, err := configureCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to configure the device agent: %w\nOutput: %s", err, output)
+	// Connect stdin, stdout, and stderr for interactive processes
+	configureCmd.Stdin = os.Stdin
+	configureCmd.Stdout = os.Stdout
+	configureCmd.Stderr = os.Stderr
+
+	logger.Debug("Starting device agent configuration")
+
+	// Run the command interactively
+	if err := configureCmd.Run(); err != nil {
+		return fmt.Errorf("failed to configure the device agent: %w", err)
 	}
 
 	logger.Info("Configuration completed successfully!")
