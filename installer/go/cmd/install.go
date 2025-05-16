@@ -124,6 +124,12 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 func Uninstall() error {
 	logger.LogFunctionEntry("Uninstall", nil)
 
+	logger.Debug("Running pre-check...")
+	if err := utils.CheckPermissions(); err != nil {
+		logger.LogFunctionExit("Uninstall", nil, err)
+		return fmt.Errorf("permission check failed: %w", err)
+	}
+
 	// Check if the device agent is installed
 	logger.Debug("Checking if device agent is installed...")
 	if !service.IsInstalled("flowfuse-device-agent") {

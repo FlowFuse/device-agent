@@ -43,7 +43,7 @@ func PreCheck() error {
 		return fmt.Errorf("working directory already exists: %s ", workDir)
 	}
 
-	if err := checkPermissions(); err != nil {
+	if err := CheckPermissions(); err != nil {
 		logger.Error("Permission check failed: %v", err)
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("permission check failed: %w", err)
@@ -63,7 +63,7 @@ func PreCheck() error {
 // Returns:
 //   - nil if the application has sufficient permissions
 //   - error if permissions are insufficient or the operating system is not supported
-func checkPermissions() error {
+func CheckPermissions() error {
 	switch runtime.GOOS {
 	case "linux":
 		return checkUnixPermissions()
