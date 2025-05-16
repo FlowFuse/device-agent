@@ -16,13 +16,17 @@ echo "Building installers for FlowFuse Device Agent v$VERSION"
 echo "Building Linux (amd64) installer..."
 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$VERSION" -o build/linux/flowfuse-device-installer-linux-amd64 main.go
 
-# # Build Linux (arm64)
+# Build Linux (arm64)
 echo "Building Linux (arm64) installer..."
 GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=$VERSION" -o build/linux/flowfuse-device-installer-linux-arm64 main.go
 
-# # Build Linux (arm) - for Raspberry Pi
+# Build Linux (arm) - for Raspberry Pi
 echo "Building Linux (arm) installer..."
 GOOS=linux GOARCH=arm go build -ldflags "-X main.version=$VERSION" -o build/linux/flowfuse-device-installer-linux-arm main.go
+
+# Build Windows (amd64)
+echo "Building Windows (amd64) installer..."
+GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$VERSION" -o build/windows/flowfuse-device-installer-windows-amd64.exe main.go
 
 echo "All builds completed!"
 echo "Installers available in the build/ directory"
