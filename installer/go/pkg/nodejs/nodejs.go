@@ -172,22 +172,11 @@ func GetNpmPath() string {
 // GetNodeBinDir returns the path to the Node.js binary directory.
 // This is calculated by joining the Node.js base directory with "bin".
 func GetNodeBinDir() string {
-	return filepath.Join(nodeBaseDir, "bin")
-}
-
-// setEnvPath modifies the system PATH environment variable to include the Node.js binary directory
-// at the beginning. This ensures that the installed Node.js binaries are found first when executing
-// Node.js commands. It returns the new PATH value as a formatted string.
-// If setting the environment variable fails, the function returns error.
-func setEnvPath() (string, error) {
-	nodeBinDir := GetNodeBinDir()
-	pathEnv := os.Getenv("PATH")
-	newPath := fmt.Sprintf("PATH=%s%c%s", nodeBinDir, os.PathListSeparator, pathEnv)
-	if err := os.Setenv("PATH", newPath); err != nil {
-		logger.Debug("Failed to set PATH environment variable: %v", err)
-		return "", fmt.Errorf("failed to set PATH environment variable: %w", err)
+	if runtime.GOOS == "windows" {
+		return nodeBaseDir
+	} else {
+		return filepath.Join(nodeBaseDir, "bin")
 	}
-	return newPath, nil
 }
 
 // installNodeJs installs the specified version of Node.js.
