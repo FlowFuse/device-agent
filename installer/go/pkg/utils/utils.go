@@ -529,3 +529,42 @@ func ExtractTarGz(tarGzFile, destDir, version string) error {
 func GetOSDetails() (string, string) {
 	return runtime.GOOS, runtime.GOARCH
 }
+
+// checkPath checks if the specified path is part of the currentPath.
+// Main purpose is to check if the path is already in the PATH environment variable.
+//
+// Parameters:
+//   - currentPath: The current PATH environment variable
+//	 - path: The path to check within the currentPath
+//
+// Returns:
+//   - bool: true if the path is found in the currentPath, false otherwise
+func checkEnvPath(currentPath, path string) bool {
+	logger.Debug("Checking if %s is in %s", path, currentPath)
+	return strings.Contains(currentPath, path)
+}
+
+// SetEnvPath modifies the system PATH environment variable to include the path 
+// specified as an parameter of the function. 
+//
+// Parameters:
+//   - path: The path to be added to the PATH environment variable
+//
+// Returns:
+//   - string: The updated PATH environment variable
+//   - error: An error if the operation fails
+func SetEnvPath(path string) (string, error) {
+	currentEnvPath := os.Getenv("PATH")
+	if !checkEnvPath(currentEnvPath, path) {
+		logger.Debug("%s is not in PATH, adding...", path)
+		newEnvPath := fmt.Sprintf("PATH=%s%c%s", path, os.PathListSeparator, currentEnvPath)
+		if err := os.Setenv("PATH", newEnvPath); err != nil {
+			logger.Debug("Failed to set PATH environment variable: %v", err)
+			return "", fmt.Errorf("failed to set PATH environment variable: %w", err)
+		}
+		return newEnvPath, nil
+	} else {
+		logger.Debug("%s is already in PATH", path)
+		return currentEnvPath, nil
+	}
+}
