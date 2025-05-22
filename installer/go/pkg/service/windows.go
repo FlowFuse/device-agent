@@ -8,6 +8,7 @@ import (
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
+	"github.com/flowfuse/device-agent-installer/pkg/nodejs"
 )
 
 // NSSM version used throughout the Windows service management
@@ -41,27 +42,21 @@ func InstallWindows(serviceName, workDir string) error {
 		return fmt.Errorf("failed to ensure NSSM is available: %w", err)
 	}
 
-	flowfuseNodePath := filepath.Join("c:\\", "opt", "flowfuse-device", "node")
-	currentPath := os.Getenv("PATH")
+	nodeBinDirPath := nodejs.GetNodeBinDir()
 
-	// Check if the path already exists in PATH
-	if !pathContains(currentPath, flowfuseNodePath) {
-		logger.Debug("Adding %s to PATH", flowfuseNodePath)
-
-		// Set the PATH for this process
-		newPath := flowfuseNodePath + ";" + currentPath
-		os.Setenv("PATH", newPath)
+	if _, err := utils.SetEnvPath(nodeBinDirPath); err != nil {
+		return fmt.Errorf("failed to set PATH: %w", err)
 	}
 
 	// Find path to the device agent executable
 	deviceAgentPath, err := exec.LookPath("flowfuse-device-agent.cmd")
 	if err != nil {
 		// Use direct path as fallback
-		directPath := filepath.Join(flowfuseNodePath, "flowfuse-device-agent.cmd")
+		directPath := filepath.Join(nodeBinDirPath, "flowfuse-device-agent.cmd")
 		if _, statErr := os.Stat(directPath); statErr == nil {
 			deviceAgentPath = directPath
 		} else {
-			return fmt.Errorf("flowfuse-device-agent.cmd not found in PATH (including %s), is it installed? %w", flowfuseNodePath, err)
+			return fmt.Errorf("flowfuse-device-agent.cmd not found in PATH (including %s), is it installed? %w", nodeBinDirPath, err)
 		}
 	}
 
@@ -121,10 +116,8 @@ func configureService(nssmPath, serviceName, workDir string) error {
 
 	// Configure environment variables
 	nodeOptions := "NODE_OPTIONS=--max_old_space_size=512"
-	pathEnv := fmt.Sprintf("PATH=%s", os.Getenv("PATH"))
-
 	// The AppEnvironmentExtra parameter needs multiple values, which requires a direct command
-	envCmd := exec.Command(nssmPath, "set", serviceName, "AppEnvironmentExtra", nodeOptions, pathEnv)
+	envCmd := exec.Command(nssmPath, "set", serviceName, "AppEnvironmentExtra", nodeOptions, os.Getenv("PATH"))
 	logger.Debug("Set environment command: %s", envCmd.String())
 	if output, err := envCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to set environment variables: %w\nOutput: %s", err, output)
@@ -323,22 +316,4 @@ func findNSSM() (string, error) {
 	}
 
 	return "", fmt.Errorf("NSSM not found")
-}
-
-// pathContains checks if a given path is present in the current PATH environment variable.
-// It splits the current PATH into individual paths and checks for a match.
-//
-// Parameters:
-//   - currentPath: The current PATH environment variable
-//   - checkPath: The path to check for in the current PATH
-//
-// Returns:
-//   - bool: true if the checkPath is found in currentPath, false otherwise
-func pathContains(currentPath, checkPath string) bool {
-	for _, p := range filepath.SplitList(currentPath) {
-		if p == checkPath {
-			return true
-		}
-	}
-	return false
 }
