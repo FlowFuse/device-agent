@@ -1,50 +1,18 @@
 package utils
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 )
 
 // Global variable to store the service username
 var ServiceUsername = "flowfuse"
-
-// PreCheck performs validation steps before installation:
-// 1. Checks that device.yml doesn't exist in the working directory
-// 2. Ensures the working directory doesn't exist
-// 3. Verifies if user has the necessary permissions to run the installer
-//
-// Returns:
-//   - nil if all checks pass
-//   - error if any check fails
-func PreCheck() error {
-	workDir, err := GetWorkingDirectory()
-	if err != nil {
-		return fmt.Errorf("failed to get working directory: %w", err)
-	}
-
-	deviceYamlPath := fmt.Sprintf("%s/device.yml", workDir)
-	if _, err := os.Stat(deviceYamlPath); !os.IsNotExist(err) {
-		logger.Error("The %s already exists, please remove it and try again.", deviceYamlPath)
-		return fmt.Errorf("the device.yaml already exists: %s", deviceYamlPath)
-	}
-
-	if _, err := os.Stat(workDir); !os.IsNotExist(err) {
-		logger.Error("The working directory %s already exists, please remove it and try again.", workDir)
-		return fmt.Errorf("working directory already exists: %s ", workDir)
-	}
-
-	if err := CheckPermissions(); err != nil {
-		logger.Error("Permission check failed: %v", err)
-		logger.LogFunctionExit("Install", nil, err)
-		return fmt.Errorf("permission check failed: %w", err)
-	}
-	
-	return nil
-}
 
 // CheckPermissions checks if the user who executed the installer has the necessary permissions to operate
 // based on the current operating system.
@@ -259,4 +227,36 @@ func RemoveWorkingDirectory(workDir string) error {
 //   - string: The architecture (e.g., "amd64", "arm64", "386")
 func GetOSDetails() (string, string) {
 	return runtime.GOOS, runtime.GOARCH
+}
+
+
+// YesNoPrompt prompts the user with a yes/no question and returns true for "yes" and false for "no".
+// It continues to prompt until a valid response is given.
+//
+// Parameters:
+//   - message: The question to ask the user
+//
+// Returns:
+//   - bool: true if the user responds with "yes" or "y", false for "no" or "n"
+func YesNoPrompt(message string) bool {
+	choices := "Y/n"
+
+	r := bufio.NewReader(os.Stdin)
+	var input string
+
+	for {
+		fmt.Fprintf(os.Stderr, "%s (%s) ", message, choices)
+		input, _ = r.ReadString('\n')
+		input = strings.TrimSpace(input)
+		if input == "" {
+			return true
+		}
+		input = strings.ToLower(input)
+		if input == "y" || input == "yes" {
+			return true
+		}
+		if input == "n" || input == "no" {
+			return false
+		}
+	}
 }
