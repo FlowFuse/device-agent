@@ -8,6 +8,7 @@ import (
 	"github.com/flowfuse/device-agent-installer/pkg/nodejs"
 	"github.com/flowfuse/device-agent-installer/pkg/service"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
+	"github.com/flowfuse/device-agent-installer/pkg/validate"
 )
 
 // Install performs the complete installation of the FlowFuse Device Agent.
@@ -41,9 +42,9 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 		"otc":          otc,
 	})
 
-	// Run pre-check
+	// Run pre-install validation
 	logger.Debug("Running pre-check...")
-	if err := utils.PreCheck(); err != nil {
+	if err := validate.PreInstall("flowfuse-device-agent"); err != nil {
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("pre-check failed: %w", err)
 	}
