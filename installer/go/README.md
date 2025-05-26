@@ -1,6 +1,6 @@
-# Flowfuse Device Agent Installer
+# FlowFuse Device Agent Installer
 
-This directory contains the Go-based installer for the Flowfuse Device Agent.
+This directory contains the Go-based installer for the FlowFuse Device Agent.
 
 ## Building
 
@@ -37,9 +37,9 @@ go run main.go
 ```
 
 ## Uninstalling
-To uninstall the Flowfuse Device Agent, you can use the `uninstall` flag:
+To uninstall the FlowFuse Device Agent, you can use the `uninstall` flag:
 
 ```bash
 go run main.go --uninstall
 ```
-This will result in removing the Flowfuse Device Agent and all related files from your system.
+This will result in removing the FlowFuse Device Agent and all related files from your system.

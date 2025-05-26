@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -140,7 +141,9 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 	if err != nil {
 		return fmt.Errorf("failed to create service user: %w", err)
 	}
-	logger.Debug("Service user %s created successfully", serviceUser)
+	if runtime.GOOS != "windows" {
+		logger.Debug("Service user %s created successfully", serviceUser)
+	}
 
 	switch runtime.GOOS {
 	case "linux", "darwin":
@@ -525,4 +528,75 @@ func ExtractTarGz(tarGzFile, destDir, version string) error {
 //   - string: The architecture (e.g., "amd64", "arm64", "386")
 func GetOSDetails() (string, string) {
 	return runtime.GOOS, runtime.GOARCH
+}
+
+// checkPath checks if the specified path is part of the currentPath.
+// Main purpose is to check if the path is already in the PATH environment variable.
+//
+// Parameters:
+//   - currentPath: The current PATH environment variable
+//	 - path: The path to check within the currentPath
+//
+// Returns:
+//   - bool: true if the path is found in the currentPath, false otherwise
+func checkEnvPath(currentPath, path string) bool {
+	logger.Debug("Checking if %s is in %s", path, currentPath)
+	return strings.Contains(currentPath, path)
+}
+
+// SetEnvPath modifies the system PATH environment variable to include the path 
+// specified as an parameter of the function. 
+//
+// Parameters:
+//   - path: The path to be added to the PATH environment variable
+//
+// Returns:
+//   - string: The updated PATH environment variable
+//   - error: An error if the operation fails
+func SetEnvPath(path string) (string, error) {
+	currentEnvPath := os.Getenv("PATH")
+	if !checkEnvPath(currentEnvPath, path) {
+		logger.Debug("%s is not in PATH, adding...", path)
+		newEnvPath := fmt.Sprintf("PATH=%s%c%s", path, os.PathListSeparator, currentEnvPath)
+		if err := os.Setenv("PATH", newEnvPath); err != nil {
+			logger.Debug("Failed to set PATH environment variable: %v", err)
+			return "", fmt.Errorf("failed to set PATH environment variable: %w", err)
+		}
+		return newEnvPath, nil
+	} else {
+		logger.Debug("%s is already in PATH", path)
+		return currentEnvPath, nil
+	}
+}
+
+
+// YesNoPrompt prompts the user with a yes/no question and returns true for "yes" and false for "no".
+// It continues to prompt until a valid response is given.
+//
+// Parameters:
+//   - message: The question to ask the user
+//
+// Returns:
+//   - bool: true if the user responds with "yes" or "y", false for "no" or "n"
+func YesNoPrompt(message string) bool {
+	choices := "Y/n"
+
+	r := bufio.NewReader(os.Stdin)
+	var input string
+
+	for {
+		fmt.Fprintf(os.Stderr, "%s (%s) ", message, choices)
+		input, _ = r.ReadString('\n')
+		input = strings.TrimSpace(input)
+		if input == "" {
+			return true
+		}
+		input = strings.ToLower(input)
+		if input == "y" || input == "yes" {
+			return true
+		}
+		if input == "n" || input == "no" {
+			return false
+		}
+	}
 }

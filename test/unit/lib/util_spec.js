@@ -1,5 +1,6 @@
 const should = require('should') // eslint-disable-line
 const utils = require('../../../lib/utils.js')
+const sinon = require('sinon') // Add sinon for stubbing
 
 /*
     Ensure utils used throughout agent are tested
@@ -9,6 +10,14 @@ const utils = require('../../../lib/utils.js')
     * hasProperty
 */
 describe('utils', function () {
+    beforeEach(function () {
+        this.sandbox = sinon.createSandbox()
+    })
+
+    afterEach(function () {
+        this.sandbox.restore()
+    })
+
     describe('isObject', function () {
         it('should return true for objects', function () {
             utils.isObject({}).should.be.true()
@@ -317,6 +326,110 @@ describe('utils', function () {
             process.env.https_proxy = 'http://proxy:8081'
             const agent = utils.getHTTPProxyAgent('https://127.0.0.1:3000', { timeout: 2345 })
             agent.https.connectOpts.should.have.property('timeout', 2345)
+        })
+    })
+
+    describe('getPackageData', function () {
+        it('should correctly parse package data', function () {
+            const mockPackageJson = JSON.stringify({
+                dependencies: { 'module-a': '^1.0.0' },
+                version: '1.0.0',
+                name: 'test-package',
+                description: 'A test package'
+            })
+            const fs = require('fs')
+            const readFileSyncStub = this.sandbox.stub(fs, 'readFileSync').returns(mockPackageJson)
+
+            const result = utils.getPackageData('mock/path/package.json')
+            result.should.have.property('modules').eql({ 'module-a': '^1.0.0' })
+            result.should.have.property('version', '1.0.0')
+            result.should.have.property('name', 'test-package')
+            result.should.have.property('description', 'A test package')
+
+            readFileSyncStub.calledOnceWith('mock/path/package.json').should.be.true()
+        })
+    })
+
+    describe('extractKeyValueFromJsContent', function () {
+        it('should extract the correct value for a given key', function () {
+            const jsContent = `module.exports = {
+                /* A comment */
+                credentialSecret: 'my-secret',
+                anotherKey: 'another-value'
+            }`
+            const result = utils.extractKeyValueFromJsContent(jsContent, 'credentialSecret')
+            result.should.equal('my-secret')
+        })
+
+        // Test for a minified JS content - currently not supported
+        it.skip('should extract the correct value for a given key in a minified settings file', function () {
+            const jsContent = "module.exports={/* A comment */ credentialSecret: 'my-secret'}"
+            const result = utils.extractKeyValueFromJsContent(jsContent, 'credentialSecret')
+            result.should.equal('my-secret')
+        })
+
+        it('should return null if the key is not found', function () {
+            const jsContent = `module.exports = {
+                /* A comment */
+                anotherKey: 'another-value'
+        }`
+            const result = utils.extractKeyValueFromJsContent(jsContent, 'missingKey')
+            should(result).be.null()
+        })
+        it('should return null if the key is // commented out', function () {
+            const jsContent = `module.exports = {
+                /* A comment */
+                // credentialSecret: 'my-secret',
+                anotherKey: 'another-value'
+            }`
+            const result = utils.extractKeyValueFromJsContent(jsContent, 'credentialSecret')
+            should(result).be.null()
+        })
+        it('should return null if the key is /* commented */ out', function () {
+            const jsContent = `module.exports = {
+                /* A comment */
+                /* credentialSecret: 'my-secret', */
+                anotherKey: 'another-value'
+            }`
+            const result = utils.extractKeyValueFromJsContent(jsContent, 'credentialSecret')
+            should(result).be.null()
+        })
+    })
+
+    describe('loadAndParseJsonFile', function () {
+        it('should correctly parse a valid JSON file', function () {
+            const mockJsonContent = JSON.stringify({ key: 'value' })
+            const fs = require('fs')
+            const readFileSyncStub = this.sandbox.stub(fs, 'readFileSync').returns(mockJsonContent)
+            const existsSyncStub = this.sandbox.stub(fs, 'existsSync').returns(true)
+
+            const result = utils.loadAndParseJsonFile('mock/path/file.json')
+            result.should.eql({ key: 'value' })
+
+            existsSyncStub.calledOnceWith('mock/path/file.json').should.be.true()
+            readFileSyncStub.calledOnceWith('mock/path/file.json', 'utf8').should.be.true()
+        })
+
+        it('should return null if the file does not exist', function () {
+            const fs = require('fs')
+            const existsSyncStub = this.sandbox.stub(fs, 'existsSync').returns(false)
+
+            const result = utils.loadAndParseJsonFile('mock/path/file.json')
+            should(result).be.null()
+
+            existsSyncStub.calledOnceWith('mock/path/file.json').should.be.true()
+        })
+
+        it('should return null if the file contains invalid JSON', function () {
+            const fs = require('fs')
+            const readFileSyncStub = this.sandbox.stub(fs, 'readFileSync').throws(new Error('Invalid JSON'))
+            const existsSyncStub = this.sandbox.stub(fs, 'existsSync').returns(true)
+
+            const result = utils.loadAndParseJsonFile('mock/path/file.json')
+            should(result).be.null()
+
+            existsSyncStub.calledOnceWith('mock/path/file.json').should.be.true()
+            readFileSyncStub.calledOnceWith('mock/path/file.json', 'utf8').should.be.true()
         })
     })
 })

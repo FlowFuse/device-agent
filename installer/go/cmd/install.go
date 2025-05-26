@@ -8,6 +8,7 @@ import (
 	"github.com/flowfuse/device-agent-installer/pkg/nodejs"
 	"github.com/flowfuse/device-agent-installer/pkg/service"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
+	"github.com/flowfuse/device-agent-installer/pkg/validate"
 )
 
 // Install performs the complete installation of the FlowFuse Device Agent.
@@ -41,12 +42,11 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 		"otc":          otc,
 	})
 
-	// Check if we have sufficient permissions
-	logger.Debug("Checking permissions...")
-	if err := utils.CheckPermissions(); err != nil {
-		logger.Error("Permission check failed: %v", err)
+	// Run pre-install validation
+	logger.Debug("Running pre-check...")
+	if err := validate.PreInstall("flowfuse-device-agent"); err != nil {
 		logger.LogFunctionExit("Install", nil, err)
-		return fmt.Errorf("permission check failed: %w", err)
+		return fmt.Errorf("pre-check failed: %w", err)
 	}
 
 	// Create working directory
@@ -124,6 +124,12 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 // Returns an error if any step in the uninstallation process fails.
 func Uninstall() error {
 	logger.LogFunctionEntry("Uninstall", nil)
+
+	logger.Debug("Running pre-check...")
+	if err := utils.CheckPermissions(); err != nil {
+		logger.LogFunctionExit("Uninstall", nil, err)
+		return fmt.Errorf("permission check failed: %w", err)
+	}
 
 	// Check if the device agent is installed
 	logger.Debug("Checking if device agent is installed...")

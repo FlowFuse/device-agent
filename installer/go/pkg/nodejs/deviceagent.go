@@ -30,6 +30,7 @@ const packageName = "@flowfuse/device-agent"
 // - The installation process fails
 func InstallDeviceAgent(version string, baseDir string) error {
 	setNodeDirectories(baseDir)
+	nodeBinDirPath := GetNodeBinDir()
 
 	if _, err := os.Stat(nodeBinPath); os.IsNotExist(err) {
 		return fmt.Errorf("node.js not found, please restart installator script")
@@ -41,13 +42,15 @@ func InstallDeviceAgent(version string, baseDir string) error {
 		packageName += "@" + version
 	}
 
-	logger.Debug("Installing %s as user %s...", packageName, serviceUser)
-
-	var installCmd *exec.Cmd
-	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
-	newPath, _ := setEnvPath()
+	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	if err != nil {
+    logger.Error("Failed to set PATH: %v", err)
+    return fmt.Errorf("failed to set PATH: %w", err)
+	}
 
 	// Create install command
+	var installCmd *exec.Cmd
+	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
 	case "linux", "darwin":
 		installCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "install", "-g", packageName)
@@ -73,6 +76,7 @@ func InstallDeviceAgent(version string, baseDir string) error {
 
 // UninstallDeviceAgent removes the FlowFuse Device Agent package from the system.
 // It uninstalls the package using the local npm, running the uninstall command with
+// It uninstalls the package using the local npm, running the uninstall command with
 // the appropriate permissions based on the operating system.
 //
 // Parameters:
@@ -82,17 +86,19 @@ func InstallDeviceAgent(version string, baseDir string) error {
 //   - error: An error if uninstallation fails or if the operating system is not supported
 func UninstallDeviceAgent(baseDir string) error {
 	setNodeDirectories(baseDir)
+	nodeBinDirPath := GetNodeBinDir()
 
 	serviceUser := utils.ServiceUsername
 
-	// Uninstall the package using our local npm
-	logger.Debug("Uninstalling %s as user %s...", packageName, serviceUser)
-
-	var uninstallCmd *exec.Cmd
-	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
-	newPath, _ := setEnvPath()
+	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	if err != nil {
+    logger.Error("Failed to set PATH: %v", err)
+    return fmt.Errorf("failed to set PATH: %w", err)
+	}	
 
 	// Create uninstall command
+	var uninstallCmd *exec.Cmd
+	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
 	case "linux", "darwin":
 		uninstallCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "uninstall", "-g", packageName)
@@ -142,8 +148,8 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	var deviceAgentPath string
 
 	setNodeDirectories(baseDir)
-	nodeBinDir := GetNodeBinDir()
-	serviceUser := utils.ServiceUsername
+	nodeBinDirPath 	:= GetNodeBinDir()
+	serviceUser 		:= utils.ServiceUsername
 
 	deviceConfigPath := filepath.Join(baseDir, "device.yml")
 	if _, err := os.Stat(deviceConfigPath); !os.IsNotExist(err) {
@@ -157,26 +163,28 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 		return fmt.Errorf("node.js is not installed locally")
 	}
 
-	logger.Debug("Preparing configuration as user %s...", serviceUser)
-
-	var configureCmd *exec.Cmd
-	newPath, _ := setEnvPath()
+	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	if err != nil {
+    logger.Error("Failed to set PATH: %v", err)
+    return fmt.Errorf("failed to set PATH: %w", err)
+	}
 
 	// Getting full path to flowfuse-device-agent binary
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-		deviceAgentPath = filepath.Join(nodeBinDir, "flowfuse-device-agent")
+		deviceAgentPath = filepath.Join(nodeBinDirPath, "flowfuse-device-agent")
 	} else {
-		deviceAgentPath = filepath.Join(nodeBaseDir, "flowfuse-device-agent.cmd")
+		deviceAgentPath = filepath.Join(nodeBinDirPath, "flowfuse-device-agent.cmd")
 	}
 
 	// Create configure command
+	var configureCmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		configureCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--otc-no-import")
+		configureCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, deviceAgentPath, "-o", token, "-u", url, "--otc-no-start")
 		env := os.Environ()
 		configureCmd.Env = append(env, newPath)
 	case "windows":
-		configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--otc-no-import")
+		configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start")
 		env := os.Environ()
 		configureCmd.Env = append(env, newPath)
 	default:
@@ -185,8 +193,16 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 
 	logger.Debug("Configure command: %s", configureCmd.String())
 
-	if output, err := configureCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to configure the device agent: %w\nOutput: %s", err, output)
+	// Connect stdin, stdout, and stderr for interactive processes
+	configureCmd.Stdin = os.Stdin
+	configureCmd.Stdout = os.Stdout
+	configureCmd.Stderr = os.Stderr
+
+	logger.Debug("Starting device agent configuration")
+
+	// Run the command interactively
+	if err := configureCmd.Run(); err != nil {
+		return fmt.Errorf("failed to configure the device agent: %w", err)
 	}
 
 	logger.Info("Configuration completed successfully!")

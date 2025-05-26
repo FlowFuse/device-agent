@@ -47,7 +47,15 @@ describe('Launcher', function () {
     })
 
     afterEach(async function () {
-        await fs.rm(config.dir, { recursive: true, force: true })
+        try {
+            // Force removal of the directory and its contents
+            await fs.rm(config.dir, { recursive: true, force: true })
+        } catch (err) {
+            // If the standard rm fails, try again after a short delay (improves occasional fails on Windows)
+            console.debug('Directory removal failed, trying again in a moment')
+            await new Promise(resolve => setTimeout(resolve, 100))
+            await fs.rm(config.dir, { recursive: true, force: true })
+        }
         sinon.restore()
     })
 

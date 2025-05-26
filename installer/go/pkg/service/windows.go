@@ -8,6 +8,7 @@ import (
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
+	"github.com/flowfuse/device-agent-installer/pkg/nodejs"
 )
 
 // NSSM version used throughout the Windows service management
@@ -41,27 +42,21 @@ func InstallWindows(serviceName, workDir string) error {
 		return fmt.Errorf("failed to ensure NSSM is available: %w", err)
 	}
 
-	flowfuseNodePath := filepath.Join("c:\\", "opt", "flowfuse-device", "node")
-	currentPath := os.Getenv("PATH")
+	nodeBinDirPath := nodejs.GetNodeBinDir()
 
-	// Check if the path already exists in PATH
-	if !pathContains(currentPath, flowfuseNodePath) {
-		logger.Debug("Adding %s to PATH", flowfuseNodePath)
-
-		// Set the PATH for this process
-		newPath := flowfuseNodePath + ";" + currentPath
-		os.Setenv("PATH", newPath)
+	if _, err := utils.SetEnvPath(nodeBinDirPath); err != nil {
+		return fmt.Errorf("failed to set PATH: %w", err)
 	}
 
 	// Find path to the device agent executable
 	deviceAgentPath, err := exec.LookPath("flowfuse-device-agent.cmd")
 	if err != nil {
 		// Use direct path as fallback
-		directPath := filepath.Join(flowfuseNodePath, "flowfuse-device-agent.cmd")
+		directPath := filepath.Join(nodeBinDirPath, "flowfuse-device-agent.cmd")
 		if _, statErr := os.Stat(directPath); statErr == nil {
 			deviceAgentPath = directPath
 		} else {
-			return fmt.Errorf("flowfuse-device-agent.cmd not found in PATH (including %s), is it installed? %w", flowfuseNodePath, err)
+			return fmt.Errorf("flowfuse-device-agent.cmd not found in PATH (including %s), is it installed? %w", nodeBinDirPath, err)
 		}
 	}
 
@@ -74,60 +69,9 @@ func InstallWindows(serviceName, workDir string) error {
 		return fmt.Errorf("failed to create service: %w\nOutput: %s", err, output)
 	}
 
-	// Set the working directory
-	setDirCmd := exec.Command(nssmPath, "set", serviceName, "AppDirectory", workDir)
-	logger.Debug("Set working directory command: %s", setDirCmd.String())
-	if output, err := setDirCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set working directory: %w\nOutput: %s", err, output)
-	}
-
-	// Set the display name
-	setDisplayCmd := exec.Command(nssmPath, "set", serviceName, "DisplayName", "FlowFuse Device Agent")
-	logger.Debug("Set display name command: %s", setDisplayCmd.String())
-	if output, err := setDisplayCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set display name: %w\nOutput: %s", err, output)
-	}
-
-	// Set the description
-	setDescCmd := exec.Command(nssmPath, "set", serviceName, "Description", "FlowFuse Device Agent Service")
-	logger.Debug("Set description command: %s", setDescCmd.String())
-	if output, err := setDescCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set description: %w\nOutput: %s", err, output)
-	}
-
-	// Set log
-	setLogCmd := exec.Command(nssmPath, "set", serviceName, "AppStdout", filepath.Join(workDir, "flowfuse-device-agent.log"))
-	logger.Debug("Set log command: %s", setLogCmd.String())
-	if output, err := setLogCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set log file: %w\nOutput: %s", err, output)
-	}
-
-	// Set the error log
-	setErrorLogCmd := exec.Command(nssmPath, "set", serviceName, "AppStderr", filepath.Join(workDir, "flowfuse-device-agent-error.log"))
-	logger.Debug("Set error log command: %s", setErrorLogCmd.String())
-	if output, err := setErrorLogCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set error log file: %w\nOutput: %s", err, output)
-	}
-
-	// Set the failure reset period (in seconds)
-	setResetCmd := exec.Command(nssmPath, "set", serviceName, "AppRestartDelay", "30000")
-	logger.Debug("Set restart delay command: %s", setResetCmd.String())
-	if output, err := setResetCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set restart delay: %w\nOutput: %s", err, output)
-	}
-
-	// Set the Node.js environment options
-	setEnvCmd := exec.Command(nssmPath, "set", serviceName, "AppEnvironmentExtra", "NODE_OPTIONS=--max_old_space_size=512", fmt.Sprintf("PATH=%s", os.Getenv("PATH")))
-	logger.Debug("Set environment command: %s", setEnvCmd.String())
-	if output, err := setEnvCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set environment variables: %w\nOutput: %s", err, output)
-	}
-
-	// Set the service user
-	setUserCmd := exec.Command(nssmPath, "set", serviceName, "ObjectName", "LocalService")
-	logger.Debug("Set user command: %s", setUserCmd.String())
-	if output, err := setUserCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set service user: %w\nOutput: %s", err, output)
+	// Configure the service 
+	if err := configureService(nssmPath, serviceName, workDir); err != nil {
+		return err
 	}
 
 	// Start the service
@@ -135,6 +79,70 @@ func InstallWindows(serviceName, workDir string) error {
 		return err
 	}
 
+	return nil
+}
+
+// configureService sets up all parameters for the NSSM service.
+// This function applies all the necessary settings to configure the Windows service.
+//
+// Parameters:
+//   - nssmPath: The path to the NSSM executable
+//   - serviceName: The name of the service
+//   - workDir: The working directory for the service
+//
+// Returns:
+//   - error: nil on success, otherwise an error indicating the failure
+func configureService(nssmPath, serviceName, workDir string) error {
+	serviceParams := map[string]string{
+		"AppDirectory":    							workDir,
+		"DisplayName":     							"FlowFuse Device Agent",
+		"Description":     							fmt.Sprintf("FlowFuse Device Agent Service running from %s", workDir),
+		"AppStdout":       							filepath.Join(workDir, "flowfuse-device-agent.log"),
+		"AppStderr":       							filepath.Join(workDir, "flowfuse-device-agent-error.log"),
+		"AppRestartDelay": 							"30000",
+		"ObjectName":      							"LocalService",
+		"AppStdoutCreationDisposition": "4",
+		"AppStderrCreationDisposition": "4",
+		"AppRotateFiles":               "1",
+		"AppRotateOnline":              "1",
+		"AppRotateBytes":               "10240",
+	}
+
+	for param, value := range serviceParams {
+		if err := setNssmParam(nssmPath, serviceName, param, value); err != nil {
+			return err
+		}
+	}
+
+	// Configure environment variables
+	nodeOptions := "NODE_OPTIONS=--max_old_space_size=512"
+	// The AppEnvironmentExtra parameter needs multiple values, which requires a direct command
+	envCmd := exec.Command(nssmPath, "set", serviceName, "AppEnvironmentExtra", nodeOptions, os.Getenv("PATH"))
+	logger.Debug("Set environment command: %s", envCmd.String())
+	if output, err := envCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to set environment variables: %w\nOutput: %s", err, output)
+	}
+
+	return nil
+}
+
+// setNssmParam is a helper function that sets a parameter for an NSSM service and handles errors
+// during the process. It constructs the command to set the parameter and executes it.
+//
+// Parameters:
+//   - nssmPath: The path to the NSSM executable
+//   - serviceName: The name of the service
+//   - paramName: The name of the parameter to set
+//   - paramValue: The value to set for the parameter
+//
+// Returns:
+//   - error: nil on success, otherwise an error indicating the failure
+func setNssmParam(nssmPath, serviceName, paramName, paramValue string) error {
+	cmd := exec.Command(nssmPath, "set", serviceName, paramName, paramValue)
+	logger.Debug("Set NSSM parameter command: %s", cmd.String())
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to set %s: %w\nOutput: %s", paramName, err, output)
+	}
 	return nil
 }
 
@@ -308,22 +316,4 @@ func findNSSM() (string, error) {
 	}
 
 	return "", fmt.Errorf("NSSM not found")
-}
-
-// pathContains checks if a given path is present in the current PATH environment variable.
-// It splits the current PATH into individual paths and checks for a match.
-//
-// Parameters:
-//   - currentPath: The current PATH environment variable
-//   - checkPath: The path to check for in the current PATH
-//
-// Returns:
-//   - bool: true if the checkPath is found in currentPath, false otherwise
-func pathContains(currentPath, checkPath string) bool {
-	for _, p := range filepath.SplitList(currentPath) {
-		if p == checkPath {
-			return true
-		}
-	}
-	return false
 }
