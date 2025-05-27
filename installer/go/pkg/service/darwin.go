@@ -23,10 +23,10 @@ type LaunchdConfig struct {
 
 // Global variables
 const serviceLabel = "com.flowfuse.device-agent"
-const serviceFilePath = "/Library/LaunchAgents/" + serviceLabel + ".plist"
+const serviceFilePath = "/Library/LaunchDaemons/" + serviceLabel + ".plist"
 
 // InstallDarwin installs the service on macOS using launchd
-// It creates a plist file in the LaunchAgents directory and sets the necessary permissions
+// It creates a plist file in the LaunchDaemons directory and sets the necessary permissions
 // It also creates a log directory for the service
 // 
 // Parameters:
@@ -39,8 +39,9 @@ func InstallDarwin(workDir string) error {
 
 	// Create the log directory
 	logDir := filepath.Join(workDir, "logs")
-	if err := os.MkdirAll(logDir, 0755); err != nil {
-		return fmt.Errorf("failed to create log directory: %w", err)
+	mkdirCmd := exec.Command("sudo", "mkdir", "-p", logDir)
+	if output, err := mkdirCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w\nOutput: %s", logDir, err, output)
 	}
 	logger.Debug("Setting ownership of %s to %s...", logDir, serviceUser)
 	chownCmd := exec.Command("sudo", "chown", "-R", serviceUser, logDir)
@@ -138,10 +139,10 @@ func UninstallDarwin() error {
 		StopDarwin()
 		unloadCmd := exec.Command("sudo", "launchctl", "unload", "-w", serviceFilePath)
 		_ = unloadCmd.Run() // Ignore errors
-	}
-
-	if err := os.Remove(serviceFilePath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove plist file: %w", err)
+		removeCmd := exec.Command("sudo", "rm", "-f", serviceFilePath)
+		if output, err := removeCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to remove service file: %w\nOutput: %s", err, output)
+		}
 	}
 
 	return nil
@@ -153,7 +154,7 @@ func UninstallDarwin() error {
 // Returns:
 //   - bool: true if the service is installed, false otherwise
 func IsInstalledDarwin() bool {
-	listCmd := exec.Command("launchctl", "list", serviceLabel)
+	listCmd := exec.Command("sudo", "launchctl", "list", serviceLabel)
 	// Check if service is running
 	serviceRunning := listCmd.Run() == nil
 
