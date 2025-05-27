@@ -214,7 +214,7 @@ func CreateServiceUser(username string) (string, error) {
 		} else {
 			// Create the user
 			logger.Info("Creating service user %s...", username)
-			createUserCmd := exec.Command("sudo", "sysadminctl", "-addUser", username, "-shell", "/usr/bin/false", "-home", "/var/empty")
+			createUserCmd := exec.Command("sudo", "sysadminctl", "-addUser", username, "-shell", "/usr/bin/false")
 			if output, err := createUserCmd.CombinedOutput(); err != nil {
 				return "", fmt.Errorf("failed to create user: %w\nOutput: %s", err, output)
 			}
@@ -509,7 +509,12 @@ func ExtractTarGz(tarGzFile, destDir, version string) error {
 	}
 
 	// Set ownership of all files to the service user
-	chownCmd := exec.Command("sudo", "chown", "-R", ServiceUsername+":"+ServiceUsername, destDir)
+	var chownCmd *exec.Cmd
+	if runtime.GOOS == "linux" {
+		chownCmd = exec.Command("sudo", "chown", "-R", ServiceUsername+":"+ServiceUsername, destDir)
+	} else {
+		chownCmd = exec.Command("sudo", "chown", "-R", ServiceUsername, destDir)
+	}
 	chmodCmd := exec.Command("sudo", "chmod", "755", destDir)
 	if output, err := chmodCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to set directory permissions: %w\nOutput: %s", err, output)
