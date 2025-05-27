@@ -53,7 +53,7 @@ func InstallDeviceAgent(version string, baseDir string) error {
 	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		installCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "install", "-g", packageName)
+		installCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "install", "-g", "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), packageName)
 		env := os.Environ()
 		installCmd.Env = append(env, npmPrefix, newPath)
 	case "windows":
