@@ -16,9 +16,17 @@ import (
 type LaunchdConfig struct {
 	Label   	string
 	WorkDir 	string
-	LogDir  	string
+	LogFile  	string
+	ErrorFile string
 	User 			string
 	NodeBinDir string
+}
+
+// newsyslogConfig holds the data for the newsyslog configuration
+type newsyslogConfig struct {
+	LogFile 	string
+	ErrorFile string
+	User 			string
 }
 
 // Global variables
@@ -49,11 +57,15 @@ func InstallDarwin(workDir string) error {
 		return fmt.Errorf("failed to set logs directory ownership: %w\nOutput: %s", err, output)
 	}
 
+	logFilePath := filepath.Join(logDir, "flowfuse-device-agent.log")
+	errorLogFilePath := filepath.Join(logDir, "flowfuse-device-agent-error.log")
+
 	config := LaunchdConfig{
-		Label:   serviceLabel,
-		WorkDir: workDir,
-		LogDir:  logDir,
-		User:    serviceUser,
+		Label:   		serviceLabel,
+		WorkDir: 		workDir,
+		LogFile:  	logFilePath,
+		ErrorFile: 	errorLogFilePath,
+		User:    		serviceUser,
 		NodeBinDir: nodejs.GetNodeBinDir(),
 	}
 
@@ -73,7 +85,7 @@ func InstallDarwin(workDir string) error {
 	}
 	tmpFile.Close()
 
-	copyCmd := exec.Command("sudo", "cp", tmpFile.Name(), serviceFilePath)
+	copyCmd := exec.Command("sudo", "cp","-X", tmpFile.Name(), serviceFilePath)
 	if output, err := copyCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to copy service file: %w\nOutput: %s", err, output)
 	}
@@ -92,6 +104,8 @@ func InstallDarwin(workDir string) error {
 	if output, err := loadCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to load launchd service: %w\nOutput: %s", err, output)
 	}
+
+	createNewsyslogConfig(serviceUser, logFilePath, errorLogFilePath)
 
 	return nil
 }
@@ -137,11 +151,19 @@ func StopDarwin() error {
 func UninstallDarwin() error {
 	if IsInstalledDarwin() {
 		StopDarwin()
+		// Unload the service
 		unloadCmd := exec.Command("sudo", "launchctl", "unload", "-w", serviceFilePath)
 		_ = unloadCmd.Run() // Ignore errors
+		// Remove the service file
 		removeCmd := exec.Command("sudo", "rm", "-f", serviceFilePath)
 		if output, err := removeCmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to remove service file: %w\nOutput: %s", err, output)
+		}
+		// Remove the newsyslog configuration file
+		nsConfFilePath := filepath.Join("/etc/newsyslog.d/", fmt.Sprintf("%s.conf", serviceLabel))
+		removeCmd = exec.Command("sudo", "rm", "-rf", nsConfFilePath)
+		if output, err := removeCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to remove newsyslog configuration file: %w\nOutput: %s", err, output)
 		}
 	}
 
@@ -163,4 +185,67 @@ func IsInstalledDarwin() bool {
 	fileExists := err == nil
 
 	return serviceRunning && fileExists
+}
+
+// createNewsyslogConfig creates a configuration file for the newsyslog service
+// to manage log rotation for the FlowFuse Device Agent. It generates the configuration
+// based on the provided service user, log file, and error file paths, then installs it
+// in /etc/newsyslog.d/ with appropriate permissions.
+//
+// Parameters:
+//   - serviceUser: The user under which the service runs
+//   - logFile: Path to the main log file that needs rotation
+//   - errorFile: Path to the error log file that needs rotation
+//
+// Returns:
+//   - error: An error if any step in the process fails, nil on success
+func createNewsyslogConfig(serviceUser, logFile, errorFile string) error {
+	logger.Debug("Creating log files rotation configuration for FlowFuse Device Agent...")
+
+	nsDir := "/etc/newsyslog.d/"
+	if _, err := os.Stat(nsDir); os.IsNotExist(err) {
+		return fmt.Errorf("%s directory does not exist", nsDir)
+	}
+
+	confFilePath := filepath.Join(nsDir, fmt.Sprintf("%s.conf", serviceLabel))
+	logger.Debug("Configuration file path: %s", confFilePath)
+	config := newsyslogConfig{
+		LogFile: 		logFile,
+		ErrorFile: 	errorFile,
+		User: 			serviceUser,
+	}
+
+	tmpl, err := template.New("newsyslog").Parse(newsyslogTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse newsyslog template: %w", err)
+	}
+
+	tmpFile, err := os.CreateTemp("", "flowfuse-device-agent-ns-conf-")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if err := tmpl.Execute(tmpFile, config); err != nil {
+		return fmt.Errorf("failed to execute nsconf template: %w", err)
+	}
+	tmpFile.Close()
+
+	copyCmd := exec.Command("sudo", "cp", "-X", tmpFile.Name(), confFilePath)
+	if output, err := copyCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to copy nsconf file: %w\nOutput: %s", err, output)
+	}
+
+	chownCmd := exec.Command("sudo", "chown", "root:wheel", confFilePath)
+	if output, err := chownCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to set nsconf file ownership: %w\nOutput: %s", err, output)
+	}
+
+	chmodCmd := exec.Command("sudo", "chmod", "644", confFilePath)
+	if err := chmodCmd.Run(); err != nil {
+		return fmt.Errorf("failed to set nsconf file permissions: %w", err)
+	}
+
+	logger.Debug("Log files rotation configuration created successfully at %s", confFilePath)
+	return nil
 }

@@ -117,9 +117,9 @@ const launchdTemplate = `<?xml version="1.0" encoding="UTF-8"?>
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>{{.LogDir}}/flowfuse-device-agent.log</string>
+    <string>{{.LogFile}}</string>
     <key>StandardErrorPath</key>
-    <string>{{.LogDir}}/flowfuse-device-agent.error.log</string>
+    <string>{{.ErrorFile}}</string>
     <key>WorkingDirectory</key>
     <string>{{.WorkDir}}</string>
     <key>EnvironmentVariables</key>
@@ -131,3 +131,8 @@ const launchdTemplate = `<?xml version="1.0" encoding="UTF-8"?>
     </dict>
 </dict>
 </plist>`
+
+const newsyslogTemplate = `
+{{.LogFile}} {{.User}}: 640 5 * $D0 J
+{{.ErrorFile}} {{.User}}: 640 5 * $D0 J
+`
