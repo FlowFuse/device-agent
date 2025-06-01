@@ -294,7 +294,7 @@ func StopLinux(serviceName string) error {
 }
 
 // StopSystemd stops a systemd service
-// 
+//
 // Parameters:
 //   - serviceName: The name of the systemd service to stop
 //
