@@ -55,6 +55,9 @@ func checkConfigFileExists(serviceName string) error {
 			if err := service.Stop(serviceName); err != nil {
 				logger.Debug("Failed to stop FlowFuse Device Agent service: %v - continuing anyway", err)
 			}
+			if err := service.Uninstall(serviceName); err != nil {
+				logger.Debug("Failed to uninstall FlowFuse Device Agent service: %v - continuing anyway", err)
+			}
 			logger.Info("Removing contents of %s ...", workDir)
 			if err := utils.RemoveWorkingDirectory(workDir); err != nil {
 				return fmt.Errorf("failed to remove working directory contents: %w", err)
