@@ -268,37 +268,58 @@ func RemoveServiceUser(username string) error {
 	}
 }
 
-// RemoveWorkingDirectory attempts to remove the specified working directory.
-// On Linux systems, it uses "sudo" and "rm -rf" to remove the directory.
-// On Windows systems, it uses the "rmdir" command to remove the directory.
-// For other operating systems, it returns an error indicating lack of support.
+// RemoveWorkingDirectory attempts to remove the content of the specified working directory,
+// while preserving the directory itself and any files specified in the preserveFiles parameter.
 //
 // Parameters:
-//   - workDir: The path to the directory that needs to be removed
+//   - workDir: The path to the directory whose contents need to be removed
+//   - preserveFiles: Optional slice of filenames/directories that should not be removed
 //
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
-func RemoveWorkingDirectory(workDir string) error {
-	logger.Debug("Removing working directory: %s", workDir)
+func RemoveWorkingDirectory(workDir string, preserveFiles ...string) error {
+	logger.Debug("Removing contents of working directory: %s (preserving %v)", workDir, preserveFiles)
 
-	switch runtime.GOOS {
-	case "linux", "darwin":
-		removeWorkDirCmd := exec.Command("sudo", "rm", "-rf", workDir)
-		if output, err := removeWorkDirCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to remove working directory: %w\nOutput: %s", err, output)
-		}
+	if _, err := os.Stat(workDir); os.IsNotExist(err) {
+		logger.Debug("Directory %s does not exist, nothing to remove", workDir)
 		return nil
-
-	case "windows":
-		removeWorkDirCmd := exec.Command("cmd", "/C", "rmdir", "/S", "/Q", workDir)
-		if output, err := removeWorkDirCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to remove working directory: %w\nOutput: %s", err, output)
-		}
-		return nil
-
-	default:
-		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
+
+	dirContent, err := os.ReadDir(workDir)
+	if err != nil {
+		return fmt.Errorf("failed to read working directory: %w", err)
+	}
+
+	// Convert preserveFiles to a map for faster lookups
+	preserveMap := make(map[string]bool)
+	for _, file := range preserveFiles {
+		preserveMap[file] = true
+	}
+
+	for _, entry := range dirContent {
+		if !preserveMap[entry.Name()] {
+			fullPath := fmt.Sprintf("%s/%s", workDir, entry.Name())
+			logger.Debug("Removing: %s", fullPath)
+
+			var removeCmd *exec.Cmd
+			switch runtime.GOOS {
+			case "linux", "darwin":
+				removeCmd = exec.Command("sudo", "rm", "-rf", fullPath)
+			case "windows":
+				removeCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", fullPath)
+			default:
+				return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+			}
+
+			if output, err := removeCmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("failed to remove %s: %w\nOutput: %s", fullPath, err, output)
+			}
+		} else {
+			logger.Debug("Preserving: %s", entry.Name())
+		}
+	}
+	return nil
+
 }
 
 // extractZip extracts a Node.js zip archive to a destination directory.
