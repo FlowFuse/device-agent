@@ -37,9 +37,10 @@ func PreInstall(serviceName string) error {
 //
 // Parameters:
 //   - serviceName: the name of the service to stop before removing the directory
+//
 // Returns:
 //   - error: nil if the configuration file does not exist or has been successfully removed,
-//            otherwise an error explaining what went wrong
+//     otherwise an error explaining what went wrong
 func checkConfigFileExists(serviceName string) error {
 	workDir, err := utils.GetWorkingDirectory()
 	if err != nil {
@@ -54,10 +55,10 @@ func checkConfigFileExists(serviceName string) error {
 			if err := service.Stop(serviceName); err != nil {
 				logger.Debug("Failed to stop FlowFuse Device Agent service: %v - continuing anyway", err)
 			}
-			logger.Info("Removing %s ...", workDir)
+			logger.Info("Removing contents of %s ...", workDir)
 			if err := utils.RemoveWorkingDirectory(workDir); err != nil {
-				return fmt.Errorf("failed to remove working directory: %w", err)
-			} 
+				return fmt.Errorf("failed to remove working directory contents: %w", err)
+			}
 		} else {
 			return fmt.Errorf("the %s directory has not been removed. Please remove it manually and try again", workDir)
 		}
