@@ -52,6 +52,12 @@ function main (testOptions) {
         quit()
     }
 
+    // Configure silent mode
+    let silentMode = false
+    if (options.silent) {
+        silentMode = true
+    }
+
     if (options.dir === '') {
         // No dir has been explicitly set, so we need to set the default.
         // 1. Use `/opt/flowforge-device` if it exists
@@ -130,8 +136,10 @@ Please ensure the parent directory is writable, or set a different path with -d`
             if (options.dir !== '/opt/flowfuse-device') {
                 runCommandInfo.push(`-d ${options.dir}`)
             }
-            print('Success! This Device can be launched at any time using the following command:', figures.tick)
-            print(runCommandInfo.join(' '), ' ')
+            if (!silentMode) {
+                print('Success! This Device can be launched at any time using the following command:', figures.tick)
+                print(runCommandInfo.join(' '), ' ')
+            }
             if (!options.otcNoImport) {
                 // Support for importing flows during initial state check-in was added after 2.16.0.
                 // Use semver.coerce to validate the ffVersion. This will, by default, strip off suffixes to ensure
