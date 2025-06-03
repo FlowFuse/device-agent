@@ -17,7 +17,7 @@ import (
 // Returns:
 //   - error: nil if successful, otherwise an error explaining what went wrong
 func Install(serviceName, workDir string) error {
-	logger.Info("Installing service %s for %s", serviceName, runtime.GOOS)
+	logger.Info("Installing service %s for %s...", serviceName, runtime.GOOS)
 	switch runtime.GOOS {
 	case "linux":
 		return InstallLinux(serviceName, workDir)
