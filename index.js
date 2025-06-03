@@ -183,7 +183,7 @@ Please ensure the parent directory is writable, or set a different path with -d`
                         print('Cleaning up existing project directory...')
                         fs.rmSync(projectDir, { force: true, recursive: true })
                     }
-                    const projectJson = path.join(options.dir, 'flowforge-project.json')
+                    const projectJson = path.join(options.dir, 'flowfuse-instance.json')
                     if (fs.existsSync(projectJson)) {
                         print('Cleaning up existing project file...')
                         fs.rmSync(projectJson, { force: true })

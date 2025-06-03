@@ -77,7 +77,7 @@ describe('Device Agent Web Server', () => {
     })
 
     async function writeAppConfig (workingDir, project, snapshot, settings, mode) {
-        const filepath = path.join(workingDir, 'flowforge-project.json')
+        const filepath = path.join(workingDir, 'flowfuse-instance.json')
         await fs.writeFile(filepath, JSON.stringify({
             snapshot: { id: snapshot },
             settings: { hash: settings },
