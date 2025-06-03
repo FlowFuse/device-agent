@@ -28,12 +28,22 @@ const packageName = "@flowfuse/device-agent"
 // - Node.js is not found
 // - The operating system is not supported
 // - The installation process fails
-func InstallDeviceAgent(version string, baseDir string) error {
+func InstallDeviceAgent(version, baseDir string, update bool) error {
 	setNodeDirectories(baseDir)
 	nodeBinDirPath := GetNodeBinDir()
 
 	if _, err := os.Stat(nodeBinPath); os.IsNotExist(err) {
 		return fmt.Errorf("node.js not found, please restart installator script")
+	}
+
+	var startMsg string
+	var completeMsg string
+	if update {
+		startMsg = fmt.Sprintf("Updating FlowFuse Device Agent to %s version...", version)
+		completeMsg = fmt.Sprintf("FlowFuse Device Agent successfully updated to %s version!", version)
+	} else {
+		startMsg = fmt.Sprintf("Installing FlowFuse Device Agent %s version...", version)
+		completeMsg = "FlowFuse Device Agent installed successfully!"
 	}
 
 	serviceUser := utils.ServiceUsername
@@ -44,8 +54,8 @@ func InstallDeviceAgent(version string, baseDir string) error {
 
 	newPath, err := utils.SetEnvPath(nodeBinDirPath)
 	if err != nil {
-    logger.Error("Failed to set PATH: %v", err)
-    return fmt.Errorf("failed to set PATH: %w", err)
+		logger.Error("Failed to set PATH: %v", err)
+		return fmt.Errorf("failed to set PATH: %w", err)
 	}
 
 	// Create install command
@@ -64,13 +74,13 @@ func InstallDeviceAgent(version string, baseDir string) error {
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
 
-	logger.Debug("Install command: %s", installCmd.String())
-
+	logger.Info(startMsg)
+	logger.Debug("Install/update command: %s", installCmd.String())
 	if output, err := installCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to install device agent: %w\nOutput: %s", err, output)
+		return fmt.Errorf("failed to install/update device agent: %w\nOutput: %s", err, output)
 	}
+	logger.Info(completeMsg)
 
-	logger.Info("FlowFuse Device Agent installed successfully!")
 	return nil
 }
 
@@ -92,9 +102,9 @@ func UninstallDeviceAgent(baseDir string) error {
 
 	newPath, err := utils.SetEnvPath(nodeBinDirPath)
 	if err != nil {
-    logger.Error("Failed to set PATH: %v", err)
-    return fmt.Errorf("failed to set PATH: %w", err)
-	}	
+		logger.Error("Failed to set PATH: %v", err)
+		return fmt.Errorf("failed to set PATH: %w", err)
+	}
 
 	// Create uninstall command
 	var uninstallCmd *exec.Cmd
@@ -148,8 +158,8 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	var deviceAgentPath string
 
 	setNodeDirectories(baseDir)
-	nodeBinDirPath 	:= GetNodeBinDir()
-	serviceUser 		:= utils.ServiceUsername
+	nodeBinDirPath := GetNodeBinDir()
+	serviceUser := utils.ServiceUsername
 
 	deviceConfigPath := filepath.Join(baseDir, "device.yml")
 	if _, err := os.Stat(deviceConfigPath); !os.IsNotExist(err) {
@@ -165,8 +175,8 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 
 	newPath, err := utils.SetEnvPath(nodeBinDirPath)
 	if err != nil {
-    logger.Error("Failed to set PATH: %v", err)
-    return fmt.Errorf("failed to set PATH: %w", err)
+		logger.Error("Failed to set PATH: %v", err)
+		return fmt.Errorf("failed to set PATH: %w", err)
 	}
 
 	// Getting full path to flowfuse-device-agent binary
