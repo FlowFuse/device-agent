@@ -268,7 +268,7 @@ func RemoveWorkingDirectory(workDir string, preserveFiles ...string) error {
 
 	for _, entry := range dirContent {
 		if !preserveMap[entry.Name()] {
-			fullPath := fmt.Sprintf("%s/%s", workDir, entry.Name())
+			fullPath := filepath.Join(workDir, entry.Name())
 			logger.Debug("Removing: %s", fullPath)
 
 			var removeCmd *exec.Cmd
