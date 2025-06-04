@@ -73,7 +73,7 @@ func checkUnixPermissions() error {
 func checkWindowsPermissions() error {
 	cmd := exec.Command("net", "session")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("this installer requires administrator privileges, please run as administrator")
+		return fmt.Errorf("this installer requires elevated privileges. Please run as administrator")
 	}
 	return nil
 }
