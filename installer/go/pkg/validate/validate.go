@@ -3,6 +3,7 @@ package validate
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/service"
@@ -46,7 +47,7 @@ func checkConfigFileExists(serviceName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	deviceAgentConfig := fmt.Sprintf("%s/device.yml", workDir)
+	deviceAgentConfig := filepath.Join(workDir, "device.yml")
 
 	if _, err := os.Stat(deviceAgentConfig); !os.IsNotExist(err) {
 		logger.Info("The working directory %s exists and contains Device Agent configuration file", workDir)
