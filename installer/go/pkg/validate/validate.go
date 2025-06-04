@@ -3,6 +3,7 @@ package validate
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/service"
@@ -17,15 +18,15 @@ import (
 //   - nil if all checks pass
 //   - error if any check fails
 func PreInstall(serviceName string) error {
-	if err := checkConfigFileExists(serviceName); err != nil {
-		logger.LogFunctionExit("PreInstall", nil, err)
-		return fmt.Errorf("configuration file pre-check failed: %w", err)
-	}
-
 	if err := utils.CheckPermissions(); err != nil {
 		logger.Error("Permission check failed: %v", err)
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("permission check failed: %w", err)
+	}
+	
+	if err := checkConfigFileExists(serviceName); err != nil {
+		logger.LogFunctionExit("PreInstall", nil, err)
+		return fmt.Errorf("configuration file pre-check failed: %w", err)
 	}
 
 	return nil
@@ -46,7 +47,7 @@ func checkConfigFileExists(serviceName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	deviceAgentConfig := fmt.Sprintf("%s/device.yml", workDir)
+	deviceAgentConfig := filepath.Join(workDir, "device.yml")
 
 	if _, err := os.Stat(deviceAgentConfig); !os.IsNotExist(err) {
 		logger.Info("The working directory %s exists and contains Device Agent configuration file", workDir)

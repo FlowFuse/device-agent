@@ -185,8 +185,7 @@ func StopWindows(serviceName string) error {
 }
 
 // UninstallWindows uninstalls a Windows service with the given name.
-// It first attempts to stop the service, then uses NSSM to remove it.
-// This function requires NSSM to be installed and accessible on the system.
+// It first attempts to stop the service, then uses "sc.exe delete" command to remove it.
 //
 // Parameters:
 //   - serviceName: The name of the Windows service to uninstall.
@@ -197,11 +196,7 @@ func StopWindows(serviceName string) error {
 func UninstallWindows(serviceName string) error {
 	_ = StopWindows(serviceName)
 
-	nssmPath, err := findNSSM()
-	if err != nil {
-		return fmt.Errorf("failed to find NSSM: %w", err)
-	}
-	removeCmd := exec.Command(nssmPath, "remove", serviceName, "confirm")
+	removeCmd := exec.Command("sc.exe", "delete", serviceName)
 	if output, err := removeCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to remove service: %w\nOutput: %s", err, output)
 	}

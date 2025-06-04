@@ -3,8 +3,8 @@ package utils
 import (
 	"archive/tar"
 	"archive/zip"
-	"compress/gzip"
 	"bufio"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
@@ -73,7 +73,7 @@ func checkUnixPermissions() error {
 func checkWindowsPermissions() error {
 	cmd := exec.Command("net", "session")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("this installer requires administrator privileges, please run as administrator")
+		return fmt.Errorf("this installer requires elevated privileges. Please run as administrator")
 	}
 	return nil
 }
@@ -126,7 +126,7 @@ func GetWorkingDirectory() (string, error) {
 // Before creating directory, it creates a service user with the specified username and password.
 // On Linux systems, the function first attempts to create the directory without sudo. If that fails, it tries with sudo. After creation, it sets
 // the ownership of the directory to a service user.
-// On Windows systems, it creates the directory. 
+// On Windows systems, it creates the directory.
 //
 // Parameters:
 //   - path: The file system path where the directory should be created
@@ -298,7 +298,7 @@ func RemoveWorkingDirectory(workDir string, preserveFiles ...string) error {
 
 	for _, entry := range dirContent {
 		if !preserveMap[entry.Name()] {
-			fullPath := fmt.Sprintf("%s/%s", workDir, entry.Name())
+			fullPath := filepath.Join(workDir, entry.Name())
 			logger.Debug("Removing: %s", fullPath)
 
 			var removeCmd *exec.Cmd
@@ -306,7 +306,11 @@ func RemoveWorkingDirectory(workDir string, preserveFiles ...string) error {
 			case "linux", "darwin":
 				removeCmd = exec.Command("sudo", "rm", "-rf", fullPath)
 			case "windows":
-				removeCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", fullPath)
+				if entry.IsDir() {
+					removeCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", fullPath)
+				} else {
+					removeCmd = exec.Command("cmd", "/C", "del", "/q", "/f", fullPath)
+				}
 			default:
 				return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 			}
@@ -431,7 +435,7 @@ func ExtractTarGz(tarGzFile, destDir, version string) error {
 	// Get the root directory name in the archive
 	var archSuffix string
 	var rootDir string
-	if runtime.GOOS == "linux" { 
+	if runtime.GOOS == "linux" {
 		if runtime.GOARCH == "amd64" {
 			archSuffix = "x64"
 		} else if runtime.GOARCH == "386" {
@@ -439,7 +443,7 @@ func ExtractTarGz(tarGzFile, destDir, version string) error {
 		} else if runtime.GOARCH == "arm" {
 			archSuffix = "armv7l"
 		} else {
-		archSuffix = runtime.GOARCH
+			archSuffix = runtime.GOARCH
 		}
 		rootDir = fmt.Sprintf("node-v%s-linux-%s", version, archSuffix)
 	} else { // MacOS since there is no tar.gz for Windows
@@ -561,7 +565,7 @@ func GetOSDetails() (string, string) {
 //
 // Parameters:
 //   - currentPath: The current PATH environment variable
-//	 - path: The path to check within the currentPath
+//   - path: The path to check within the currentPath
 //
 // Returns:
 //   - bool: true if the path is found in the currentPath, false otherwise
@@ -570,8 +574,8 @@ func checkEnvPath(currentPath, path string) bool {
 	return strings.Contains(currentPath, path)
 }
 
-// SetEnvPath modifies the system PATH environment variable to include the path 
-// specified as an parameter of the function. 
+// SetEnvPath modifies the system PATH environment variable to include the path
+// specified as an parameter of the function.
 //
 // Parameters:
 //   - path: The path to be added to the PATH environment variable
@@ -594,7 +598,6 @@ func SetEnvPath(path string) (string, error) {
 		return currentEnvPath, nil
 	}
 }
-
 
 // YesNoPrompt prompts the user with a yes/no question and returns true for "yes" and false for "no".
 // It continues to prompt until a valid response is given.
