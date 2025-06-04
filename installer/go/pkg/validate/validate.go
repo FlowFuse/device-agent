@@ -17,15 +17,15 @@ import (
 //   - nil if all checks pass
 //   - error if any check fails
 func PreInstall(serviceName string) error {
-	if err := checkConfigFileExists(serviceName); err != nil {
-		logger.LogFunctionExit("PreInstall", nil, err)
-		return fmt.Errorf("configuration file pre-check failed: %w", err)
-	}
-
 	if err := utils.CheckPermissions(); err != nil {
 		logger.Error("Permission check failed: %v", err)
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("permission check failed: %w", err)
+	}
+	
+	if err := checkConfigFileExists(serviceName); err != nil {
+		logger.LogFunctionExit("PreInstall", nil, err)
+		return fmt.Errorf("configuration file pre-check failed: %w", err)
 	}
 
 	return nil
