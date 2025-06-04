@@ -1,3 +1,4 @@
+.PHONY: build clean
 APP_NAME=flowfuse-device-installer
 VERSION:=$(shell grep -o '"version": "[^"]*"' ../../package.json | sed 's/"version": "//;s/"//')
 
