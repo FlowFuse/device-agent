@@ -254,11 +254,10 @@ func Update(agentVersion string, update bool) error {
 	// Stop the service temporarily for the update
 	logger.Info("Stopping FlowFuse Device Agent service for update...")
 	if err := service.Stop("flowfuse-device-agent"); err != nil {
-		logger.Error("Service stop failed: %v", err)
-		logger.LogFunctionExit("Update", nil, err)
-		return fmt.Errorf("service stop failed: %w", err)
+		logger.Debug("Failed to stop FlowFuse Device Agent service: %v - continuing anyway", err)
+	} else {
+		logger.Debug("Service stopped successfully")
 	}
-	logger.Debug("Service stopped successfully")
 
 	// Update the device agent package
 	if err := nodejs.InstallDeviceAgent(agentVersion, workDir, update); err != nil {
