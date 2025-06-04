@@ -19,6 +19,7 @@ const figures = require('@inquirer/figures').default
 const confirm = require('@inquirer/confirm').default
 const print = (message, /** @type {figures} */ figure = figures.info) => console.info(figure ?? figures.info, message)
 const flowImport = require('./lib/cli/flowsImporter').flowImport
+const { OLD_PROJECT_FILE } = require('./lib/agent')
 
 function main (testOptions) {
     const pkg = require('./package.json')
@@ -183,7 +184,7 @@ Please ensure the parent directory is writable, or set a different path with -d`
                         print('Cleaning up existing project directory...')
                         fs.rmSync(projectDir, { force: true, recursive: true })
                     }
-                    const projectJson = path.join(options.dir, 'flowfuse-instance.json')
+                    const projectJson = path.join(options.dir, OLD_PROJECT_FILE)
                     if (fs.existsSync(projectJson)) {
                         print('Cleaning up existing project file...')
                         fs.rmSync(projectJson, { force: true })
