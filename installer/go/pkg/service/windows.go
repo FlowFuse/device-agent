@@ -48,17 +48,7 @@ func InstallWindows(serviceName, workDir string) error {
 		return fmt.Errorf("failed to set PATH: %w", err)
 	}
 
-	// Find path to the device agent executable
-	deviceAgentPath, err := exec.LookPath("flowfuse-device-agent.cmd")
-	if err != nil {
-		// Use direct path as fallback
-		directPath := filepath.Join(nodeBinDirPath, "flowfuse-device-agent.cmd")
-		if _, statErr := os.Stat(directPath); statErr == nil {
-			deviceAgentPath = directPath
-		} else {
-			return fmt.Errorf("flowfuse-device-agent.cmd not found in PATH (including %s), is it installed? %w", nodeBinDirPath, err)
-		}
-	}
+	deviceAgentPath := filepath.Join(nodeBinDirPath, "flowfuse-device-agent.cmd")
 
 	logger.Debug("Creating Windows service...")
 
