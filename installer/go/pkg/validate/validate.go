@@ -29,6 +29,12 @@ func PreInstall(serviceName string) error {
 		return fmt.Errorf("configuration file pre-check failed: %w", err)
 	}
 
+	if err := utils.CheckLibstdcExists(); err != nil {
+		logger.Error("Library check failed: %v", err)
+		logger.LogFunctionExit("PreInstall", nil, err)
+		return fmt.Errorf("library check failed: %w", err)
+	}
+
 	return nil
 }
 

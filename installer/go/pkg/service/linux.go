@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"text/template"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
@@ -17,6 +18,8 @@ type ServiceConfig struct {
 	WorkDir     string
 	NodeBinDir  string
 	ServiceName string // Used for sysvinit scripts
+	LogFile 		string // Log file path for openrc scripts
+	ErrorLogFile string // Error log file path for openrc scripts
 }
 
 // IsSystemd returns true if the system uses systemd, false otherwise
@@ -29,11 +32,32 @@ func IsSystemd() bool {
 }
 
 // IsSysVInit returns true if the system uses SysV init, false otherwise
-// This is determined by checking if the "service" command is available
+// This is determined by checking if SysV init service management tools (update-rc.d or chkconfig) are available
+//
+// Returns:
+//   - true if SysV init tools are found, false otherwise
 func IsSysVInit() bool {
 	logger.LogFunctionEntry("IsSysVInit", nil)
-	_, err := os.Stat("/etc/init.d")
-	logger.LogFunctionExit("IsSysVInit", nil, err)
+	defer logger.LogFunctionExit("IsSysVInit", nil, nil)
+
+	// Check for SysV init service management tools
+	_, err1 := exec.LookPath("update-rc.d") // Debian/Ubuntu SysV
+	_, err2 := exec.LookPath("chkconfig")   // Red Hat/CentOS SysV
+
+	hasSysVTools := (err1 == nil || err2 == nil)
+	return hasSysVTools
+}
+
+// IsOpenRC returns true if the system uses OpenRC, false otherwise
+// This is determined by checking if the "rc-service" command is available
+//
+// Returns:
+//   - true if OpenRC is found, false otherwise
+func IsOpenRC() bool {
+	logger.LogFunctionEntry("IsOpenRC", nil)
+	defer logger.LogFunctionExit("IsOpenRC", nil, nil)
+	
+	_, err := exec.LookPath("rc-service")
 	return err == nil
 }
 
@@ -47,10 +71,18 @@ func IsSysVInit() bool {
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
 func InstallLinux(serviceName, workDir string) error {
+	logger.LogFunctionEntry("InstallLinux", map[string]interface{}{
+		"serviceName": serviceName,
+		"workDir":     workDir,
+	})
+	defer logger.LogFunctionExit("InstallLinux", nil, nil)
+
 	if IsSystemd() {
 		return InstallSystemd(serviceName, workDir)
 	} else if IsSysVInit() {
 		return InstallSysVInit(serviceName, workDir)
+	} else if IsOpenRC() {
+		return InstallOpenRC(serviceName, workDir)
 	} else {
 		logger.Error("No supported init system found (systemd or sysvinit)")
 		return fmt.Errorf("no supported init system found (systemd or sysvinit)")
@@ -71,6 +103,12 @@ func InstallLinux(serviceName, workDir string) error {
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
 func InstallSystemd(serviceName, workDir string) error {
+	logger.LogFunctionEntry("InstallSystemd", map[string]interface{}{
+		"serviceName": serviceName,
+		"workDir":     workDir,
+	})
+	defer logger.LogFunctionExit("InstallSystemd", nil, nil)
+	
 	config := ServiceConfig{
 		User:       utils.ServiceUsername,
 		WorkDir:    workDir,
@@ -141,6 +179,12 @@ func InstallSystemd(serviceName, workDir string) error {
 //   - Set permissions on the service script
 //   - Enable and start the service
 func InstallSysVInit(serviceName, workDir string) error {
+	logger.LogFunctionEntry("InstallSysVInit", map[string]interface{}{
+		"serviceName": serviceName,
+		"workDir":     workDir,
+	})
+	defer logger.LogFunctionExit("InstallSysVInit", nil, nil)
+
 	config := ServiceConfig{
 		User:        utils.ServiceUsername,
 		WorkDir:     workDir,
@@ -202,6 +246,86 @@ func InstallSysVInit(serviceName, workDir string) error {
 	return nil
 }
 
+// InstallOpenRC creates and installs an OpenRC service script on Linux systems.
+// The function creates a log directory, sets ownership, generates a service script from a template,
+// and installs it using OpenRC commands. It also sets appropriate permissions and starts the service.
+//
+// Parameters:
+//   - serviceName: the name of the OpenRC service to create
+//   - workDir: the working directory for the service
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+func InstallOpenRC(serviceName, workDir string) error {
+	logger.LogFunctionEntry("InstallOpenRC", map[string]interface{}{
+		"serviceName": serviceName,
+		"workDir":     workDir,
+	})
+	defer logger.LogFunctionExit("InstallOpenRC", nil, nil)
+
+	// Create the log directory
+ 	logDir := filepath.Join(workDir, "logs")
+ 	mkdirCmd := exec.Command("sudo", "mkdir", "-p", logDir)
+ 	if output, err := mkdirCmd.CombinedOutput(); err != nil {
+ 		return fmt.Errorf("failed to create directory %s: %w\nOutput: %s", logDir, err, output)
+ 	}
+
+ 	logger.Debug("Setting ownership of %s to %s...", logDir, utils.ServiceUsername)
+ 	chownCmd := exec.Command("sudo", "chown", "-R", utils.ServiceUsername, logDir)
+ 	if output, err := chownCmd.CombinedOutput(); err != nil {
+ 		return fmt.Errorf("failed to set logs directory ownership: %w\nOutput: %s", err, output)
+ 	}
+
+ 	logFilePath := filepath.Join(logDir, fmt.Sprintf("%s.log", serviceName))
+ 	errorLogFilePath := filepath.Join(logDir, fmt.Sprintf("%s-error.log", serviceName))
+	
+	config := ServiceConfig{
+		User:       utils.ServiceUsername,
+		WorkDir:    workDir,
+		NodeBinDir: nodejs.GetNodeBinDir(),
+		LogFile: 		logFilePath,
+		ErrorLogFile: errorLogFilePath,
+	}
+
+	serviceFilePath := "/etc/init.d/" + serviceName
+
+	tmpl, err := template.New("service").Parse(OpenRCServiceTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse service template: %w", err)
+	}
+
+	tmpFile, err := os.CreateTemp("", "flowfuse-service-")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if err := tmpl.Execute(tmpFile, config); err != nil {
+		return fmt.Errorf("failed to execute service template: %w", err)
+	}
+	tmpFile.Close()
+
+	copyCmd := exec.Command("sudo", "cp", tmpFile.Name(), serviceFilePath)
+	if output, err := copyCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to copy service file: %w\nOutput: %s", err, output)
+	}
+
+	chmodCmd := exec.Command("sudo", "chmod", "+x", serviceFilePath)
+	if err := chmodCmd.Run(); err != nil {
+		return fmt.Errorf("failed to set service file permissions: %w", err)
+	}
+
+	if output, err := exec.Command("sudo", "rc-update", "add", serviceName).CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to enable service: %w\nOutput: %s", err, output)
+	}
+
+	if err := StartLinux(serviceName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // StartLinux starts a service on Linux systems.
 // It detects whether to use systemd or sysvinit based on the service location.
 //
@@ -215,6 +339,8 @@ func StartLinux(serviceName string) error {
 		return StartSystemd(serviceName)
 	} else if IsSysVInit() && IsInstalledSysVInit(serviceName) {
 		return StartSysVInit(serviceName)
+	} else if IsOpenRC() && IsInstalledSysVInit(serviceName) {
+		return StartOpenRC(serviceName)
 	}
 	logger.Error("No supported init system found or service not installed")
 	return fmt.Errorf("no supported init system found or service not installed")
@@ -275,6 +401,31 @@ func StartSysVInit(serviceName string) error {
 	return nil
 }
 
+// StartOpenRC starts an OpenRC service
+// 
+// Parameters:
+//   - serviceName: The name of the OpenRC service to start
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+func StartOpenRC(serviceName string) error {
+	startCmd := exec.Command("sudo", "rc-service", serviceName, "start")
+	if output, err := startCmd.CombinedOutput(); err != nil {
+		logger.Error("Failed to start service: %s", output)
+		return fmt.Errorf("failed to start service: %w\nOutput: %s", err, output)
+	}
+
+	// Check if the service is running
+	statusCmd := exec.Command("sudo", "rc-service", serviceName, "status")
+	if output, err := statusCmd.CombinedOutput(); err != nil {
+		logger.Debug("Service status:\n%s", output)
+		logger.Error("Service is not active")
+		return fmt.Errorf("service is not active: %w", err)
+	}
+
+	return nil
+}
+
 // StopLinux stops a service on Linux systems.
 // It detects whether to use systemd or sysvinit based on the service location.
 //
@@ -288,6 +439,8 @@ func StopLinux(serviceName string) error {
 		return StopSystemd(serviceName)
 	} else if IsSysVInit() && IsInstalledSysVInit(serviceName) {
 		return StopSysVInit(serviceName)
+	} else if IsOpenRC() && IsInstalledSysVInit(serviceName) {
+		return StopOpenRC(serviceName)
 	}
 	logger.Error("No supported init system found or service not installed")
 	return fmt.Errorf("no supported init system found or service not installed")
@@ -325,6 +478,22 @@ func StopSysVInit(serviceName string) error {
 	return nil
 }
 
+// StopOpenRC stops an OpenRC service
+//
+// Parameters:
+//   - serviceName: The name of the OpenRC service to stop
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+func StopOpenRC(serviceName string) error {
+	stopCmd := exec.Command("sudo", "rc-service", serviceName, "stop")
+	if output, err := stopCmd.CombinedOutput(); err != nil {
+		logger.Error("Failed to stop service: %s", output)
+		return fmt.Errorf("failed to stop service: %w\nOutput: %s", err, output)
+	}
+	return nil
+}
+
 // UninstallLinux removes a service from a Linux system.
 // It detects whether to use systemd or sysvinit based on the service location.
 //
@@ -338,6 +507,8 @@ func UninstallLinux(serviceName string) error {
 		return UninstallSystemd(serviceName)
 	} else if IsSysVInit() && IsInstalledSysVInit(serviceName) {
 		return UninstallSysVInit(serviceName)
+	} else if IsOpenRC() && IsInstalledSysVInit(serviceName) {
+		return UninstallOpenRC(serviceName)
 	}
 	logger.Error("No supported init system found or service not installed")
 	return fmt.Errorf("no supported init system found or service not installed")
@@ -400,6 +571,31 @@ func UninstallSysVInit(serviceName string) error {
 
 	serviceFilePath := "/etc/init.d/" + serviceName
 	rmCmd := exec.Command("sudo", "rm", "-f", serviceFilePath)
+	if output, err := rmCmd.CombinedOutput(); err != nil {
+		logger.Error("Failed to remove service file: %s", output)
+		return fmt.Errorf("failed to remove service file: %w\nOutput: %s", err, output)
+	}
+
+	return nil
+}
+
+// UninstallOpenRC removes an OpenRC service from the system.
+// The function stops the service, removes it from OpenRC, and deletes the service script.
+//
+// Parameters:
+//   - serviceName: the name of the OpenRC service to uninstall
+//
+// Returns:
+//   - error: nil if successful, otherwise an error describing what went wrong
+func UninstallOpenRC(serviceName string) error {
+	_ = StopOpenRC(serviceName)
+
+	rmServiceCmd := exec.Command("sudo", "rc-update", "del", serviceName)
+	if output, err := rmServiceCmd.CombinedOutput(); err != nil {
+		logger.Error("Failed to remove service from OpenRC: %s", output)
+		return fmt.Errorf("failed to remove service from OpenRC: %w\nOutput: %s", err, output)
+	}
+	rmCmd := exec.Command("sudo", "rm", "-f", "/etc/init.d/"+serviceName)
 	if output, err := rmCmd.CombinedOutput(); err != nil {
 		logger.Error("Failed to remove service file: %s", output)
 		return fmt.Errorf("failed to remove service file: %w\nOutput: %s", err, output)

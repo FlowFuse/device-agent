@@ -193,7 +193,12 @@ func CreateServiceUser(username string) (string, error) {
 			logger.Debug("Service user %s already exists", username)
 		} else {
 			logger.Info("Creating service user %s...", username)
-			createUserCmd := exec.Command("sudo", "useradd", "-m", "-s", "/sbin/nologin", username)
+			var createUserCmd *exec.Cmd
+			if checkBinaryExists("useradd") {
+				createUserCmd = exec.Command("sudo", "useradd", "-m", "-s", "/sbin/nologin", username)
+			} else {
+				createUserCmd = exec.Command("sudo", "adduser", "-S", "-D", "-H", "-s", "/sbin/nologin", username)
+			}
 			if output, err := createUserCmd.CombinedOutput(); err != nil {
 				return "", fmt.Errorf("failed to create user: %w\nOutput: %s", err, output)
 			}
@@ -405,7 +410,7 @@ func ExtractTarGz(tarGzFile, destDir, version string) error {
 	// Get the root directory name in the archive
 	var archSuffix string
 	var rootDir string
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS == "linux" { 
 		if runtime.GOARCH == "amd64" {
 			archSuffix = "x64"
 		} else if runtime.GOARCH == "386" {
@@ -414,6 +419,9 @@ func ExtractTarGz(tarGzFile, destDir, version string) error {
 			archSuffix = "armv7l"
 		} else {
 			archSuffix = runtime.GOARCH
+		}
+		if IsAlpine() {
+			archSuffix += "-musl"
 		}
 		rootDir = fmt.Sprintf("node-v%s-linux-%s", version, archSuffix)
 	}
@@ -590,4 +598,73 @@ func YesNoPrompt(message string) bool {
 			return false
 		}
 	}
+}
+
+// IsAlpine checks if the current operating system is Alpine Linux.
+// It checks for the presence of the "/etc/alpine-release" file or looks for "Alpine" in "/etc/os-release".
+//
+// Returns:
+//   - bool: true if the system is Alpine Linux, false otherwise
+func IsAlpine() bool {
+    if _, err := os.Stat("/etc/alpine-release"); err == nil {
+        return true
+    }
+
+    data, err := os.ReadFile("/etc/os-release")
+    if err == nil && strings.Contains(string(data), "Alpine") {
+        return true
+    }
+    return false
+}
+
+// UseOfficialNodejs determines whether to use official Node.js builds or unofficial builds based on the operating system.
+//
+// Returns:
+//   - bool: true if official Node.js builds should be used, false if unofficial builds should be used
+func UseOfficialNodejs() bool {
+	if IsAlpine() {
+		logger.Debug("Detected Alpine Linux, using unofficial Node.js builds")
+		return false
+	}
+
+	logger.Debug("Using official Node.js builds")
+	return true
+}
+
+// checkBinaryExists checks if a binary is available.
+//
+// Parameters:
+//   - binary: The name of the binary to check
+// Returns:
+//   - bool: true if the binary exists in the system's PATH, false otherwise
+func checkBinaryExists(binary string) bool {
+	_, err := exec.LookPath(binary)
+	return err == nil
+}
+
+// CheckLibstdcExists checks for the presence of libstdc++ in common locations
+// across different Linux distributions and architectures.
+//
+// Returns:
+//   - nil if libstdc++ is found in any of the checked locations
+//   - error if libstdc++ is not found in any location
+func CheckLibstdcExists() error {
+
+	// Check common library directories with glob patterns
+	globPatterns := []string{
+		"/usr/lib/*/libstdc++.so.6", // Multi-arch directories
+		"/usr/lib*/libstdc++.so.6",  // lib, lib64, etc.
+		"/lib/*/libstdc++.so.6",     // Multi-arch in /lib
+		"/lib*/libstdc++.so.6",      // lib, lib64, etc. in /lib
+	}
+
+	for _, pattern := range globPatterns {
+		matches, err := filepath.Glob(pattern)
+		if err == nil && len(matches) > 0 {
+			logger.Debug("Found libstdc++ at: %s", matches[0])
+			return nil
+		}
+	}
+
+	return fmt.Errorf("libstdc++ is not installed, please install it before proceeding")
 }
