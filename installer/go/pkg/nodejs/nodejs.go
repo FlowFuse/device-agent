@@ -23,7 +23,7 @@ var nodeBinPath string
 var npmBinPath string
 
 // EnsureNodeJs validates and ensures that the specified Node.js version is installed.
-// It checks if the version string is in a valid semver format and whether the specified 
+// It checks if the version string is in a valid semver format and whether the specified
 // Node.js version is already installed. If not, it installs the required version.
 //
 // Parameters:
@@ -32,7 +32,7 @@ var npmBinPath string
 //
 // Returns:
 //   - error: nil if Node.js is already installed or successfully installed, otherwise an error
-func EnsureNodeJs(versionStr string, baseDir string) error {
+func EnsureNodeJs(versionStr, baseDir string) error {
 	// Validate that the version string is in semver format (x.y.z)
 	parts := strings.Split(versionStr, ".")
 	if len(parts) < 1 {
@@ -61,27 +61,32 @@ func EnsureNodeJs(versionStr string, baseDir string) error {
 //   - bool: true if Node.js is installed and the installed version matches
 //     or is compatible with the specified version, false otherwise.
 func isNodeInstalled(versionStr string) bool {
-	if _, err := os.Stat(nodeBinPath); os.IsNotExist(err) {
-		return false
-	}
-	logger.Debug("Node.js binary found at %s", nodeBinPath)
+	logger.LogFunctionEntry("isNodeInstalled", map[string]interface{}{
+		"versionStr": versionStr,
+	})
+	// if _, err := os.Stat(nodeBinPath); os.IsNotExist(err) {
+	// 	return false
+	// }
+	// logger.Debug("Node.js binary found at %s", nodeBinPath)
 
-	cmd := exec.Command(nodeBinPath, "-v")
-	output, err := cmd.CombinedOutput()
-	logger.Debug("Node.js version command output: %s", string(output))
-	if err != nil {
-		return false
+	// cmd := exec.Command(nodeBinPath, "-v")
+	// output, err := cmd.CombinedOutput()
+	// logger.Debug("Node.js version command output: %s", string(output))
+	// if err != nil {
+	// 	return false
+	// }
+	if output, err := getInstalledNodeVersion(nodeBaseDir); err != nil {
+		logger.Debug("Failed to get installed Node.js version: %v", err)
+	} else {
+		installedVersionStr := strings.TrimSpace(string(output))
+		if len(installedVersionStr) > 1 && installedVersionStr[0] == 'v' {
+			installedVersionStr = installedVersionStr[1:]
+			return compareVersions(installedVersionStr, versionStr)
+		}
 	}
-
-	installedVersionStr := strings.TrimSpace(string(output))
-	if len(installedVersionStr) > 1 && installedVersionStr[0] == 'v' {
-		installedVersionStr = installedVersionStr[1:]
-		return compareVersions(installedVersionStr, versionStr)
-	}
-
+	logger.LogFunctionExit("isNodeInstalled", "not_installed", nil)
 	return false
 }
-
 
 // compareVersions checks if the installed version is greater than or equal to the requested version.
 // It performs a semantic versioning comparison by splitting the version strings into major, minor, and patch components.
@@ -177,6 +182,34 @@ func GetNodeBinDir() string {
 	} else {
 		return filepath.Join(nodeBaseDir, "bin")
 	}
+}
+
+// GetInstalledNodeVersion retrieves the currently installed Node.js version from the specified directory.
+// It checks if Node.js is installed and returns its version string.
+//
+// Parameters:
+//   - baseDir: The base directory where Node.js is installed
+//
+// Returns:
+//   - string: The installed Node.js version (without 'v' prefix)
+//   - error: An error if Node.js is not found or version cannot be determined
+func getInstalledNodeVersion(baseDir string) (string, error) {
+	if _, err := os.Stat(nodeBinPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("node.js binary not found at %s", nodeBinPath)
+	}
+
+	cmd := exec.Command(nodeBinPath, "-v")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get Node.js version: %w", err)
+	}
+
+	versionStr := strings.TrimSpace(string(output))
+	if len(versionStr) > 1 && versionStr[0] == 'v' {
+		versionStr = versionStr[1:]
+	}
+
+	return versionStr, nil
 }
 
 // installNodeJs installs the specified version of Node.js.
@@ -277,12 +310,12 @@ func getNodeDownloadURL(version string) (string, error) {
 	}
 }
 
-// downloadAndExtractNode downloads Node.js from the specified URL and extracts it to the 
+// downloadAndExtractNode downloads Node.js from the specified URL and extracts it to the
 // appropriate location on the filesystem.
 //
 // It creates a temporary file, downloads the Node.js archive from the provided URL,
 // and extracts it based on the archive format (currently only supports .tar.gz).
-// On Linux systems, it also sets appropriate ownership and permissions for the 
+// On Linux systems, it also sets appropriate ownership and permissions for the
 // Node.js executable files and directories.
 //
 // Parameters:
@@ -369,5 +402,84 @@ func downloadAndExtractNode(url, version string) error {
 	}
 
 	logger.Info("Node.js installed successfully!")
+	return nil
+}
+
+// UpdateNodeJs checks the currently installed version of Node.js and
+// updates it to the required version if necessary.
+//
+// Parameters:
+//   - workDir: The working directory where the Device Agent is installed
+//
+// UpdateNodeJs checks if Node.js needs to be updated and performs the update if necessary.
+// It compares the currently installed Node.js version with the required version and only
+// updates if the installed version is older than the required version.
+//
+// The function performs the following steps:
+// 1. Check if Node.js is installed in $workdir/node directory
+// 2. Compare installed version with the specified nodeVersion
+// 3. If installed version is older than specified - perform the update by:
+//    - Removing the existing node directory
+//    - Installing the new version
+//
+// Parameters:
+//   - nodeVersion: The required Node.js version
+//   - workDir: The working directory where Node.js should be installed
+//
+// Returns:
+//   - error: An error object if the update fails, nil otherwise
+func UpdateNodeJs(nodeVersion, workDir string) error {
+	// logger.LogFunctionEntry("updateNodeJs", map[string]interface{}{
+	// 	"nodeVersion": nodeVersion,
+	// 	"workDir":     workDir,
+	// })
+
+	// Set up Node.js directories to check current installation
+	setNodeDirectories(workDir)
+	// nodeDir := filepath.Join(workDir, "node")
+
+	// Check if Node.js is installed in the expected location
+	if _, err := os.Stat(nodeBaseDir); os.IsNotExist(err) {
+		logger.Error("Node.js not found, please install it first")
+		return fmt.Errorf("node.js not found in %s directory", nodeBaseDir)
+		// logger.LogFunctionExit("updateNodeJsIfNeeded", "installed", nil)
+	}
+
+	logger.Debug("Node.js directory found at %s, checking version...", nodeBaseDir)
+
+	// Check current installed version
+	currentVersion, err := getInstalledNodeVersion(workDir)
+	if err != nil {
+		logger.Debug("Failed to get installed Node.js version: %v", err)
+		logger.Info("Unable to determine current Node.js version, proceeding with update...")
+	} else {
+		logger.Debug("Current Node.js version: %s, required version: %s", currentVersion, nodeVersion)
+		
+		// Compare versions - if current version is sufficient, no update needed
+		if compareVersions(currentVersion, nodeVersion) {
+			logger.Info("Installed Node.js version (%s) is newer than requested (%s), no update needed", currentVersion, nodeVersion)
+			// logger.LogFunctionExit("updateNodeJsIfNeeded", "no_update_needed", nil)
+			return nil
+		}
+		logger.Info("Installed Node.js version (%s) is older than requested )%s), updating...", currentVersion, nodeVersion)
+	}
+
+	// Update Node.js by removing old installation and installing new version
+	logger.Debug("Removing existing Node.js installation...")
+	if err := utils.RemoveDirectory(nodeBaseDir); err != nil {
+		// logger.Error("Failed to remove existing Node.js directory: %v", err)
+		// logger.LogFunctionExit("updateNodeJsIfNeeded", nil, err)
+		return fmt.Errorf("failed to remove existing Node.js directory: %w", err)
+	}
+
+	logger.Info("Installing Node.js version %s...", nodeVersion)
+	if err := EnsureNodeJs(nodeVersion, workDir); err != nil {
+		logger.Error("Failed to install Node.js %s: %v", nodeVersion, err)
+		logger.LogFunctionExit("updateNodeJsIfNeeded", nil, err)
+		return fmt.Errorf("failed to install Node.js %s: %w", nodeVersion, err)
+	}
+
+	logger.Info("Node.js successfully updated to version %s", nodeVersion)
+	logger.LogFunctionExit("updateNodeJsIfNeeded", "updated", nil)
 	return nil
 }

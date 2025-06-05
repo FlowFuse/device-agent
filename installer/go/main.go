@@ -19,7 +19,8 @@ var (
 	serviceUsername     string
 	help                bool
 	uninstall           bool
-	update              bool
+	updateNode        bool
+	updateAgent         bool
 	debugMode           bool
 )
 
@@ -31,7 +32,8 @@ func init() {
 	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (required)")
 	pflag.BoolVarP(&help, "help", "h", false, "Display help information")
 	pflag.BoolVar(&uninstall, "uninstall", false, "Uninstall the device agent")
-	pflag.BoolVar(&update, "update", false, "Update the device agent")
+	pflag.BoolVar(&updateNode, "update-nodejs", false, "Update bundled Node.js to specified version")
+	pflag.BoolVar(&updateAgent, "update-agent", false, "Update the Device Agent package to specified version")
 	pflag.BoolVar(&debugMode, "debug", false, "Enable debug logging")
 	pflag.Parse()
 
@@ -42,7 +44,9 @@ func init() {
 		fmt.Println("  Installation:")
 		fmt.Println("    ./installer --otc <one-time-code> [--agent-version <version>] [--node <version>]")
 		fmt.Println("  Update:")
-		fmt.Println("    ./installer --update [--agent-version <version>]")
+		fmt.Println("    ./installer --update-agent [--agent-version <version>]")
+		fmt.Println("    ./installer --update-nodejs [--node <version>]")
+		fmt.Println("    ./installer --update-agent --update-nodejs [--agent-version <version>] [--node <version>]")
 		fmt.Println("  Uninstall:")
 		fmt.Println("    ./installer --uninstall")
 		fmt.Print("\n")
@@ -51,7 +55,7 @@ func init() {
 		os.Exit(0)
 	}
 
-	if !uninstall && !update && flowfuseOneTimeCode == "" {
+	if !uninstall && !updateNode && !updateAgent && flowfuseOneTimeCode == "" {
 		fmt.Println("[ERROR]: FlowFuse one time code is required for installation")
 		fmt.Print("\n")
 		fmt.Println("Usage:")
@@ -100,13 +104,19 @@ func main() {
 	if uninstall {
 		logger.Info("Uninstalling FlowFuse Device Agent...")
 		err = cmd.Uninstall()
-	} else if update {
+	} else if updateNode || updateAgent {
 		logger.Info("Updating FlowFuse Device Agent...")
-		err = cmd.Update(agentVersion, update)
+		// updateOptions := cmd.UpdateOptions{
+		// 	UpdateNodeJs: updateNodeJs,
+		// 	UpdateAgent:  updateAgent,
+		// 	NodeVersion:  nodeVersion,
+		// 	AgentVersion: agentVersion,
+		// }
+		err = cmd.Update(agentVersion, nodeVersion, updateAgent, updateNode)
 	} else {
 		logger.Info("Installing FlowFuse Device Agent...")
 
-		err = cmd.Install(nodeVersion, agentVersion, installerDir, flowfuseURL, flowfuseOneTimeCode, update)
+		err = cmd.Install(nodeVersion, agentVersion, installerDir, flowfuseURL, flowfuseOneTimeCode, false)
 	}
 
 	if err != nil {

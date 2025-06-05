@@ -205,25 +205,37 @@ func Uninstall() error {
 	return nil
 }
 
-// Update performs the update of the FlowFuse Device Agent.
+// Update performs the update of the FlowFuse Device Agent and/or Node.js.
 //
 // The function performs the following steps:
 // 1. Checks if the process has sufficient permissions
 // 2. Checks if the device agent is currently installed
-// 3. Stops the device agent service temporarily
-// 4. Updates the Device Agent npm package to the specified version
-// 5. Restarts the device agent service
+// 3. Stops the device agent service temporarily (if updating anything)
+// 4. Updates Node.js if needed and requested (checks installed version vs required version)
+// 5. Updates the Device Agent npm package if requested
+// 6. Restarts the device agent service
 //
 // Parameters:
-//   - agentVersion: The version of the FlowFuse Device Agent to update to
-//   - update: A boolean indicating whether this is an update operation
+//   - options: UpdateOptions specifying what to update and to which versions
 //
 // Returns:
 //   - error: An error object if any step of the update fails, nil otherwise
-func Update(agentVersion string, update bool) error {
+// func Update(options UpdateOptions) error {
+func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) error {
 	logger.LogFunctionEntry("Update", map[string]interface{}{
+		"updateNode": updateNode,
+		"nodeVersion":  nodeVersion,
+		"updateAgent":  updateAgent,
 		"agentVersion": agentVersion,
 	})
+
+	// Validate that at least one update option is specified
+	if !updateNode && !updateAgent {
+		err := fmt.Errorf("no update options specified, use --update-nodejs and/or --update-agent")
+		logger.Error("Update validation failed: %v", err)
+		logger.LogFunctionExit("Update", nil, err)
+		return err
+	}
 
 	// Run pre-update validation
 	logger.Debug("Running pre-check...")
@@ -251,36 +263,67 @@ func Update(agentVersion string, update bool) error {
 	}
 	logger.Debug("Working directory: %s", workDir)
 
-	// Stop the service temporarily for the update
-	logger.Info("Stopping FlowFuse Device Agent service for update...")
-	if err := service.Stop("flowfuse-device-agent"); err != nil {
-		logger.Debug("Failed to stop FlowFuse Device Agent service: %v - continuing anyway", err)
-	} else {
-		logger.Debug("Service stopped successfully")
-	}
-
-	// Update the device agent package
-	if err := nodejs.InstallDeviceAgent(agentVersion, workDir, update); err != nil {
-		logger.Error("Device Agent package update failed: %v", err)
-		// Try to start the service even if update failed with hope to recover
-		logger.Debug("Start FlowFuse Device Agent service after update failure")
-		if startErr := service.Start("flowfuse-device-agent"); startErr != nil {
-			logger.Error("Failed to restart service after update failure: %v", startErr)
+	// Stop the service temporarily for the update (if we're updating anything)
+	serviceWasStopped := false
+	if updateNode || updateAgent {
+		logger.Info("Stopping FlowFuse Device Agent service for update...")
+		if err := service.Stop("flowfuse-device-agent"); err != nil {
+			logger.Error("Service stop failed: %v", err)
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("service stop failed: %w", err)
 		}
-		logger.LogFunctionExit("Update", nil, err)
-		return fmt.Errorf("device agent update failed: %w", err)
+		logger.Debug("Service stopped successfully")
+		serviceWasStopped = true
 	}
-	logger.Debug("Device Agent update successful")
 
-	// Restart the service
-	logger.Info("Starting FlowFuse Device Agent service...")
-	if err := service.Start("flowfuse-device-agent"); err != nil {
-		logger.Error("Service start failed: %v", err)
-		logger.LogFunctionExit("Update", nil, err)
-		return fmt.Errorf("service start failed: %w", err)
+	// Check and update Node.js if requested
+	if updateNode {
+		logger.Info("Updating Node.js to version %s...", nodeVersion)
+		if err := nodejs.UpdateNodeJs(agentVersion, workDir); err != nil {
+			logger.Error("Node.js update failed: %v", err)
+			// Try to start the service even if Node.js update failed
+			if serviceWasStopped {
+				logger.Debug("Starting FlowFuse Device Agent service after Node.js update failure")
+				if startErr := service.Start("flowfuse-device-agent"); startErr != nil {
+					logger.Error("Failed to restart service after Node.js update failure: %v", startErr)
+				}
+			}
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("node.js update failed: %w", err)
+		}
+		logger.Debug("Node.js update successful")
 	}
-	logger.Debug("Service started successfully")
-	logger.Info("FlowFuse Device Agent update completed successfully!")
+
+	// Update the device agent package if requested
+	if updateAgent {
+		logger.Info("Updating Device Agent to version %s...", agentVersion)
+		if err := nodejs.InstallDeviceAgent(agentVersion, workDir, true); err != nil {
+			logger.Error("Device Agent package update failed: %v", err)
+			// Try to start the service even if update failed with hope to recover
+			if serviceWasStopped {
+				logger.Debug("Start FlowFuse Device Agent service after update failure")
+				if startErr := service.Start("flowfuse-device-agent"); startErr != nil {
+					logger.Error("Failed to restart service after update failure: %v", startErr)
+				}
+			}
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("device agent update failed: %w", err)
+		}
+		logger.Debug("Device Agent update successful")
+	}
+
+	// Restart the service if it was stopped
+	if serviceWasStopped {
+		logger.Info("Starting FlowFuse Device Agent service...")
+		if err := service.Start("flowfuse-device-agent"); err != nil {
+			logger.Error("Service start failed: %v", err)
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("service start failed: %w", err)
+		}
+		logger.Debug("Service started successfully")
+	}
+
+	logger.Info("Update completed successfully!")
 
 	logger.LogFunctionExit("Update", "success", nil)
 	return nil

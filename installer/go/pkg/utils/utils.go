@@ -706,3 +706,32 @@ func CheckLibstdcExists() error {
 
 	return fmt.Errorf("libstdc++ is not installed, please install it before proceeding")
 }
+
+// removeDirectory removes provided directory.
+// It uses sudo on Unix systems and appropriate commands on Windows.
+//
+// Parameters:
+//   - dir: The path to the directory to remove
+//
+// Returns:
+//   - error: An error if the removal fails, nil otherwise
+func RemoveDirectory(dir string) error {
+	logger.Debug("Removing Node.js directory: %s", dir)
+	
+	var removeCmd *exec.Cmd
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		removeCmd = exec.Command("sudo", "rm", "-rf", dir)
+	case "windows":
+		removeCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", dir)
+	default:
+		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
+
+	if output, err := removeCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to remove directory %s: %w\nOutput: %s", dir, err, output)
+	}
+
+	logger.Debug("%s directory removed successfully", dir)
+	return nil
+}
