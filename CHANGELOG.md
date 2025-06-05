@@ -1,3 +1,10 @@
+#### 3.3.2 Release
+
+ - Bump docker/build-push-action from 6.17.0 to 6.18.0 (#410)
+ - Bump docker/build-push-action from 6.16.0 to 6.17.0 (#403)
+ - misc: Rename FlowForge to FlowFuse (#412) @ZJvandeWeg
+ - Only use local HOME env var if not passed from settings (#402) @hardillb
+
 #### 3.3.1: Release
 
  - Fix ffVersion parsing to handle version suffixes properly (#398) @knolleary
