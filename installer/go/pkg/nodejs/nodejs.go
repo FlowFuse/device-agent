@@ -241,6 +241,7 @@ func installNodeJs(version string) error {
 //   - A string containing the complete URL to download the appropriate NodeJS tarball
 //   - An error if the current architecture or operating system is unsupported
 func getNodeDownloadURL(version string) (string, error) {
+	var baseUrl string 
 	var arch string
 	switch runtime.GOARCH {
 	case "amd64":
@@ -255,15 +256,22 @@ func getNodeDownloadURL(version string) (string, error) {
 		return "", fmt.Errorf("unsupported architecture: %s", runtime.GOARCH)
 	}
 
-	baseURL := fmt.Sprintf("https://nodejs.org/dist/v%s", version)
+	if utils.UseOfficialNodejs() {
+		baseUrl = fmt.Sprintf("https://nodejs.org/dist/v%s", version)
+	} else {
+		baseUrl = fmt.Sprintf("https://unofficial-builds.nodejs.org/download/release/v%s", version)
+	}
 
 	switch runtime.GOOS {
 	case "linux":
-		return fmt.Sprintf("%s/node-v%s-linux-%s.tar.gz", baseURL, version, arch), nil
+		if utils.IsAlpine() {
+			arch += "-musl"
+		}
+		return fmt.Sprintf("%s/node-v%s-linux-%s.tar.gz", baseUrl, version, arch), nil
 	case "windows":
-		return fmt.Sprintf("%s/node-v%s-win-%s.zip", baseURL, version, arch), nil
+		return fmt.Sprintf("%s/node-v%s-win-%s.zip", baseUrl, version, arch), nil
 	case "darwin":
-		return fmt.Sprintf("%s/node-v%s-darwin-%s.tar.gz", baseURL, version, arch), nil
+		return fmt.Sprintf("%s/node-v%s-darwin-%s.tar.gz", baseUrl, version, arch), nil
 	default:
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
