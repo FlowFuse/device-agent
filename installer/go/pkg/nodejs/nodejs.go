@@ -250,6 +250,7 @@ func installNodeJs(version string) error {
 //   - A string containing the complete URL to download the appropriate NodeJS tarball
 //   - An error if the current architecture or operating system is unsupported
 func getNodeDownloadURL(version string) (string, error) {
+	var baseUrl string 
 	var arch string
 	switch runtime.GOARCH {
 	case "amd64":
@@ -264,11 +265,18 @@ func getNodeDownloadURL(version string) (string, error) {
 		return "", fmt.Errorf("unsupported architecture: %s", runtime.GOARCH)
 	}
 
-	baseURL := fmt.Sprintf("https://nodejs.org/dist/v%s", version)
+	if utils.UseOfficialNodejs() {
+		baseUrl = fmt.Sprintf("https://nodejs.org/dist/v%s", version)
+	} else {
+		baseUrl = fmt.Sprintf("https://unofficial-builds.nodejs.org/download/release/v%s", version)
+	}
 
 	switch runtime.GOOS {
 	case "linux":
-		return fmt.Sprintf("%s/node-v%s-linux-%s.tar.gz", baseURL, version, arch), nil
+		if utils.IsAlpine() {
+			arch += "-musl"
+		}
+		return fmt.Sprintf("%s/node-v%s-linux-%s.tar.gz", baseUrl, version, arch), nil
 	default:
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -405,6 +413,9 @@ func extractTarGz(tarGzFile, destDir, version string) error {
 			archSuffix = "armv7l"
 		} else {
 			archSuffix = runtime.GOARCH
+		}
+		if utils.IsAlpine() {
+			archSuffix += "-musl"
 		}
 		rootDir = fmt.Sprintf("node-v%s-linux-%s", version, archSuffix)
 	}
