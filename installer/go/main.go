@@ -25,7 +25,7 @@ var (
 
 func init() {
 	pflag.StringVarP(&nodeVersion, "node", "n", "20.19.1", "Node.js version to install (minimum)")
-	pflag.StringVarP(&agentVersion, "agent", "a", "latest", "Device agent version to install")
+	pflag.StringVarP(&agentVersion, "agent-version", "a", "latest", "Device agent version to install/update to")
 	pflag.StringVarP(&serviceUsername, "service-user", "s", "flowfuse", "Username for the service account")
 	pflag.StringVarP(&flowfuseURL, "url", "u", "https://app.flowfuse.com", "FlowFuse URL")
 	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (required)")
@@ -39,6 +39,14 @@ func init() {
 		fmt.Println("FlowFuse Device Agent Installer")
 		fmt.Print("\n")
 		fmt.Println("Usage:")
+		fmt.Println("  Installation:")
+		fmt.Println("    ./installer --otc <one-time-code> [--agent-version <version>] [--node <version>]")
+		fmt.Println("  Update:")
+		fmt.Println("    ./installer --update [--agent-version <version>]")
+		fmt.Println("  Uninstall:")
+		fmt.Println("    ./installer --uninstall")
+		fmt.Print("\n")
+		fmt.Println("Options:")
 		pflag.PrintDefaults()
 		os.Exit(0)
 	}
@@ -93,11 +101,12 @@ func main() {
 		logger.Info("Uninstalling FlowFuse Device Agent...")
 		err = cmd.Uninstall()
 	} else if update {
-		logger.Error("Update functionality is not yet implemented.")
+		logger.Info("Updating FlowFuse Device Agent...")
+		err = cmd.Update(agentVersion, update)
 	} else {
 		logger.Info("Installing FlowFuse Device Agent...")
 
-		err = cmd.Install(nodeVersion, agentVersion, installerDir, flowfuseURL, flowfuseOneTimeCode)
+		err = cmd.Install(nodeVersion, agentVersion, installerDir, flowfuseURL, flowfuseOneTimeCode, update)
 	}
 
 	if err != nil {
