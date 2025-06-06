@@ -145,7 +145,8 @@ winget install --id=mbuilov.sed  -e
 ### Development Setup
 
 ```bash
-# Clone and navigate to the installer directory
+# Clone this repo and navigate to the installer directory
+git clone git@github.com:FlowFuse/device-agent.git
 cd installer/go
 
 # Install dependencies
