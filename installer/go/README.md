@@ -96,10 +96,18 @@ sudo rc-service flowfuse-device-agent restart
 # Check service status
 sudo rc-service flowfuse-device-agent status
 ```
+
 #### macOS (launchd)
 
 ```bash
 # Start the service
+sudo launchctl start com.flowfuse.device-agent
+# Stop the service
+sudo launchctl stop com.flowfuse.device-agent
+# Restart the service
+sudo launchctl kickstart -k system/com.flowfuse.device-agent
+# Check service status
+sudo launchctl print system/com.flowfuse.device-agent
 ```
 
 #### Windows (Service Control)
