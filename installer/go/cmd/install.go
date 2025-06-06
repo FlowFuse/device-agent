@@ -11,7 +11,28 @@ import (
 	"github.com/flowfuse/device-agent-installer/pkg/validate"
 )
 
-// Install performs the installation of Node.js, the device agent, and sets up the service
+// Install performs the complete installation of the FlowFuse Device Agent.
+//
+// The function performs the following steps:
+// 1. Checks if the process has sufficient permissions
+// 2. Creates a working directory for the installation
+// 3. Ensures Node.js is installed at the required version
+// 4. Installs the Device Agent npm package
+// 5. Configures the Device Agent with the provided URL and one-time code
+// 6. Sets up the Device Agent to run as a system service
+// 7. Saves the installation configuration
+//
+// Parameters:
+//   - nodeVersion: The version of Node.js to install or use
+//   - agentVersion: The version of the FlowFuse Device Agent to install
+//   - installerDir: The directory where the installer files are located
+//   - url: The URL of the FlowFuse instance to connect to
+//   - otc: The one-time code (OTC) used for device registration
+//
+// Returns:
+//   - error: An error object if any step of the installation fails, nil otherwise
+//
+// The function logs detailed information about each step of the process.
 func Install(nodeVersion, agentVersion, installerDir string, url string, otc string) error {
 	logger.LogFunctionEntry("Install", map[string]interface{}{
 		"nodeVersion":  nodeVersion,
@@ -65,7 +86,6 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 	}
 	logger.Debug("Device agent configuration successful")
 
-	// Create service configuration
 	logger.Info("Configuring FlowFuse Device Agent to run as system service...")
 	if err := service.Install("flowfuse-device-agent", workDir); err != nil {
 		logger.Error("Service setup failed: %v", err)
@@ -90,7 +110,18 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 	return nil
 }
 
-// Uninstall removes the system service, device agent package and working directory
+// Uninstall removes the FlowFuse Device Agent from the system.
+// It performs the following steps:
+// 1. Verifies if the device agent is currently installed
+// 2. Removes the device agent service
+// 3. Uninstalls the device agent package
+// 4. Removes the working directory
+// 5. Removes the service account that was used to run the agent
+//
+// The function uses configuration settings if available, or falls back to
+// default values when the configuration cannot be loaded.
+//
+// Returns an error if any step in the uninstallation process fails.
 func Uninstall() error {
 	logger.LogFunctionEntry("Uninstall", nil)
 
