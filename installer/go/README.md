@@ -1,45 +1,200 @@
 # FlowFuse Device Agent Installer
 
-This directory contains the Go-based installer for the FlowFuse Device Agent.
+A Go-based installer for the FlowFuse Device Agent that automatically sets up Node.js, installs the device agent package, and configures it as a system service.
 
-## Building
+## Getting Started
 
-To build the installer locally:
+### Requirements
 
-```bash
-# Navigate to the installer directory
-cd installer/go
+- Linux, macOS, or Windows
+- Internet connection for downloading dependencies
+- Administrator/root privileges for system service installation
 
-# Execute build script
-./build.sh
-```
+### Installation
 
-This will create a set of binaries for each supported operating system and architecture, and store them in the `build` directory.
-
-## Usage
-
-For usage instructions, run:
+Download the installer binary for your platform and run:
 
 ```bash
-./flowfuse-device-installer --help
+# Make the binary executable (Linux/macOS)
+chmod +x flowfuse-device-agent-installer
+
+# Install with one-time code from FlowFuse
+./flowfuse-device-agent-installer --otc YOUR_ONE_TIME_CODE
 ```
 
-> [!TIP]
-> Ensure the binary is executable. 
-> Give it a proper permissions by running `chmod +x flowfuse-device-installer`.
+### Available Options
+
+| Flag | Short | Default | Description |
+|------|--------|---------|-------------|
+| `--otc` | `-o` | *required* | FlowFuse one-time code for authentication |
+| `--url` | `-u` | `https://app.flowfuse.com` | FlowFuse instance URL |
+| `--node` | `-n` | `20.19.1` | Node.js version to install |
+| `--agent` | `-a` | `latest` | Device agent version to install |
+| `--service-user` | `-s` | `flowfuse` | Username for the service account (linux/macos)|
+| `--debug` | | `false` | Enable debug logging |
+| `--help` | `-h` | | Display help information |
+
+### Management Commands
+
+```bash
+# Minimal usage
+./flowfuse-device-agent-installer --otc ONE_TIME_CODE
+
+# Install with custom settings
+./flowfuse-device-agent-installer --otc ONE_TIME_CODE --url https://your-flowfuse-instance.com --node 18.20.0
+
+# Enable debug logging
+./flowfuse-device-agent-installer --otc ONE_TIME_CODE --debug
+
+# Uninstall the device agent
+./flowfuse-device-agent-installer --uninstall
+
+# See help for all options
+./flowfuse-device-agent-installer --help
+```
+
+
+### Troubleshooting
+
+### Managing FlowFuse Device Agent service
+
+#### Linux (systemd)
+
+```bash
+# Start the service
+sudo systemctl start flowfuse-device-agent
+# Stop the service
+sudo systemctl stop flowfuse-device-agent
+# Restart the service
+sudo systemctl restart flowfuse-device-agent
+# Check service status
+sudo systemctl status flowfuse-device-agent
+```
+
+#### Linux (SysVinit)
+
+```bash
+# Start the service
+sudo service flowfuse-device-agent start
+# Stop the service
+sudo service flowfuse-device-agent stop
+# Restart the service
+sudo service flowfuse-device-agent restart
+# Check service status
+sudo service flowfuse-device-agent status
+```
+
+#### Linux (OpenRC)
+
+```bash
+# Start the service 
+sudo rc-service flowfuse-device-agent start
+# Stop the service
+sudo rc-service flowfuse-device-agent stop
+# Restart the service
+sudo rc-service flowfuse-device-agent restart
+# Check service status
+sudo rc-service flowfuse-device-agent status
+```
+
+#### macOS (launchd)
+
+```bash
+# Start the service
+sudo launchctl start com.flowfuse.device-agent
+# Stop the service
+sudo launchctl stop com.flowfuse.device-agent
+# Restart the service
+sudo launchctl kickstart -k system/com.flowfuse.device-agent
+# Check service status
+sudo launchctl print system/com.flowfuse.device-agent
+```
+
+#### Windows (Service Control)
+
+```
+# Start the service
+sc.exe start flowfuse-device-agent
+# Stop the service
+sc.exe stop flowfuse-device-agent
+# Restart the service
+sc.exe restart flowfuse-device-agent
+# Check service status
+sc.exe query flowfuse-device-agent
+```
+
+
+### Log Files
+- **Linux/macOS**: `/opt/flowfuse-device/logs/flowfuse-device-agent.log`
+  - **Linux(systemd)**: `journalctl -u flowfuse-device-agent`
+- **Windows**: `C:\opt\flowfuse-device\logs\flowfuse-device-agent.log`
 
 ## Development
-To develop the installer, you will need to have Go installed on your system. You can find instructions for installing Go on the [official Go website](https://golang.org/doc/install).
-To run the installer locally:
 
-```bash
-go run main.go
+### Prerequisites
+
+- Go 1.21 or later ([Install Go](https://go.dev/doc/install))
+- Make (optional, for using Makefile commands)
+
+Windows users can install `make` and `sed` (used in Makefile) via [WinGet](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget):
+```
+winget install --id=GnuWin32.Make  -e
+winget install --id=mbuilov.sed  -e
 ```
 
-## Uninstalling
-To uninstall the FlowFuse Device Agent, you can use the `uninstall` flag:
+### Development Setup
 
 ```bash
-go run main.go --uninstall
+# Clone and navigate to the installer directory
+cd installer/go
+
+# Install dependencies
+go mod download
+
+# Run locally
+go run main.go --help
 ```
-This will result in removing the FlowFuse Device Agent and all related files from your system.
+
+### Building
+
+```bash
+# Build for all platforms
+make build
+```
+
+Binaries will be created in the `out/` directory for Linux, macOS, and Windows.
+
+### Code Quality
+
+```bash
+# Run all quality checks
+make check-quality
+
+# Individual commands
+make lint    # Run linter
+make fmt     # Format code
+make vet     # Run go vet
+```
+
+### Project Structure
+
+```
+├── main.go              # Application entry point
+├── cmd/
+│   └── install.go       # Installation commands
+└── pkg/
+    ├── config/          # Configuration file handling
+    ├── logger/          # Logging functions
+    ├── nodejs/          # Node.js related functions
+    ├── service/         # System service functions
+    ├── utils/           # Miscellaneous functions
+    └── validate/        # Environment validation functions
+```
+
+### Cleaning Up
+
+To clean up build artifacts and temporary files, run:
+
+```bash
+make clean
+```
