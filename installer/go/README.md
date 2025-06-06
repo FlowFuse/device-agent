@@ -160,12 +160,9 @@ go run main.go --help
 ```bash
 # Build for all platforms
 make build
-
-# Or build manually for current platform
-go build -o flowfuse-device-agent-installer main.go
 ```
 
-Binaries will be created in the `out/` directory for Linux (amd64, arm64, arm), macOS, and Windows.
+Binaries will be created in the `out/` directory for Linux, macOS, and Windows.
 
 ### Code Quality
 
