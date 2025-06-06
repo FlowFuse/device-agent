@@ -136,7 +136,7 @@ sc.exe query flowfuse-device-agent
 - Go 1.21 or later ([Install Go](https://go.dev/doc/install))
 - Make (optional, for using Makefile commands)
 
-Windows users can install `make` and `sed` (used in Makefile) via (WinGet)[https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget]:
+Windows users can install `make` and `sed` (used in Makefile) via [WinGet](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget):
 ```
 winget install --id=GnuWin32.Make  -e
 winget install --id=mbuilov.sed  -e
