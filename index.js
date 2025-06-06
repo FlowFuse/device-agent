@@ -53,9 +53,9 @@ function main (testOptions) {
     }
 
     // Configure silent mode
-    let silentMode = false
-    if (options.silent) {
-        silentMode = true
+    let installerMode = false
+    if (options.installerMode) {
+        installerMode = true
     }
 
     if (options.dir === '') {
@@ -136,7 +136,7 @@ Please ensure the parent directory is writable, or set a different path with -d`
             if (options.dir !== '/opt/flowfuse-device') {
                 runCommandInfo.push(`-d ${options.dir}`)
             }
-            if (!silentMode) {
+            if (!installerMode) {
                 print('Success! This Device can be launched at any time using the following command:', figures.tick)
                 print(runCommandInfo.join(' '), ' ')
             }
