@@ -5,11 +5,11 @@ import (
 	"archive/zip"
 	"bufio"
 	"compress/gzip"
+	"path/filepath"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -640,31 +640,4 @@ func UseOfficialNodejs() bool {
 func checkBinaryExists(binary string) bool {
 	_, err := exec.LookPath(binary)
 	return err == nil
-}
-
-// CheckLibstdcExists checks for the presence of libstdc++ in common locations
-// across different Linux distributions and architectures.
-//
-// Returns:
-//   - nil if libstdc++ is found in any of the checked locations
-//   - error if libstdc++ is not found in any location
-func CheckLibstdcExists() error {
-
-	// Check common library directories with glob patterns
-	globPatterns := []string{
-		"/usr/lib/*/libstdc++.so.6", // Multi-arch directories
-		"/usr/lib*/libstdc++.so.6",  // lib, lib64, etc.
-		"/lib/*/libstdc++.so.6",     // Multi-arch in /lib
-		"/lib*/libstdc++.so.6",      // lib, lib64, etc. in /lib
-	}
-
-	for _, pattern := range globPatterns {
-		matches, err := filepath.Glob(pattern)
-		if err == nil && len(matches) > 0 {
-			logger.Debug("Found libstdc++ at: %s", matches[0])
-			return nil
-		}
-	}
-
-	return fmt.Errorf("libstdc++ is not installed, please install it before proceeding")
 }

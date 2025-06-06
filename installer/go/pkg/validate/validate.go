@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/service"
@@ -29,7 +30,7 @@ func PreInstall(serviceName string) error {
 		return fmt.Errorf("configuration file pre-check failed: %w", err)
 	}
 
-	if err := utils.CheckLibstdcExists(); err != nil {
+	if err := checkLibstdcExists(); err != nil {
 		logger.Error("Library check failed: %v", err)
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("library check failed: %w", err)
@@ -72,6 +73,34 @@ func checkConfigFileExists(serviceName string) error {
 		} else {
 			return fmt.Errorf("the %s directory has not been removed. Please remove it manually and try again", workDir)
 		}
+	}
+	return nil
+}
+
+// CheckLibstdcExists checks for the presence of libstdc++ in common locations
+// across different Linux distributions and architectures.
+//
+// Returns:
+//   - nil if libstdc++ is found in any of the checked locations
+//   - error if libstdc++ is not found in any location
+func checkLibstdcExists() error {
+		if runtime.GOOS == "linux" {
+		// Check common library directories with glob patterns
+		globPatterns := []string{
+			"/usr/lib/*/libstdc++.so.6", // Multi-arch directories
+			"/usr/lib*/libstdc++.so.6",  // lib, lib64, etc.
+			"/lib/*/libstdc++.so.6",     // Multi-arch in /lib
+			"/lib*/libstdc++.so.6",      // lib, lib64, etc. in /lib
+		}
+
+		for _, pattern := range globPatterns {
+			matches, err := filepath.Glob(pattern)
+			if err == nil && len(matches) > 0 {
+				logger.Debug("Found libstdc++ at: %s", matches[0])
+				return nil
+			}
+		}
+		return fmt.Errorf("libstdc++ is not installed, please install it before proceeding")
 	}
 	return nil
 }
