@@ -204,9 +204,17 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	if err := configureCmd.Run(); err != nil {
 		return fmt.Errorf("failed to configure the device agent: %w", err)
 	}
-
+	var chownCmd *exec.Cmd
+	switch runtime.GOOS {
+		case "linux":
+			chownCmd = exec.Command("sudo", "chown", "-R", serviceUser+":"+serviceUser, baseDir)
+		case "darwin":
+			chownCmd = exec.Command("sudo", "chown", "-R", serviceUser, baseDir)
+		case "windows":
+			logger.Info("Configuration completed successfully!")
+			return nil
+	}
 	// Set permissions for the working directory
-	chownCmd := exec.Command("sudo", "chown", "-R", serviceUser+":"+serviceUser, baseDir)
 	if output, err := chownCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
 	}
