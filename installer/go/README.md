@@ -26,11 +26,14 @@ chmod +x flowfuse-device-agent-installer
 
 | Flag | Short | Default | Description |
 |------|--------|---------|-------------|
-| `--otc` | `-o` | *required* | FlowFuse one-time code for authentication |
-| `--url` | `-u` | `https://app.flowfuse.com` | FlowFuse instance URL |
-| `--node` | `-n` | `20.19.1` | Node.js version to install |
-| `--agent` | `-a` | `latest` | Device agent version to install |
+| `--otc` | `-o` | *required* | FlowFuse one time code for authentication (required) |
+| `--url` | `-u` | `https://app.flowfuse.com` | FlowFuse URL |
+| `--nodejs-version` | `-n` | `20.19.1` | Node.js version to install (minimum) |
+| `--agent-version` | `-a` | `latest` | Device agent version to install/update to |
 | `--service-user` | `-s` | `flowfuse` | Username for the service account (linux/macos)|
+| `--uninstall` | | `false` | Uninstall the device agent |
+| `--update-nodejs` | | `false` | Update bundled Node.js to specified version |
+| `--update-agent` | | `false` | Update the Device Agent package to specified version |
 | `--debug` | | `false` | Enable debug logging |
 | `--help` | `-h` | | Display help information |
 
@@ -112,7 +115,7 @@ sudo launchctl print system/com.flowfuse.device-agent
 
 #### Windows (Service Control)
 
-```
+```bash
 # Start the service
 sc.exe start flowfuse-device-agent
 # Stop the service
@@ -122,6 +125,25 @@ sc.exe restart flowfuse-device-agent
 # Check service status
 sc.exe query flowfuse-device-agent
 ```
+
+### Updating components
+
+#### Node.js
+To update Node.js, you can specify the `--update-nodejs` flag with the desired version:
+
+```bash
+./flowfuse-device-agent-installer --update-nodejs --nodejs-version 20.19.1
+```
+
+Specifying `--update-nodejs` flag without a version will pick the default version defined in the installer.
+
+#### Device Agent
+To update the Device Agent package, use the `--update-agent` flag, optionally specifying the version:
+```bash
+./flowfuse-device-agent-installer --update-agent --agent-version 3.3.2
+```
+
+Specifying `--update-agent` without a version will update to the latest available version.
 
 
 ### Log Files
