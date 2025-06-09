@@ -25,7 +25,7 @@ var (
 )
 
 func init() {
-	pflag.StringVarP(&nodeVersion, "node", "n", "20.19.1", "Node.js version to install (minimum)")
+	pflag.StringVarP(&nodeVersion, "nodejs-version", "n", "20.19.1", "Node.js version to install (minimum)")
 	pflag.StringVarP(&agentVersion, "agent-version", "a", "latest", "Device agent version to install/update to")
 	pflag.StringVarP(&serviceUsername, "service-user", "s", "flowfuse", "Username for the service account")
 	pflag.StringVarP(&flowfuseURL, "url", "u", "https://app.flowfuse.com", "FlowFuse URL")
@@ -42,11 +42,11 @@ func init() {
 		fmt.Print("\n")
 		fmt.Println("Usage:")
 		fmt.Println("  Installation:")
-		fmt.Println("    ./installer --otc <one-time-code> [--agent-version <version>] [--node <version>]")
+		fmt.Println("    ./installer --otc <one-time-code> [--agent-version <version>] [--nodejs-versionjs-version <version>]")
 		fmt.Println("  Update:")
 		fmt.Println("    ./installer --update-agent [--agent-version <version>]")
-		fmt.Println("    ./installer --update-nodejs [--node <version>]")
-		fmt.Println("    ./installer --update-agent --update-nodejs [--agent-version <version>] [--node <version>]")
+		fmt.Println("    ./installer --update-nodejs [--nodejs-version <version>]")
+		fmt.Println("    ./installer --update-agent --update-nodejs [--agent-version <version>] [--nodejs-version <version>]")
 		fmt.Println("  Uninstall:")
 		fmt.Println("    ./installer --uninstall")
 		fmt.Print("\n")
@@ -106,12 +106,6 @@ func main() {
 		err = cmd.Uninstall()
 	} else if updateNode || updateAgent {
 		logger.Info("Updating FlowFuse Device Agent...")
-		// updateOptions := cmd.UpdateOptions{
-		// 	UpdateNodeJs: updateNodeJs,
-		// 	UpdateAgent:  updateAgent,
-		// 	NodeVersion:  nodeVersion,
-		// 	AgentVersion: agentVersion,
-		// }
 		err = cmd.Update(agentVersion, nodeVersion, updateAgent, updateNode)
 	} else {
 		logger.Info("Installing FlowFuse Device Agent...")
