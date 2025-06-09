@@ -14,6 +14,8 @@ import (
 // InstallerConfig holds the configuration for the installer
 type InstallerConfig struct {
 	ServiceUsername string `json:"serviceUsername"`
+	AgentVersion    string `json:"agentVersion"`
+	NodeVersion		 string `json:"nodeVersion"`
 }
 
 // GetConfigPath returns the path to the installer configuration file.
