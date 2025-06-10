@@ -83,7 +83,7 @@ function Download-Installer {
         }
         
         # Install the binary
-        $finalBinaryName = "flowfuse-device-agent-installer-${RELEASE}.exe"
+        $finalBinaryName = "flowfuse-device-agent-installer.exe"
         $finalPath = Join-Path -Path $InstallDir -ChildPath $finalBinaryName
         
         Copy-Item -Path $tempFileWithExt -Destination $finalPath -Force

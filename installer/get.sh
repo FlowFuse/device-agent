@@ -116,7 +116,7 @@ main() {
     install_dir="$(pwd)"
     
     # Install the binary
-    local final_binary_name="flowfuse-device-agent-installer-${RELEASE}"
+    local final_binary_name="flowfuse-device-agent-installer"
     local final_path="$install_dir/$final_binary_name"
     
     # Copy and set permissions
