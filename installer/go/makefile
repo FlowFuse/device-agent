@@ -2,6 +2,12 @@
 APP_NAME=flowfuse-device-installer
 VERSION:=$(shell grep -o '"version": "[^"]*"' ../../package.json | sed 's/"version": "//;s/"//')
 
+# Optional colors
+GREEN  := $(shell tput -Txterm setaf 2)
+YELLOW := $(shell tput -Txterm setaf 3)
+WHITE  := $(shell tput -Txterm setaf 7)
+CYAN   := $(shell tput -Txterm setaf 6)
+RESET  := $(shell tput -Txterm sgr0)
 
 build: ## builds the application for all platforms
 	mkdir -p out/{linux,macos,windows}
