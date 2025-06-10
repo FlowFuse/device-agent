@@ -150,12 +150,36 @@ Please ensure the parent directory is writable, or set a different path with -d`
 
                 if (ffSupportsImport) {
                     const home = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH || '/'
-                    const suggestedDirs = [path.join(home, '.node-red'), '/opt/flowfuse-device/project']
-                    if (options.dir && options.dir !== '/opt/flowfuse-device') {
+                    const parentOfHome = path.dirname(home)
+                    const root = path.parse(parentOfHome).root
+                    const homeNodeRed = path.join(home, '.node-red')
+                    const rootNodeRed1 = path.join(root, 'node-red')
+                    const rootNodeRed2 = path.join(root, '.node-red')
+                    const rootNodeRed3 = path.join(root, 'nodered')
+                    const rootNodeRed4 = path.join(root, 'data') // common location for Node-RED data
+                    const suggestedDirs = [homeNodeRed, rootNodeRed1, rootNodeRed2, rootNodeRed3, rootNodeRed4]
+
+                    try {
+                        // get an array of .node-red dirs in the home directories
+                        const parentDirNodeRedDirs = fs.readdirSync(parentOfHome, { withFileTypes: true })
+                            .filter(dir => dir.isDirectory())
+                            .map(dir => path.join(parentOfHome, dir.name, '.node-red'))
+                            .filter(dir => fs.existsSync(dir) && fs.statSync(dir).isDirectory())
+                        suggestedDirs.push(...parentDirNodeRedDirs)
+                    } catch (_err) {
+                        // If we can't read the parent directory, just ignore it
+                    }
+                    // add common locations for FlowFuse Device Agent projects flows
+                    suggestedDirs.push(path.join('/opt/flowfuse-device/project'))
+                    suggestedDirs.push(path.join('/opt/flowforge-device/project'))
+                    // if provided, add the dir option as a suggested directory
+                    if (options.dir) {
                         suggestedDirs.push(options.dir)
                         suggestedDirs.push(path.join(options.dir, 'project'))
                     }
-                    return flowImport(suggestedDirs)
+                    const absoluteSuggestedDirs = suggestedDirs.map(dir => path.resolve(dir)) // absolute paths
+                    const uniqueSuggestedDirs = [...new Set(absoluteSuggestedDirs)]
+                    return flowImport(uniqueSuggestedDirs)
                 }
             }
             return Promise.resolve()
