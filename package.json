@@ -39,7 +39,6 @@
         "@inquirer/confirm": "^5.1.9",
         "@inquirer/input": "^4.1.9",
         "@inquirer/select": "^4.2.0",
-        "chalk": "^5.4.1",
         "command-line-args": "^6.0.1",
         "command-line-usage": "^7.0.3",
         "express-session": "^1.18.0",
@@ -53,7 +52,8 @@
         "proxy-from-env": "^1.1.0",
         "semver": "^7.3.8",
         "ws": "^8.13.0",
-        "yaml": "^2.1.1"
+        "yaml": "^2.1.1",
+        "yoctocolors-cjs": "^2.1.2"
     },
     "devDependencies": {
         "aedes": "^0.49.0",
