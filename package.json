@@ -37,7 +37,6 @@
     "dependencies": {
         "@flowfuse/nr-theme": "^1.8.0",
         "@inquirer/confirm": "^5.1.9",
-        "@inquirer/input": "^4.1.9",
         "@inquirer/select": "^4.2.0",
         "command-line-args": "^6.0.1",
         "command-line-usage": "^7.0.3",
