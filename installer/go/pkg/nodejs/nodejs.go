@@ -1,8 +1,6 @@
 package nodejs
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"fmt"
 	"io"
 	"net/http"
@@ -147,8 +145,8 @@ func compareVersions(installed, requested string) bool {
 func setNodeDirectories(basedir string) {
 	nodeBaseDir = filepath.Join(basedir, NodeDir)
 	if runtime.GOOS == "windows" {
-		nodeBinPath = filepath.Join(nodeBaseDir, "bin", "node.exe")
-		npmBinPath = filepath.Join(nodeBaseDir, "bin", "npm.cmd")
+		nodeBinPath = filepath.Join(nodeBaseDir, "node.exe")
+		npmBinPath = filepath.Join(nodeBaseDir, "npm.cmd")
 	} else {
 		nodeBinPath = filepath.Join(nodeBaseDir, "bin", "node")
 		npmBinPath = filepath.Join(nodeBaseDir, "bin", "npm")
@@ -174,22 +172,11 @@ func GetNpmPath() string {
 // GetNodeBinDir returns the path to the Node.js binary directory.
 // This is calculated by joining the Node.js base directory with "bin".
 func GetNodeBinDir() string {
-	return filepath.Join(nodeBaseDir, "bin")
-}
-
-// setEnvPath modifies the system PATH environment variable to include the Node.js binary directory
-// at the beginning. This ensures that the installed Node.js binaries are found first when executing
-// Node.js commands. It returns the new PATH value as a formatted string.
-// If setting the environment variable fails, the function returns error.
-func setEnvPath() (string, error) {
-	nodeBinDir := GetNodeBinDir()
-	pathEnv := os.Getenv("PATH")
-	newPath := fmt.Sprintf("PATH=%s%c%s", nodeBinDir, os.PathListSeparator, pathEnv)
-	if err := os.Setenv("PATH", newPath); err != nil {
-		logger.Debug("Failed to set PATH environment variable: %v", err)
-		return "", fmt.Errorf("failed to set PATH environment variable: %w", err)
+	if runtime.GOOS == "windows" {
+		return nodeBaseDir
+	} else {
+		return filepath.Join(nodeBaseDir, "bin")
 	}
-	return newPath, nil
 }
 
 // installNodeJs installs the specified version of Node.js.
@@ -221,6 +208,10 @@ func installNodeJs(version string) error {
 		chownCmd := exec.Command("sudo", "chown", utils.ServiceUsername, nodeBaseDir)
 		if output, err := chownCmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
+		}
+	} else {
+		if err := os.MkdirAll(nodeBaseDir, 0755); err != nil {
+			return fmt.Errorf("failed to create Node.js installation directory: %w", err)
 		}
 	}
 
@@ -277,6 +268,8 @@ func getNodeDownloadURL(version string) (string, error) {
 			arch += "-musl"
 		}
 		return fmt.Sprintf("%s/node-v%s-linux-%s.tar.gz", baseUrl, version, arch), nil
+	case "windows":
+		return fmt.Sprintf("%s/node-v%s-win-%s.zip", baseUrl, version, arch), nil
 	default:
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -330,7 +323,9 @@ func downloadAndExtractNode(url, version string) error {
 
 	// Extract based on file type
 	if strings.HasSuffix(url, ".tar.gz") {
-		err = extractTarGz(tempFile.Name(), nodeBaseDir, version)
+		err = utils.ExtractTarGz(tempFile.Name(), nodeBaseDir, version)
+	} else if strings.HasSuffix(url, ".zip") {
+		err = utils.ExtractZip(tempFile.Name(), nodeBaseDir, version)
 	} else {
 		err = fmt.Errorf("unsupported archive format")
 	}
@@ -362,155 +357,15 @@ func downloadAndExtractNode(url, version string) error {
 		if output, err := binDirCmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to set permissions for bin directory: %w\nOutput: %s", err, output)
 		}
+	} else {
+		if err := os.Chmod(nodeBinPath, 0755); err != nil {
+			return fmt.Errorf("failed to set permissions for node executable: %w", err)
+		}
+		if err := os.Chmod(npmBinPath, 0755); err != nil {
+			return fmt.Errorf("failed to set permissions for npm executable: %w", err)
+		}
 	}
 
 	logger.Info("Node.js installed successfully!")
-	return nil
-}
-
-// extractTarGz extracts a Node.js tar.gz archive to the specified destination directory.
-//
-// This function handles the extraction of a Node.js tar.gz archive and manages the necessary permissions.
-// On Linux, it first extracts the archive to a temporary directory and then uses sudo to move the files
-// to the destination directory with proper ownership and permissions.
-//
-// Parameters:
-//   - tarGzFile: Path to the Node.js tar.gz archive file.
-//   - destDir: Destination directory where the contents should be extracted.
-//   - version: Node.js version string used to identify the root directory in the archive.
-//
-// Returns:
-//   - error: If any step in the extraction process fails, an error is returned with details.
-//
-// Notes:
-//   - Currently only supports Linux platforms.
-//   - Requires sudo privileges to set proper ownership and permissions.
-//   - Handles directory creation, file extraction, symbolic links, and permission setting.
-func extractTarGz(tarGzFile, destDir, version string) error {
-	file, err := os.Open(tarGzFile)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	gzipReader, err := gzip.NewReader(file)
-	if err != nil {
-		return err
-	}
-	defer gzipReader.Close()
-
-	tarReader := tar.NewReader(gzipReader)
-
-	// Get the root directory name in the archive
-	var archSuffix string
-	var rootDir string
-	if runtime.GOOS == "linux" { 
-		if runtime.GOARCH == "amd64" {
-			archSuffix = "x64"
-		} else if runtime.GOARCH == "386" {
-			archSuffix = "x86"
-		} else if runtime.GOARCH == "arm" {
-			archSuffix = "armv7l"
-		} else {
-			archSuffix = runtime.GOARCH
-		}
-		if utils.IsAlpine() {
-			archSuffix += "-musl"
-		}
-		rootDir = fmt.Sprintf("node-v%s-linux-%s", version, archSuffix)
-	}
-
-	if runtime.GOOS == "linux" {
-		// Create a temporary directory
-		tempExtractDir, err := os.MkdirTemp("", "nodejs-extract-")
-		if err != nil {
-			return fmt.Errorf("failed to create temporary extraction directory: %w", err)
-		}
-		defer os.RemoveAll(tempExtractDir)
-
-		// First, extract to a temporary directory that doesn't require elevated privileges
-		for {
-			header, err := tarReader.Next()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return err
-			}
-
-			// Skip if it's the root directory
-			if header.Name == rootDir || header.Name == rootDir+"/" {
-				continue
-			}
-
-			// Remove root directory from path
-			relPath := strings.TrimPrefix(header.Name, rootDir)
-			relPath = strings.TrimPrefix(relPath, "/")
-
-			if relPath == "" {
-				continue
-			}
-
-			tempPath := filepath.Join(tempExtractDir, relPath)
-
-			switch header.Typeflag {
-			case tar.TypeDir:
-				if err := os.MkdirAll(tempPath, 0755); err != nil {
-					return err
-				}
-			case tar.TypeReg:
-				if err := os.MkdirAll(filepath.Dir(tempPath), 0755); err != nil {
-					return err
-				}
-
-				outFile, err := os.Create(tempPath)
-				if err != nil {
-					return err
-				}
-
-				if _, err := io.Copy(outFile, tarReader); err != nil {
-					outFile.Close()
-					return err
-				}
-				outFile.Close()
-
-				if err := os.Chmod(tempPath, os.FileMode(header.Mode)); err != nil {
-					return err
-				}
-			case tar.TypeSymlink:
-				if err := os.Symlink(header.Linkname, tempPath); err != nil {
-					return err
-				}
-			}
-		}
-
-		// Copy the content from temp dir to the destination using sudo
-		logger.Debug("Moving extracted files to %s (requires sudo)...", destDir)
-
-		// Ensure the destination directory exists with proper permissions
-		mkdirCmd := exec.Command("sudo", "mkdir", "-p", destDir)
-		if output, err := mkdirCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to create destination directory: %w\nOutput: %s", err, output)
-		}
-
-		// Copy the extracted files from temp dir to destination
-		cpCmd := exec.Command("sudo", "cp", "-a", tempExtractDir+"/.", destDir)
-		if output, err := cpCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to copy extracted files: %w\nOutput: %s", err, output)
-		}
-
-		// Set ownership of all files to the service user
-		chownCmd := exec.Command("sudo", "chown", "-R", utils.ServiceUsername+":"+utils.ServiceUsername, destDir)
-		chmodCmd := exec.Command("sudo", "chmod", "755", destDir)
-		if output, err := chmodCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to set directory permissions: %w\nOutput: %s", err, output)
-		}
-		if output, err := chownCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
-		}
-
-		return nil
-	}
-
 	return nil
 }
