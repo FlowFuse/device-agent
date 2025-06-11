@@ -9,6 +9,8 @@ WHITE  := $(shell tput -Txterm setaf 7)
 CYAN   := $(shell tput -Txterm setaf 6)
 RESET  := $(shell tput -Txterm sgr0)
 
+default: help
+
 build: ## builds the application for all platforms
 	mkdir -p out/{linux,macos,windows}
 	@echo "Building ${APP_NAME} version ${VERSION}..."
