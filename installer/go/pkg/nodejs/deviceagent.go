@@ -1,7 +1,6 @@
 package nodejs
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
+	"github.com/flowfuse/device-agent-installer/pkg/config"
 )
 
 const packageName = "@flowfuse/device-agent"
@@ -86,63 +86,25 @@ func InstallDeviceAgent(version, baseDir string, update bool) error {
 	return nil
 }
 
-// getDeviceAgentVersion retrieves the currently installed version of the FlowFuse Device Agent.
-// It checks the global npm packages to find the version of the Device Agent package.
-// If the package is not found, it returns an empty string.
+// getDeviceAgentVersion retrieves version of cuirrently installed Device agent from installer config file.
 //
 // Returns:
 //   - string: The version of the installed Device Agent, or an empty string if not found
 //   - error: An error if the command fails or if the output cannot be parsed
 func GetInstalledDeviceAgentVersion() (string, error) {
-	type NpmLsOutput struct {
-		Dependencies map[string]struct {
-			Version string `json:"version"`
-		} `json:"dependencies"`
-	}
-	var listCmd *exec.Cmd
-	serviceUser := utils.ServiceUsername
-
-	baseDir, err := utils.GetWorkingDirectory()
+	// Load saved configuration
+	logger.Debug("Loading configuration...")
+	savedAgentVersion := ""
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		logger.Error("Failed to get working directory: %v", err)
-		return "", fmt.Errorf("failed to get working directory: %w", err)
-	}
-
-	setNodeDirectories(baseDir)
-	nodeBinDirPath := GetNodeBinDir()
-	newPath, err := utils.SetEnvPath(nodeBinDirPath)
-	if err != nil {
-		logger.Error("Failed to set PATH: %v", err)
-		return "", fmt.Errorf("failed to set PATH: %w", err)
-	}
-
-	switch runtime.GOOS {
-	case "linux", "darwin":
-		listCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "list", "-g", "--depth=0", "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), packageName, "--json")
-		env := os.Environ()
-		listCmd.Env = append(env, newPath)
-	case "windows":
-		listCmd = exec.Command("cmd", "/C", npmBinPath, "list", "-g", "--depth=0", "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), packageName, "--json")
-		env := os.Environ()
-		listCmd.Env = append(env, newPath)
-	default:
-		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
-	}
-	output, err := listCmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed to get device agent version: %w\nOutput: %s", err, output)
-	}
-
-	var result NpmLsOutput
-	if err := json.Unmarshal(output, &result); err != nil {
-		return "", fmt.Errorf("error parsing JSON: %w", err)
-	}
-	if dep, ok := result.Dependencies[packageName]; ok {
-		logger.Debug("Installed FlowFuse Device Agent version: %s", dep.Version)
-		return dep.Version, nil
+		logger.Error("Could not load configuration: %v", err)
+		return "", fmt.Errorf("could not load configuration: %w", err)
 	} else {
-		return "", nil // Package not found, return empty string
+		savedAgentVersion = cfg.AgentVersion
+		logger.Debug("Node.js version retrieved from config: %s", savedAgentVersion)
 	}
+
+	return savedAgentVersion, nil
 }
 
 // getLatestDeviceAgentVersion retrieves the latest version of 
@@ -192,9 +154,8 @@ func getLatestDeviceAgentVersion() (string, error) {
 
 // isAgentUpdateNeeded checks if the Device Agent needs to be updated.
 // It compares the currently installed version with the requested version.
-// If the currently installed version is lower from the requested one,
-// it returns true, indicating that an update is needed.
-// If the currently installed version is equal or higher, it returns false.
+// If the currently installed version is equal to requested version,
+// it returns false, indicating no update is needed. Otherwise, it returns true.
 //
 // Parameters:
 //   - requestedAgentVersion: The version of the Device Agent that is requested to be installed
@@ -227,11 +188,13 @@ func IsAgentUpdateRequired(requestedAgentVersion string) (bool, error) {
 		return false, nil
 	}
 	logger.Debug("Current FlowFuse Device Agent version: %s, requested version: %s", currentVersion, requestedAgentVersion)
-	if compareVersions(currentVersion, requestedAgentVersion) {
+	if currentVersion == requestedAgentVersion {
+		logger.LogFunctionExit("IsAgentUpdateRequired", "no update needed", nil)
 		return false, nil
 	}
+	
 	logger.LogFunctionExit("IsAgentUpdateRequired", "update needed", nil)
-	return true, nil // Update needed
+	return true, nil
 }
 
 // UninstallDeviceAgent removes the FlowFuse Device Agent package from the system.
