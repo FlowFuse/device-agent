@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/flowfuse/device-agent-installer/pkg/config"
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
-	"github.com/flowfuse/device-agent-installer/pkg/config"
 )
 
 const packageName = "@flowfuse/device-agent"
@@ -107,14 +107,14 @@ func GetInstalledDeviceAgentVersion() (string, error) {
 	return savedAgentVersion, nil
 }
 
-// getLatestDeviceAgentVersion retrieves the latest version of 
+// getLatestDeviceAgentVersion retrieves the latest version of
 // the FlowFuse Device Agent package available in npmjs registry.
 // It runs the npm view command to get the latest version.
 //
 // Returns:
 //   - string: The latest version of the Device Agent package
 //   - error: An error if the command fails or if the output cannot be parsed
-func getLatestDeviceAgentVersion() (string, error) {
+func GetLatestDeviceAgentVersion() (string, error) {
 	var viewCmd *exec.Cmd
 	serviceUser := utils.ServiceUsername
 
@@ -170,7 +170,7 @@ func IsAgentUpdateRequired(requestedAgentVersion string) (bool, error) {
 	var err error
 
 	if requestedAgentVersion == "latest" {
-		requestedAgentVersion, err = getLatestDeviceAgentVersion()
+		requestedAgentVersion, err = GetLatestDeviceAgentVersion()
 		if err != nil {
 			return false, fmt.Errorf("failed to get latest device agent version: %v", err)
 		}
@@ -192,7 +192,7 @@ func IsAgentUpdateRequired(requestedAgentVersion string) (bool, error) {
 		logger.LogFunctionExit("IsAgentUpdateRequired", "no update needed", nil)
 		return false, nil
 	}
-	
+
 	logger.LogFunctionExit("IsAgentUpdateRequired", "update needed", nil)
 	return true, nil
 }
