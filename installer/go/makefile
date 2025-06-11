@@ -1,6 +1,6 @@
 .PHONY: help build clean lint fmt vet check-quality
 APP_NAME=flowfuse-device-installer
-VERSION:=$(shell grep -o '"version": "[^"]*"' ../../package.json | sed 's/"version": "//;s/"//')
+VERSION:=development
 
 # Optional colors
 GREEN  := $(shell tput -Txterm setaf 2)
