@@ -15,7 +15,7 @@ import (
 type InstallerConfig struct {
 	ServiceUsername string `json:"serviceUsername"`
 	AgentVersion    string `json:"agentVersion"`
-	NodeVersion		 string `json:"nodeVersion"`
+	NodeVersion     string `json:"nodeVersion"`
 }
 
 // GetConfigPath returns the path to the installer configuration file.
@@ -57,7 +57,7 @@ func SaveConfig(cfg *InstallerConfig) error {
 	// Try to write the file directly first
 	err = os.WriteFile(configPath, data, 0644)
 	if err == nil {
-		return nil 
+		return nil
 	}
 
 	tempDir := os.TempDir()
@@ -120,4 +120,52 @@ func LoadConfig() (*InstallerConfig, error) {
 	}
 
 	return &cfg, nil
+}
+
+// UpdateConfigField updates a single field in the installer configuration file.
+// It loads the existing configuration (or creates a default one if it doesn't exist),
+// updates the specified field with the provided value, and saves the configuration back.
+//
+// Supported field names:
+//   - "serviceUsername": Updates the ServiceUsername field
+//   - "agentVersion": Updates the AgentVersion field
+//   - "nodeVersion": Updates the NodeVersion field
+//
+// Parameters:
+//   - fieldName: The name of the field to update (case-sensitive)
+//   - value: The new value for the field
+//
+// Returns:
+//   - error: nil if successful, otherwise an error detailing what went wrong
+func UpdateConfigField(fieldName, value string) error {
+	logger.LogFunctionEntry("UpdateConfigField", map[string]interface{}{
+		"fieldName": fieldName,
+		"value":     value,
+	})
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load existing config: %w", err)
+	}
+
+	// Update the specified field
+	switch fieldName {
+	case "serviceUsername":
+		cfg.ServiceUsername = value
+	case "agentVersion":
+		cfg.AgentVersion = value
+	case "nodeVersion":
+		cfg.NodeVersion = value
+	default:
+		logger.LogFunctionExit("UpdateConfigField", "error", fmt.Errorf("unknown field name: %s", fieldName))
+		return fmt.Errorf("unknown field name: %s", fieldName)
+	}
+
+	// Save the updated configuration
+	if err := SaveConfig(cfg); err != nil {
+		logger.LogFunctionExit("UpdateConfigField", "error", err)
+		return fmt.Errorf("failed to save updated config: %w", err)
+	}
+	logger.LogFunctionExit("UpdateConfigField", "success", nil)
+	return nil
 }
