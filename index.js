@@ -162,7 +162,7 @@ Please ensure the parent directory is writable, or set a different path with -d`
                     const rootNodeRed2 = path.join(root, '.node-red')
                     const rootNodeRed3 = path.join(root, 'nodered')
                     const rootNodeRed4 = path.join(root, 'data') // common location for Node-RED data
-                    const suggestedDirs = [homeNodeRed, rootNodeRed1, rootNodeRed2, rootNodeRed3, rootNodeRed4]
+                    const suggestedDirs = [process.cwd(), homeNodeRed, rootNodeRed1, rootNodeRed2, rootNodeRed3, rootNodeRed4]
 
                     try {
                         // get an array of .node-red dirs in the home directories
