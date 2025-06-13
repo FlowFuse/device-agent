@@ -17,9 +17,11 @@ var (
 	flowfuseOneTimeCode string
 	nodeVersion         string
 	serviceUsername     string
+	instVersion 				string // Version of the installer, set during build
+	showVersion					bool
 	help                bool
 	uninstall           bool
-	updateNode        bool
+	updateNode        	bool
 	updateAgent         bool
 	debugMode           bool
 )
@@ -30,6 +32,7 @@ func init() {
 	pflag.StringVarP(&serviceUsername, "service-user", "s", "flowfuse", "Username for the service account")
 	pflag.StringVarP(&flowfuseURL, "url", "u", "https://app.flowfuse.com", "FlowFuse URL")
 	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (required)")
+	pflag.BoolVarP(&showVersion, "version", "v", false, "Display installer version")
 	pflag.BoolVarP(&help, "help", "h", false, "Display help information")
 	pflag.BoolVar(&uninstall, "uninstall", false, "Uninstall the device agent")
 	pflag.BoolVar(&updateNode, "update-nodejs", false, "Update bundled Node.js to specified version")
@@ -52,6 +55,11 @@ func init() {
 		fmt.Print("\n")
 		fmt.Println("Options:")
 		pflag.PrintDefaults()
+		os.Exit(0)
+	}
+
+	if showVersion {
+		fmt.Printf("FlowFuse Device Agent Installer Version: %s\n", instVersion)
 		os.Exit(0)
 	}
 
@@ -97,6 +105,7 @@ func main() {
 
 	if debugMode {
 		logger.Info("Debug mode enabled. Logs will be written to: %s", logger.GetLogFilePath())
+		logger.Debug("FlowFuse Device Agent Installer version: %s", instVersion)
 	}
 
 	var exitCode int
