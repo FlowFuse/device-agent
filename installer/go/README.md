@@ -35,6 +35,7 @@ chmod +x flowfuse-device-agent-installer
 | `--update-nodejs` | | `false` | Update bundled Node.js to specified version |
 | `--update-agent` | | `false` | Update the Device Agent package to specified version |
 | `--debug` | | `false` | Enable debug logging |
+| `--version` | `-v` | | Display the installer version |
 | `--help` | `-h` | | Display help information |
 
 ### Management Commands
