@@ -222,3 +222,63 @@ To clean up build artifacts and temporary files, run:
 ```bash
 make clean
 ```
+
+## Contributing
+
+### Commit Message Format
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) 
+with Angular preset for automated versioning and releases. 
+**All commits that affect the installer must use the `installer` scope** to be included in releases.
+
+#### Commit Message Structure
+
+```
+<type>(installer): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Supported Types and Release Impact
+
+| Type | Description | Release Impact |
+|------|-------------|----------------|
+| `feat(installer)` | New feature | Minor version bump |
+| `fix(installer)` | Bug fix | Patch version bump |
+| `perf(installer)` | Performance improvement | Patch version bump |
+| `refactor(installer)` | Code refactoring | Patch version bump |
+| `chore(installer)` | Maintenance tasks | Patch version bump |
+| `docs(installer)` | Documentation changes | Patch version bump |
+| `style(installer)` | Code style changes | Patch version bump |
+| `test(installer)` | Test changes | Patch version bump |
+
+#### Breaking Changes
+
+For breaking changes, add `BREAKING CHANGE:` in the commit footer or use `!` after the type/scope:
+
+```
+feat(installer)!: remove support for Node.js v16
+
+BREAKING CHANGE: Node.js v16 is no longer supported, minimum version is now v18
+```
+
+This will trigger a major version bump.
+
+#### Examples
+
+```bash
+# Feature addition (minor release)
+feat(installer): add support for custom installation directory
+
+# Bug fix (patch release)
+fix(installer): resolve service startup issue on Ubuntu 22.04
+
+# Breaking change (major release)
+feat(installer)!: change default service user from root to flowfuse
+
+BREAKING CHANGE: The default service user has changed from root to flowfuse for improved security
+```
+
+**Important:** Commits without the `installer` scope will not trigger releases or appear in the changelog.
