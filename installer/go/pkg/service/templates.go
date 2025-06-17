@@ -115,7 +115,10 @@ const launchdTemplate = `<?xml version="1.0" encoding="UTF-8"?>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
-    <true/>
+    <dict>
+        <key>SuccessfulExit</key>
+        <true/>
+    </dict>
     <key>StandardOutPath</key>
     <string>{{.LogFile}}</string>
     <key>StandardErrorPath</key>
