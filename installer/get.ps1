@@ -107,6 +107,7 @@ function Download-Installer {
 # Run the main function
 try {
     Download-Installer
+    exit 0
 }
 catch {
     Write-Error "Script execution failed: $_.Exception.Message"
