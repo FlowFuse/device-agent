@@ -77,11 +77,6 @@ function Download-Installer {
             exit 1
         }
         
-        # Determine installation directory
-        if (-not (Test-Path $InstallDir)) {
-            New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-        }
-        
         # Install the binary
         $finalBinaryName = "flowfuse-device-agent-installer.exe"
         $finalPath = Join-Path -Path $InstallDir -ChildPath $finalBinaryName
