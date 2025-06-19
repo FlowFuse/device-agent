@@ -5,9 +5,8 @@ const path = require('path')
 const fs = require('fs/promises')
 const os = require('os')
 const utils = require('../../../../lib/utils')
+const fileSelector = require('../../../../lib/cli/fileSelector')
 const Select = require('@inquirer/select')
-const Input = require('@inquirer/input')
-const Confirm = require('@inquirer/confirm')
 
 /** @type {import('../../../../lib/cli/flowsImporter')} */
 let flowsImporter
@@ -38,6 +37,18 @@ describe('Flows Importer', function () {
             'node-red-contrib-test': '^1.0.0'
         }
     }
+    function getMockFileSelectorResult (filePath) {
+        return {
+            dir: path.dirname(filePath),
+            helpText: 'Last Modified 09/04/2025 09:09:35, 182.84 KB, 2 Tabs, 1 Subflow, 164 Nodes. (Press <enter> to select)',
+            isDirectory: false,
+            createdMs: Date.now(),
+            lastModifiedMs: Date.now(),
+            name: path.basename(filePath),
+            path: filePath,
+            size: 123456
+        }
+    }
 
     beforeEach(async function () {
         sandbox = sinon.createSandbox()
@@ -56,8 +67,7 @@ describe('Flows Importer', function () {
 
         // Stub inquirer components
         sandbox.stub(Select, 'default')
-        sandbox.stub(Input, 'default')
-        sandbox.stub(Confirm, 'default')
+        sandbox.stub(fileSelector, 'fileSelector')
 
         // now the stubs are set we can require the flowsImporter module
         // but first, clear the require cache to ensure we get a fresh instance
@@ -162,122 +172,111 @@ describe('Flows Importer', function () {
         })
     })
 
-    describe('askSelectFlowsFile', function () {
-        it('should prompt user to select a flows file', async function () {
-            const mockFlowFiles = [
-                { name: 'flows.json', description: 'description 1', isFlowsFile: true },
-                { name: 'flows2.json', description: 'description 2', isFlowsFile: true }
-            ]
-
-            Select.default.resolves(mockFlowFiles[0])
-
-            const result = await flowsImporter.askSelectFlowsFile(mockFlowFiles)
-
-            Select.default.calledOnce.should.be.true()
-            result.should.deepEqual(mockFlowFiles[0])
+    describe('askBrowseForFlowFile', function () {
+        it('should prompt user to select a flow file', async function () {
+            const mockSelection = getMockFileSelectorResult(mockFlowsFile)
+            fileSelector.fileSelector.resolves(mockSelection)
+            const result = await flowsImporter.askBrowseForFlowFile()
+            fileSelector.fileSelector.calledOnce.should.be.true()
+            result.should.be.an.Object()
+            should(result).deepEqual(mockSelection)
         })
-
-        it('should return false if user selects skip', async function () {
-            const mockFlowFiles = [
-                { name: 'flows.json', description: 'description 1', isFlowsFile: true }
-            ]
-
-            Select.default.resolves(false)
-            // read the stdin to simulate user input
-            const result = await flowsImporter.askSelectFlowsFile(mockFlowFiles)
-            result.should.be.false()
-        })
-
-        it('should return false if no flow files are provided', async function () {
-            const result = await flowsImporter.askSelectFlowsFile([])
-            result.should.be.false()
-        })
-
-        it('should prompt user to select a flows file', async function () {
-            const mockFlowFiles = [
-                { name: 'flows.json', description: 'description 1', isFlowsFile: true },
-                { name: 'flows2.json', description: 'description 2', isFlowsFile: true }
-            ]
-
-            Select.default.resolves(mockFlowFiles[0])
-
-            const result = await flowsImporter.askSelectFlowsFile(mockFlowFiles)
-
-            Select.default.calledOnce.should.be.true()
-            result.should.deepEqual(mockFlowFiles[0])
+        it('should return null if user cancels selection', async function () {
+            fileSelector.fileSelector.resolves(null) // Simulate user canceling the selection
+            const result = await flowsImporter.askBrowseForFlowFile()
+            fileSelector.fileSelector.calledOnce.should.be.true()
+            should(result).be.null()
         })
     })
 
-    describe('askImportDirectory', function () {
-        it('should return directory details if user selects a suggested directory', async function () {
+    describe('askImport', function () {
+        it('should return selected file details if user selects a suggested directory', async function () {
             const mockDirDetails = { valid: true, userDir: testFlowsDir, flowFiles: [{ name: 'flows.json' }] }
 
             // Stub getDirDetails to return valid details for our test directory
             sandbox.stub(flowsImporter, 'getDirDetails').resolves(mockDirDetails)
             Select.default.resolves(mockDirDetails)
+            const mockSelection = getMockFileSelectorResult(mockFlowsFile)
+            fileSelector.fileSelector.resolves(mockSelection)
 
-            const result = await flowsImporter.askImportDirectory([testFlowsDir])
-
-            result.should.deepEqual(mockDirDetails)
+            // result in this case will be all of fileSelector.fileSelector's result + valid & packageFile
+            const result = await flowsImporter.askImport([testFlowsDir])
             Select.default.calledOnce.should.be.true()
+            fileSelector.fileSelector.calledOnce.should.be.true()
+
+            result.should.have.property('valid', true)
+            result.should.have.property('name', 'flows.json')
+            result.should.have.property('dir', testFlowsDir)
+            result.should.have.property('path', mockFlowsFile)
+            result.should.have.property('packageFile', path.join(testFlowsDir, 'package.json'))
+            result.should.have.property('isDirectory', false)
+            result.should.not.have.property('flowFiles') // this is not a directory, so no flowFiles
         })
 
-        it('should prompt for custom path if user selects custom option', async function () {
+        it('should prompt for custom path if user selects browse option', async function () {
             sandbox.stub(flowsImporter, 'getDirDetails').resolves({
                 valid: true,
                 userDir: testFlowsDir,
                 flowFiles: [{ name: 'flows.json' }]
             })
 
-            Select.default.resolves(-2) // CUSTOM option
-            Input.default.resolves(testFlowsDir)
-            Confirm.default.resolves(true)
+            Select.default.resolves(-2) // BROWSE option
+            fileSelector.fileSelector.resolves({
+                name: path.basename(mockFlowsFile),
+                path: mockFlowsFile,
+                dir: testFlowsDir,
+                size: 187229,
+                createdMs: 1749502175804.6365,
+                lastModifiedMs: 1744186175495.1675,
+                isDirectory: false,
+                helpText: 'Last Modified 09/04/2025 09:09:35, 182.84 KB, 2 Tabs, 1 Subflow, 164 Nodes. (Press <enter> to select)'
+            })
 
-            const result = await flowsImporter.askImportDirectory([])
+            const result = await flowsImporter.askImport([])
 
-            Input.default.calledOnce.should.be.true()
+            fileSelector.fileSelector.calledOnce.should.be.true()
             result.should.have.property('valid', true)
-            result.should.have.property('userDir', testFlowsDir)
+            result.should.have.property('skip', false)
+            result.should.have.property('name', 'flows.json')
+            result.should.have.property('dir', testFlowsDir)
+            result.should.have.property('path', mockFlowsFile)
+            result.should.have.property('packageFile', path.join(testFlowsDir, 'package.json'))
+            result.should.have.property('isDirectory', false)
+            result.should.have.property('size')
+            result.should.have.property('createdMs')
+            result.should.have.property('lastModifiedMs')
+            result.should.have.property('helpText')
         })
 
-        it('should prompt with confirm dialog if no suggested dirs are provided', async function () {
-            Confirm.default.resolves(false) // No to "Import existing Node-RED flows?"
-
-            const result = await flowsImporter.askImportDirectory([])
-
-            Confirm.default.calledOnce.should.be.true()
-            result.should.have.property('skip', true)
-        })
-
-        it('should return skip result if user cancels custom path entry', async function () {
-            Confirm.default.resolves(true) // Yes to "Import existing Node-RED flows?"
-            Input.default.resolves('') // then skip
-
+        it('should return skip result if user cancels browse path entry', async function () {
             // note, because we are not providing any suggested dirs, the choice is auto skipped
             // and user is simply asked to confirm "Import existing Node-RED flows?"
-
-            const result = await flowsImporter.askImportDirectory([])
-
-            result.should.be.false() // Skip import
+            Select.default.resolves(-2) // BROWSE option
+            fileSelector.fileSelector.resolves(null) // Simulate user canceling the selection
+            const result = await flowsImporter.askImport([])
+            result.should.be.false() // CHOICES.SKIP
+            fileSelector.fileSelector.calledOnce.should.be.true()
         })
     })
 
     describe('flowImport', function () {
+        function createMockFileSelectorResult (filePath) {
+            return {
+                createdMs: Date.now(),
+                dir: path.dirname(filePath),
+                helpText: 'Last Modified 09/04/2025 09:09:35, 182.84 KB, 2 Tabs, 1 Subflow, 164 Nodes. (Press <enter> to select)',
+                isDirectory: false,
+                lastModifiedMs: Date.now(),
+                name: path.basename(filePath),
+                packageFile: path.join(testFlowsDir, 'package.json'),
+                path: filePath,
+                size: 187229,
+                skip: false,
+                valid: true
+            }
+        }
         it('should return null if user skips import', async function () {
-            sandbox.stub(flowsImporter, 'askImportDirectory').resolves({ skip: true })
-
-            const result = await flowsImporter.flowImport([testFlowsDir])
-
-            should(result).be.null()
-        })
-
-        it('should return null if user does not select a flows file', async function () {
-            sandbox.stub(flowsImporter, 'askImportDirectory').resolves({
-                valid: true,
-                userDir: testFlowsDir,
-                flowFiles: [{ name: 'flows.json' }]
-            })
-            sandbox.stub(flowsImporter, 'askSelectFlowsFile').resolves(false)
+            sandbox.stub(flowsImporter, 'askImport').resolves({ skip: true })
 
             const result = await flowsImporter.flowImport([testFlowsDir])
 
@@ -293,22 +292,9 @@ describe('Flows Importer', function () {
             const configRuntime = path.join(testFlowsDir, '.config.runtime.json')
             await fs.writeFile(configRuntime, JSON.stringify({ _credentialSecret: 'configSecret' }))
 
-            const mockSelectedFlows = {
-                isFlowsFile: true,
-                userDir: testFlowsDir,
-                name: 'flows.json',
-                flowsFile: mockFlowsFile,
-                credsFile: mockCredsFile,
-                flows: mockFlows
-            }
+            const mockAskImportResult = createMockFileSelectorResult(mockFlowsFile)
+            sandbox.stub(flowsImporter, 'askImport').resolves(mockAskImportResult)
 
-            sandbox.stub(flowsImporter, 'askImportDirectory').resolves({
-                valid: true,
-                userDir: testFlowsDir,
-                flowFiles: [mockSelectedFlows]
-            })
-
-            sandbox.stub(flowsImporter, 'askSelectFlowsFile').resolves(mockSelectedFlows)
             sandbox.stub(utils, 'loadAndParseJsonFile').callsFake(filePath => {
                 if (filePath.includes('.config.runtime.json')) {
                     return { _credentialSecret: 'configSecret' }
@@ -338,22 +324,9 @@ describe('Flows Importer', function () {
             const settingsJs = path.join(testFlowsDir, 'settings.js')
             await fs.writeFile(settingsJs, 'module.exports = { credentialSecret: "settingsJsSecret" }')
 
-            const mockSelectedFlows = {
-                isFlowsFile: true,
-                userDir: testFlowsDir,
-                name: 'flows.json',
-                flowsFile: mockFlowsFile,
-                credsFile: mockCredsFile,
-                flows: mockFlows
-            }
+            const mockAskImportResult = createMockFileSelectorResult(mockFlowsFile)
+            sandbox.stub(flowsImporter, 'askImport').resolves(mockAskImportResult)
 
-            sandbox.stub(flowsImporter, 'askImportDirectory').resolves({
-                valid: true,
-                userDir: testFlowsDir,
-                flowFiles: [mockSelectedFlows]
-            })
-
-            sandbox.stub(flowsImporter, 'askSelectFlowsFile').resolves(mockSelectedFlows)
             sandbox.stub(utils, 'loadAndParseJsonFile').callsFake(filePath => {
                 if (filePath.includes('.config.runtime.json')) {
                     return null // No runtime config
@@ -377,22 +350,9 @@ describe('Flows Importer', function () {
             const settingsJs = path.join(testFlowsDir, 'settings.js')
             await fs.writeFile(settingsJs, 'module.exports = { credentialSecret: "settingsJsSecret" }')
 
-            const mockSelectedFlows = {
-                isFlowsFile: true,
-                userDir: testFlowsDir,
-                name: 'flows.json',
-                flowsFile: mockFlowsFile,
-                credsFile: mockCredsFile,
-                flows: mockFlows
-            }
+            const mockAskImportResult = createMockFileSelectorResult(mockFlowsFile)
+            sandbox.stub(flowsImporter, 'askImport').resolves(mockAskImportResult)
 
-            sandbox.stub(flowsImporter, 'askImportDirectory').resolves({
-                valid: true,
-                userDir: testFlowsDir,
-                flowFiles: [mockSelectedFlows]
-            })
-
-            sandbox.stub(flowsImporter, 'askSelectFlowsFile').resolves(mockSelectedFlows)
             sandbox.stub(utils, 'loadAndParseJsonFile').callsFake(filePath => {
                 return null // No runtime config or settings.json
             })
@@ -410,22 +370,9 @@ describe('Flows Importer', function () {
             // Delete credentials file
             await fs.unlink(mockCredsFile)
 
-            const mockSelectedFlows = {
-                isFlowsFile: true,
-                userDir: testFlowsDir,
-                name: 'flows.json',
-                flowsFile: mockFlowsFile,
-                credsFile: null, // No creds file
-                flows: mockFlows
-            }
+            const mockAskImportResult = createMockFileSelectorResult(mockFlowsFile)
+            sandbox.stub(flowsImporter, 'askImport').resolves(mockAskImportResult)
 
-            sandbox.stub(flowsImporter, 'askImportDirectory').resolves({
-                valid: true,
-                userDir: testFlowsDir,
-                flowFiles: [mockSelectedFlows]
-            })
-
-            sandbox.stub(flowsImporter, 'askSelectFlowsFile').resolves(mockSelectedFlows)
             sandbox.stub(utils, 'getPackageData').returns(mockPackageData)
 
             const result = await flowsImporter.flowImport([testFlowsDir])
