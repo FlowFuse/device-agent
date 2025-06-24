@@ -2,8 +2,6 @@
 # This script downloads the appropriate binary
 # from the FlowFuse Device Agent releases page on GitHub.
 
-# Set error action preference to stop on errors
-$ErrorActionPreference = "Stop"
 
 # Set installation directory to current working directory
 $InstallDir = (Get-Location).Path
