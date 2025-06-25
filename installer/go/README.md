@@ -14,12 +14,22 @@ A Go-based installer for the FlowFuse Device Agent that automatically sets up No
 
 Download the installer binary for your platform and run:
 
+Linux/MacOS:
 ```bash
 # Make the binary executable (Linux/macOS)
 chmod +x flowfuse-device-agent-installer
 
 # Install with one-time code from FlowFuse
 ./flowfuse-device-agent-installer --otc YOUR_ONE_TIME_CODE
+```
+
+Windows (elevated command prompt):
+```shell
+# Unblock the downloaded file if needed
+powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
+
+# Run the installer in PowerShell
+.\flowfuse-device-agent-installer.exe --otc YOUR_ONE_TIME_CODE
 ```
 
 ### Available Options

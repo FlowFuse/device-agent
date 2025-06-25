@@ -17,8 +17,10 @@ const ConfigLoader = require('./lib/config')
 const webServer = new WebServer()
 const figures = require('@inquirer/figures').default
 const confirm = require('@inquirer/confirm').default
-const print = (message, /** @type {figures} */ figure = figures.info) => console.info(figure ?? figures.info, message)
+const print = (message, /** @type {figures} */ figure = chalk.gray(figures.lineBold)) => console.info(figure ?? chalk.gray(figures.lineBold), message)
 const flowImport = require('./lib/cli/flowsImporter').flowImport
+const { OLD_PROJECT_FILE, PROJECT_FILE } = require('./lib/agent')
+const chalk = require('yoctocolors-cjs') // switch to the lighter yoctocolors-cjs to match @inquirer
 
 function main (testOptions) {
     const pkg = require('./package.json')
@@ -50,6 +52,12 @@ function main (testOptions) {
     if (options.help) {
         console.log(require('./lib/cli/usage').usage())
         quit()
+    }
+
+    // Configure silent mode
+    let installerMode = false
+    if (options.installerMode) {
+        installerMode = true
     }
 
     if (options.dir === '') {
@@ -114,7 +122,8 @@ Please ensure the parent directory is writable, or set a different path with -d`
             warn('Device setup requires parameter --otc to be 8 or more characters')
             quit(null, 2)
         }
-        print('Starting Device setup...')
+        console.info()
+        print('Setting up your device...', chalk.gray(figures.bullet))
         if (!options.ffUrl) {
             warn('Device setup requires parameter --ff-url to be set')
             quit(null, 2)
@@ -123,15 +132,20 @@ Please ensure the parent directory is writable, or set a different path with -d`
         AgentManager.quickConnectDevice().then((provisioningData) => {
             deviceSettings = provisioningData
             if (!deviceSettings) {
-                warn('Device setup was unsuccessful')
+                print('Device setup was unsuccessful', chalk.redBright(figures.cross))
                 quit(null, 2)
             }
             const runCommandInfo = ['flowfuse-device-agent']
             if (options.dir !== '/opt/flowfuse-device') {
                 runCommandInfo.push(`-d ${options.dir}`)
             }
-            print('Success! This Device can be launched at any time using the following command:', figures.tick)
-            print(runCommandInfo.join(' '), ' ')
+            if (installerMode) {
+                print('Success!', chalk.green(figures.tick))
+            } else {
+                print('Success!', chalk.green(figures.tick))
+                print('This Device can be launched at any time using the following command:')
+                print(runCommandInfo.join(' '), ' ')
+            }
             if (!options.otcNoImport) {
                 // Support for importing flows during initial state check-in was added after 2.16.0.
                 // Use semver.coerce to validate the ffVersion. This will, by default, strip off suffixes to ensure
@@ -141,12 +155,36 @@ Please ensure the parent directory is writable, or set a different path with -d`
 
                 if (ffSupportsImport) {
                     const home = process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH || '/'
-                    const suggestedDirs = [path.join(home, '.node-red'), '/opt/flowfuse-device/project']
-                    if (options.dir && options.dir !== '/opt/flowfuse-device') {
+                    const parentOfHome = path.dirname(home)
+                    const root = path.parse(parentOfHome).root
+                    const homeNodeRed = path.join(home, '.node-red')
+                    const rootNodeRed1 = path.join(root, 'node-red')
+                    const rootNodeRed2 = path.join(root, '.node-red')
+                    const rootNodeRed3 = path.join(root, 'nodered')
+                    const rootNodeRed4 = path.join(root, 'data') // common location for Node-RED data
+                    const suggestedDirs = [process.cwd(), homeNodeRed, rootNodeRed1, rootNodeRed2, rootNodeRed3, rootNodeRed4]
+
+                    try {
+                        // get an array of .node-red dirs in the home directories
+                        const parentDirNodeRedDirs = fs.readdirSync(parentOfHome, { withFileTypes: true })
+                            .filter(dir => dir.isDirectory())
+                            .map(dir => path.join(parentOfHome, dir.name, '.node-red'))
+                            .filter(dir => fs.existsSync(dir) && fs.statSync(dir).isDirectory())
+                        suggestedDirs.push(...parentDirNodeRedDirs)
+                    } catch (_err) {
+                        // If we can't read the parent directory, just ignore it
+                    }
+                    // add common locations for FlowFuse Device Agent projects flows
+                    suggestedDirs.push(path.join('/opt/flowfuse-device/project'))
+                    suggestedDirs.push(path.join('/opt/flowforge-device/project'))
+                    // if provided, add the dir option as a suggested directory
+                    if (options.dir) {
                         suggestedDirs.push(options.dir)
                         suggestedDirs.push(path.join(options.dir, 'project'))
                     }
-                    return flowImport(suggestedDirs)
+                    const absoluteSuggestedDirs = suggestedDirs.map(dir => path.resolve(dir)) // absolute paths
+                    const uniqueSuggestedDirs = [...new Set(absoluteSuggestedDirs)]
+                    return flowImport(uniqueSuggestedDirs)
                 }
             }
             return Promise.resolve()
@@ -157,7 +195,7 @@ Please ensure the parent directory is writable, or set a different path with -d`
                     credentials: importOptions.credentials || {},
                     package: importOptions.package || {}
                 }
-                print('Uploading snapshot as the target for this Device...', figures.arrowUp)
+                print('Uploading snapshot as the target for this Device...')
                 return AgentManager.postState(
                     { token: deviceSettings.credentials.token, deviceId: deviceSettings.id, forgeURL: options.ffUrl },
                     {
@@ -183,18 +221,23 @@ Please ensure the parent directory is writable, or set a different path with -d`
                         print('Cleaning up existing project directory...')
                         fs.rmSync(projectDir, { force: true, recursive: true })
                     }
-                    const projectJson = path.join(options.dir, 'flowforge-project.json')
+                    let projectJson = path.join(options.dir, OLD_PROJECT_FILE)
                     if (fs.existsSync(projectJson)) {
                         print('Cleaning up existing project file...')
                         fs.rmSync(projectJson, { force: true })
                     }
-
-                    print('Success', figures.tick)
+                    projectJson = path.join(options.dir, PROJECT_FILE)
+                    if (fs.existsSync(projectJson)) {
+                        print('Cleaning up existing project file...')
+                        fs.rmSync(projectJson, { force: true })
+                    }
+                    print('Success!', chalk.green(figures.tick))
                 } else {
-                    print(`Snapshot import was unsuccessful (${importResponse.statusCode})`, figures.cross)
+                    print(`Snapshot import was unsuccessful (${importResponse.statusCode})`, chalk.redBright(figures.cross))
                 }
             }
             // If the user has set otcNoStart, then we don't want to start the agent
+            console.info()
             if (!options.otcNoStart) {
                 return confirm({ message: 'Do you want to start the Device Agent now?' })
             } else {
@@ -202,15 +245,18 @@ Please ensure the parent directory is writable, or set a different path with -d`
             }
         }).then((startNow) => {
             if (startNow) {
+                console.info()
                 info('Starting Device Agent with new configuration')
                 delete options.otc
                 delete options.ffUrl
                 options.deviceFile = path.join(options.dir, 'device.yml')
                 start(options, true)
             } else {
+                console.info()
                 quit()
             }
         }).catch((err) => {
+            console.info()
             quit(err.message, 2)
         })
         return
