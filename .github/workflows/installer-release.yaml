@@ -123,7 +123,7 @@ jobs:
         mkdir -p artifacts
         
         # Build with version from semantic-release
-        go build -ldflags "-X main.version=${VERSION:-${{ github.sha }}} -s -w" -o artifacts/${{ matrix.output }} main.go
+        go build -ldflags "-X main.instVersion=${VERSION:-${{ github.sha }}} -s -w" -o artifacts/${{ matrix.output }} main.go
         
         # Verify the binary was created
         if [ ! -f "artifacts/${{ matrix.output }}" ]; then
