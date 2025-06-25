@@ -2,12 +2,12 @@ name: Installer Build and Quality Check
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main ]
     paths:
       - 'installer/go/**'
       - '.github/workflows/installer-build.yaml'
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main ]
     paths:
       - 'installer/go/**'
       - '.github/workflows/installer-build.yaml'
