@@ -24,9 +24,9 @@ chmod +x flowfuse-device-agent-installer
 ```
 
 Windows (elevated command prompt):
-```powershell
+```shell
 # Unblock the downloaded file if needed
-Unblock-File -Path .\flowfuse-device-agent-installer.exe
+powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 
 # Run the installer in PowerShell
 .\flowfuse-device-agent-installer.exe --otc YOUR_ONE_TIME_CODE
