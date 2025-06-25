@@ -169,7 +169,7 @@ jobs:
         
         # Basic execution test - verify binary can execute --help
         echo "Running basic execution test..."
-        if [ "${{ matrix.goos }}" != "windows" ]; then
+        if [ "${{ matrix.goos }}" = "linux" ] && [ "${{ matrix.goarch }}" = "amd64" ]; then
           chmod +x "$BINARY_NAME"
           if ./"$BINARY_NAME" --help >/dev/null 2>&1; then
             echo "✅ Basic execution test passed: Binary can execute --help"
@@ -178,7 +178,7 @@ jobs:
             exit 1
           fi
         else
-          echo "ℹ️  Skipping basic execution test for Windows binary (cross-compilation)"
+          echo "ℹ️  Skipping basic execution test for cross-compiled binary (${{ matrix.goos }}/${{ matrix.goarch }})"
         fi
         
         # Clean up binary after validation (no artifact storage)
