@@ -3,8 +3,14 @@ name: Default Build & Test
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - '.github/workflows/installer-build.yaml'
+      - 'installer/**'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - '.github/workflows/installer-build.yaml'
+      - 'installer/**'
 
 jobs:
   build:
