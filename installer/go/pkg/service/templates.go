@@ -98,6 +98,45 @@ esac
 
 exit 0`
 
+// LaunchdTemplate is the template for the launchd property list file
+const launchdTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{{.Label}}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{.NodeBinDir}}/node</string>
+        <string>{{.NodeBinDir}}/flowfuse-device-agent</string>
+    </array>
+    <key>UserName</key>
+    <string>{{.User}}</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{{.LogFile}}</string>
+    <key>StandardErrorPath</key>
+    <string>{{.ErrorFile}}</string>
+    <key>WorkingDirectory</key>
+    <string>{{.WorkDir}}</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NODE_OPTIONS</key>
+        <string>--max_old_space_size=512</string>
+        <key>PATH</key>
+        <string>{{.NodeBinDir}}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>`
+
+const newsyslogTemplate = `
+{{.LogFile}} {{.User}}: 640 5 * $D0 J
+{{.ErrorFile}} {{.User}}: 640 5 * $D0 J
+`
+
 const OpenRCServiceTemplate = `#!/sbin/openrc-run
 
 name="FlowFuse Device Agent"

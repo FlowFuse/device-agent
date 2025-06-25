@@ -52,8 +52,8 @@ func InstallDeviceAgent(version string, baseDir string) error {
 	var installCmd *exec.Cmd
 	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
-	case "linux":
-		installCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "install", "-g", packageName)
+	case "linux", "darwin":
+		installCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "install", "-g", "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), packageName)
 		env := os.Environ()
 		installCmd.Env = append(env, npmPrefix, newPath)
 	case "windows":
@@ -100,7 +100,7 @@ func UninstallDeviceAgent(baseDir string) error {
 	var uninstallCmd *exec.Cmd
 	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
-	case "linux":
+	case "linux", "darwin":
 		uninstallCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "uninstall", "-g", packageName)
 		env := os.Environ()
 		uninstallCmd.Env = append(env, npmPrefix, newPath)
@@ -170,7 +170,7 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	}
 
 	// Getting full path to flowfuse-device-agent binary
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		deviceAgentPath = filepath.Join(nodeBinDirPath, "flowfuse-device-agent")
 	} else {
 		deviceAgentPath = filepath.Join(nodeBinDirPath, "flowfuse-device-agent.cmd")
@@ -179,7 +179,7 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	// Create configure command
 	var configureCmd *exec.Cmd
 	switch runtime.GOOS {
-	case "linux":
+	case "linux", "darwin":
 		configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start")
 		env := os.Environ()
 		configureCmd.Env = append(env, newPath)
