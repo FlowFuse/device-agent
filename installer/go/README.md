@@ -26,12 +26,16 @@ chmod +x flowfuse-device-agent-installer
 
 | Flag | Short | Default | Description |
 |------|--------|---------|-------------|
-| `--otc` | `-o` | *required* | FlowFuse one-time code for authentication |
-| `--url` | `-u` | `https://app.flowfuse.com` | FlowFuse instance URL |
-| `--node` | `-n` | `20.19.1` | Node.js version to install |
-| `--agent` | `-a` | `latest` | Device agent version to install |
+| `--otc` | `-o` | *required* | FlowFuse one time code for authentication (required) |
+| `--url` | `-u` | `https://app.flowfuse.com` | FlowFuse URL |
+| `--nodejs-version` | `-n` | `20.19.1` | Node.js version to install (minimum) |
+| `--agent-version` | `-a` | `latest` | Device agent version to install/update to |
 | `--service-user` | `-s` | `flowfuse` | Username for the service account (linux/macos)|
+| `--uninstall` | | `false` | Uninstall the device agent |
+| `--update-nodejs` | | `false` | Update bundled Node.js to specified version |
+| `--update-agent` | | `false` | Update the Device Agent package to specified version |
 | `--debug` | | `false` | Enable debug logging |
+| `--version` | `-v` | | Display the installer version |
 | `--help` | `-h` | | Display help information |
 
 ### Management Commands
@@ -112,7 +116,7 @@ sudo launchctl print system/com.flowfuse.device-agent
 
 #### Windows (Service Control)
 
-```
+```bash
 # Start the service
 sc.exe start flowfuse-device-agent
 # Stop the service
@@ -122,6 +126,25 @@ sc.exe restart flowfuse-device-agent
 # Check service status
 sc.exe query flowfuse-device-agent
 ```
+
+### Updating components
+
+#### Node.js
+To update Node.js, you can specify the `--update-nodejs` flag with the desired version:
+
+```bash
+./flowfuse-device-agent-installer --update-nodejs --nodejs-version 20.19.1
+```
+
+Specifying `--update-nodejs` flag without a version will pick the default version defined in the installer.
+
+#### Device Agent
+To update the Device Agent package, use the `--update-agent` flag, optionally specifying the version:
+```bash
+./flowfuse-device-agent-installer --update-agent --agent-version 3.3.2
+```
+
+Specifying `--update-agent` without a version will update to the latest available version.
 
 
 ### Log Files
@@ -199,3 +222,63 @@ To clean up build artifacts and temporary files, run:
 ```bash
 make clean
 ```
+
+## Contributing
+
+### Commit Message Format
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) 
+with Angular preset for automated versioning and releases. 
+**All commits that affect the installer must use the `installer` scope** to be included in releases.
+
+#### Commit Message Structure
+
+```
+<type>(installer): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Supported Types and Release Impact
+
+| Type | Description | Release Impact |
+|------|-------------|----------------|
+| `feat(installer)` | New feature | Minor version bump |
+| `fix(installer)` | Bug fix | Patch version bump |
+| `perf(installer)` | Performance improvement | Patch version bump |
+| `refactor(installer)` | Code refactoring | Patch version bump |
+| `chore(installer)` | Maintenance tasks | Patch version bump |
+| `docs(installer)` | Documentation changes | Patch version bump |
+| `style(installer)` | Code style changes | Patch version bump |
+| `test(installer)` | Test changes | Patch version bump |
+
+#### Breaking Changes
+
+For breaking changes, add `BREAKING CHANGE:` in the commit footer or use `!` after the type/scope:
+
+```
+feat(installer)!: remove support for Node.js v16
+
+BREAKING CHANGE: Node.js v16 is no longer supported, minimum version is now v18
+```
+
+This will trigger a major version bump.
+
+#### Examples
+
+```bash
+# Feature addition (minor release)
+feat(installer): add support for custom installation directory
+
+# Bug fix (patch release)
+fix(installer): resolve service startup issue on Ubuntu 22.04
+
+# Breaking change (major release)
+feat(installer)!: change default service user from root to flowfuse
+
+BREAKING CHANGE: The default service user has changed from root to flowfuse for improved security
+```
+
+**Important:** Commits without the `installer` scope will not trigger releases or appear in the changelog.

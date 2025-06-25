@@ -6,7 +6,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
+	"github.com/flowfuse/device-agent-installer/pkg/config"
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
 )
@@ -82,6 +84,117 @@ func InstallDeviceAgent(version, baseDir string, update bool) error {
 	logger.Info(completeMsg)
 
 	return nil
+}
+
+// getDeviceAgentVersion retrieves version of cuirrently installed Device agent from installer config file.
+//
+// Returns:
+//   - string: The version of the installed Device Agent, or an empty string if not found
+//   - error: An error if the command fails or if the output cannot be parsed
+func GetInstalledDeviceAgentVersion() (string, error) {
+	// Load saved configuration
+	logger.Debug("Loading configuration...")
+	savedAgentVersion := ""
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		logger.Error("Could not load configuration: %v", err)
+		return "", fmt.Errorf("could not load configuration: %w", err)
+	} else {
+		savedAgentVersion = cfg.AgentVersion
+		logger.Debug("Node.js version retrieved from config: %s", savedAgentVersion)
+	}
+
+	return savedAgentVersion, nil
+}
+
+// getLatestDeviceAgentVersion retrieves the latest version of
+// the FlowFuse Device Agent package available in npmjs registry.
+// It runs the npm view command to get the latest version.
+//
+// Returns:
+//   - string: The latest version of the Device Agent package
+//   - error: An error if the command fails or if the output cannot be parsed
+func GetLatestDeviceAgentVersion() (string, error) {
+	var viewCmd *exec.Cmd
+	serviceUser := utils.ServiceUsername
+
+	baseDir, err := utils.GetWorkingDirectory()
+	if err != nil {
+		logger.Error("Failed to get working directory: %v", err)
+		return "", fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	setNodeDirectories(baseDir)
+	nodeBinDirPath := GetNodeBinDir()
+	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	if err != nil {
+		logger.Error("Failed to set PATH: %v", err)
+		return "", fmt.Errorf("failed to set PATH: %w", err)
+	}
+
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		viewCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), "view", packageName, "version")
+		env := os.Environ()
+		viewCmd.Env = append(env, newPath)
+	case "windows":
+		viewCmd = exec.Command("cmd", "/C", npmBinPath, "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), "view", packageName, "version")
+		env := os.Environ()
+		viewCmd.Env = append(env, newPath)
+	default:
+		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
+
+	output, err := viewCmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get latest device agent version: %w\nOutput: %s", err, output)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+// isAgentUpdateNeeded checks if the Device Agent needs to be updated.
+// It compares the currently installed version with the requested version.
+// If the currently installed version is equal to requested version,
+// it returns false, indicating no update is needed. Otherwise, it returns true.
+//
+// Parameters:
+//   - requestedAgentVersion: The version of the Device Agent that is requested to be installed
+//
+// Returns:
+//   - bool: true if an update is needed, false otherwise
+//   - error: An error if the current version cannot be retrieved or if the comparison fails
+func IsAgentUpdateRequired(requestedAgentVersion string) (bool, error) {
+	logger.LogFunctionEntry("IsAgentUpdateRequired", map[string]interface{}{
+		"requestedAgentVersion": requestedAgentVersion,
+	})
+	var err error
+
+	if requestedAgentVersion == "latest" {
+		requestedAgentVersion, err = GetLatestDeviceAgentVersion()
+		if err != nil {
+			return false, fmt.Errorf("failed to get latest device agent version: %v", err)
+		}
+	}
+	currentVersion, err := GetInstalledDeviceAgentVersion()
+	if err != nil {
+		return false, fmt.Errorf("failed to get current device agent version: %v", err)
+	}
+	if currentVersion == "" {
+		logger.Debug("No FlowFuse Device Agent installed, proceeding with installation.")
+		return true, nil
+	}
+	if requestedAgentVersion == "" {
+		logger.Debug("No specified version provided, assuming no update needed.")
+		return false, nil
+	}
+	logger.Debug("Current FlowFuse Device Agent version: %s, requested version: %s", currentVersion, requestedAgentVersion)
+	if currentVersion == requestedAgentVersion {
+		logger.LogFunctionExit("IsAgentUpdateRequired", "no update needed", nil)
+		return false, nil
+	}
+
+	logger.LogFunctionExit("IsAgentUpdateRequired", "update needed", nil)
+	return true, nil
 }
 
 // UninstallDeviceAgent removes the FlowFuse Device Agent package from the system.
@@ -216,13 +329,13 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	}
 	var chownCmd *exec.Cmd
 	switch runtime.GOOS {
-		case "linux":
-			chownCmd = exec.Command("sudo", "chown", "-R", serviceUser+":"+serviceUser, baseDir)
-		case "darwin":
-			chownCmd = exec.Command("sudo", "chown", "-R", serviceUser, baseDir)
-		case "windows":
-			logger.Info("Configuration completed successfully!")
-			return nil
+	case "linux":
+		chownCmd = exec.Command("sudo", "chown", "-R", serviceUser+":"+serviceUser, baseDir)
+	case "darwin":
+		chownCmd = exec.Command("sudo", "chown", "-R", serviceUser, baseDir)
+	case "windows":
+		logger.Info("Configuration completed successfully!")
+		return nil
 	}
 	// Set permissions for the working directory
 	if output, err := chownCmd.CombinedOutput(); err != nil {

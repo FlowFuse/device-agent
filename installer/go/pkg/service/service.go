@@ -17,7 +17,7 @@ import (
 // Returns:
 //   - error: nil if successful, otherwise an error explaining what went wrong
 func Install(serviceName, workDir string) error {
-	logger.Info("Installing service %s for %s...", serviceName, runtime.GOOS)
+	logger.Info("Installing FlowFuse Device Agent service for %s...", runtime.GOOS)
 	switch runtime.GOOS {
 	case "linux":
 		return InstallLinux(serviceName, workDir)
@@ -38,7 +38,7 @@ func Install(serviceName, workDir string) error {
 // Returns:
 //   - error: nil if the service started successfully, otherwise an error describing what went wrong
 func Start(serviceName string) error {
-	logger.Info("Starting service %s", serviceName)
+	logger.Info("Starting FlowFuse Device Agent service...")
 	switch runtime.GOOS {
 	case "linux":
 		return StartLinux(serviceName)
@@ -60,7 +60,7 @@ func Start(serviceName string) error {
 // Returns:
 //   - error: nil if the service stopped successfully, otherwise an error describing what went wrong
 func Stop(serviceName string) error {
-	logger.Info("Stopping service %s", serviceName)
+	logger.Info("Stopping FlowFuse Device Agent service...")
 	switch runtime.GOOS {
 	case "linux":
 		return StopLinux(serviceName)
