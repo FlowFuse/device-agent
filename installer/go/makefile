@@ -9,6 +9,7 @@ build: ## builds the application for all platforms
 	GOARCH=amd64 GOOS=linux go build -ldflags "-X main.version=${VERSION}" -o ./out/linux/${APP_NAME}-linux-amd64 main.go
 	GOARCH=arm64 GOOS=linux go build -ldflags "-X main.version=${VERSION}" -o ./out/linux/${APP_NAME}-linux-arm64 main.go
 	GOARCH=arm GOOS=linux go build -ldflags "-X main.version=${VERSION}" -o ./out/linux/${APP_NAME}-linux-arm main.go
+	GOARCH=amd64 GOOS=windows go build -ldflags "-X main.version=${VERSION}" -o ./out/windows/${APP_NAME}-windows-amd64.exe main.go
 
 clean: ## cleans the build artifacts
 	go clean

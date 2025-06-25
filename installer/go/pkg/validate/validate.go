@@ -19,7 +19,7 @@ import (
 //   - nil if all checks pass
 //   - error if any check fails
 func PreInstall(serviceName string) error {
-		if err := utils.CheckPermissions(); err != nil {
+	if err := utils.CheckPermissions(); err != nil {
 		logger.Error("Permission check failed: %v", err)
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("permission check failed: %w", err)
@@ -54,7 +54,7 @@ func checkConfigFileExists(serviceName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	deviceAgentConfig := fmt.Sprintf("%s/device.yml", workDir)
+	deviceAgentConfig := filepath.Join(workDir, "device.yml")
 
 	if _, err := os.Stat(deviceAgentConfig); !os.IsNotExist(err) {
 		logger.Info("The working directory %s exists and contains Device Agent configuration file", workDir)
