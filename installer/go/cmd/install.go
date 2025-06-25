@@ -33,7 +33,7 @@ import (
 //   - error: An error object if any step of the installation fails, nil otherwise
 //
 // The function logs detailed information about each step of the process.
-func Install(nodeVersion, agentVersion, installerDir string, url string, otc string) error {
+func Install(nodeVersion, agentVersion, installerDir, url, otc string, update bool) error {
 	logger.LogFunctionEntry("Install", map[string]interface{}{
 		"nodeVersion":  nodeVersion,
 		"agentVersion": agentVersion,
@@ -61,7 +61,7 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 
 	// Check/install Node.js
 	logger.Info("Checking Node.js installation...")
-	if err := nodejs.EnsureNodeJs(nodeVersion, workDir); err != nil {
+	if err := nodejs.EnsureNodeJs(nodeVersion, workDir, false); err != nil {
 		logger.Error("Node.js setup failed: %v", err)
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("node.js setup failed: %w", err)
@@ -69,8 +69,7 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 	logger.Debug("Node.js check/installation successful")
 
 	// Install the device agent package
-	logger.Info("Installing FlowFuse Device Agent package...")
-	if err := nodejs.InstallDeviceAgent(agentVersion, workDir); err != nil {
+	if err := nodejs.InstallDeviceAgent(agentVersion, workDir, update); err != nil {
 		logger.Error("Device Agent package installation failed: %v", err)
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("device agent installation failed: %w", err)
@@ -95,8 +94,17 @@ func Install(nodeVersion, agentVersion, installerDir string, url string, otc str
 	logger.Debug("Service setup successful")
 
 	// Save the configuration
+	if agentVersion == "latest" {
+		var err error
+		agentVersion, err = nodejs.GetLatestDeviceAgentVersion()
+		if err != nil {
+			return fmt.Errorf("failed to get latest device agent version: %v", err)
+		}
+	}
 	cfg := &config.InstallerConfig{
 		ServiceUsername: utils.ServiceUsername,
+		NodeVersion:     nodeVersion,
+		AgentVersion:    agentVersion,
 	}
 	logger.Debug("Saving configuration: %+v", cfg)
 	if err := config.SaveConfig(cfg); err != nil {
@@ -195,7 +203,7 @@ func Uninstall() error {
 	logger.Debug("Working directory successfully removed")
 
 	// Remove service account
-	logger.Info("Removing service account")
+	logger.Info("Removing service account...")
 	if err := utils.RemoveServiceUser(savedUsername); err != nil {
 		logger.Error("Could not remove service account: %v", err)
 		logger.Info("Warning: Could not remove service account: %s", err)
@@ -203,8 +211,196 @@ func Uninstall() error {
 		logger.Debug("Service account successfully removed")
 	}
 
-	logger.Info("FlowFuse Device Agent has been uninstalled")
+	logger.Info("FlowFuse Device Agent has been uninstalled!")
 
 	logger.LogFunctionExit("Uninstall", "success", nil)
+	return nil
+}
+
+// Update performs the update of the FlowFuse Device Agent and/or Node.js.
+//
+// The function performs the following steps:
+// 1. Checks if the process has sufficient permissions
+// 2. Checks if the device agent is currently installed
+// 3. Stops the device agent service temporarily (if updating anything)
+// 4. Updates Node.js if needed and requested (checks installed version vs required version)
+// 5. Updates the Device Agent npm package if requested
+// 6. Restarts the device agent service
+//
+// Parameters:
+//   - options: UpdateOptions specifying what to update and to which versions
+//
+// Returns:
+//   - error: An error object if any step of the update fails, nil otherwise
+// func Update(options UpdateOptions) error {
+func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) error {
+	logger.LogFunctionEntry("Update", map[string]interface{}{
+		"updateNode": updateNode,
+		"nodeVersion":  nodeVersion,
+		"updateAgent":  updateAgent,
+		"agentVersion": agentVersion,
+	})
+
+	// Validate that at least one update option is specified
+	if !updateNode && !updateAgent {
+		err := fmt.Errorf("no update options specified, use --update-nodejs and/or --update-agent")
+		logger.Error("Update validation failed: %v", err)
+		logger.LogFunctionExit("Update", nil, err)
+		return err
+	}
+
+	// Run pre-update validation
+	logger.Debug("Running pre-check...")
+	if err := utils.CheckPermissions(); err != nil {
+		logger.LogFunctionExit("Update", nil, err)
+		return fmt.Errorf("permission check failed: %w", err)
+	}
+
+	// Check if the device agent is installed
+	logger.Debug("Checking if device agent is installed...")
+	if !service.IsInstalled("flowfuse-device-agent") {
+		err := fmt.Errorf("FlowFuse Device Agent is not installed on this system")
+		logger.Error("Installation check failed: %v", err)
+		logger.LogFunctionExit("Update", nil, err)
+		return err
+	}
+
+	// Get the working directory
+	logger.Debug("Getting working directory...")
+	workDir, err := utils.GetWorkingDirectory()
+	if err != nil {
+		logger.Error("Failed to get working directory: %v", err)
+		logger.LogFunctionExit("Update", nil, err)
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+	logger.Debug("Working directory: %s", workDir)
+
+	// Check if updates are actually needed
+	nodeUpdateNeeded := false
+	agentUpdateNeeded := false
+	
+	if updateNode {
+			isNeeded, err := nodejs.IsNodeUpdateRequired(nodeVersion, workDir)
+			if err != nil {
+					logger.Error("Failed to check if Node.js update is needed: %v", err)
+					return fmt.Errorf("failed to check Node.js update requirement: %w", err)
+			}
+			nodeUpdateNeeded = isNeeded
+			if !isNeeded {
+					logger.Info("Node.js version %s is already installed and up to date", nodeVersion)
+			}
+	}
+
+	if updateAgent {
+		isNeeded, err := nodejs.IsAgentUpdateRequired(agentVersion)
+		if err != nil {
+			logger.Error("Failed to check if Device Agent update is needed: %v", err)
+			return fmt.Errorf("failed to check Device Agent update requirement: %w", err)
+		}
+		agentUpdateNeeded = isNeeded
+		if !isNeeded {
+			logger.Info("Device Agent version %s is already installed and up to date", agentVersion)
+		}
+	}
+
+	// Stop the service temporarily for the update (if we're updating anything)
+	serviceWasStopped := false
+	if nodeUpdateNeeded || agentUpdateNeeded {
+		if err := service.Stop("flowfuse-device-agent"); err != nil {
+			logger.Error("Service stop failed: %v", err)
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("service stop failed: %w", err)
+		}
+		logger.Debug("Service stopped successfully")
+		serviceWasStopped = true
+	}
+
+	// Update Node.js if requested and needed
+	if nodeUpdateNeeded {
+		if err := nodejs.UpdateNodeJs(nodeVersion, workDir); err != nil {
+			logger.Error("Node.js update failed: %v", err)
+			// Try to start the service even if Node.js update failed
+			if serviceWasStopped {
+				logger.Debug("Starting FlowFuse Device Agent service after Node.js update failure")
+				if startErr := service.Start("flowfuse-device-agent"); startErr != nil {
+					logger.Error("Failed to restart service after Node.js update failure: %v", startErr)
+				}
+			}
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("node.js update failed: %w", err)
+		}
+		if err := config.UpdateConfigField("nodeVersion", nodeVersion); err != nil {
+			logger.Error("Failed to update node version in configuration: %v", err)
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("failed to update node version in configuration: %w", err)
+		}
+
+		// Install the Device Agent package only if it was not requested to update
+		if !agentUpdateNeeded {
+			// Load saved configuration
+			logger.Debug("Loading configuration...")
+			savedAgentVersion := ""
+			cfg, err := config.LoadConfig()
+			if err != nil {
+				logger.Error("Could not load configuration: %v", err)
+				return fmt.Errorf("could not load configuration: %w", err)
+			} else {
+				savedAgentVersion = cfg.AgentVersion
+				logger.Debug("FlowFuse Device agent version from config: %s", savedAgentVersion)
+			}
+			
+			// Install the device agent package after Node.js update
+			if err := nodejs.InstallDeviceAgent(savedAgentVersion, workDir, false); err != nil {
+				logger.Error("Device Agent package installation failed: %v", err)
+				logger.LogFunctionExit("Install", nil, err)
+				return fmt.Errorf("device agent installation failed: %w", err)
+			}
+		}
+		logger.Debug("Node.js updated successful")
+	}
+
+	// Update the Device Agent package if requested and needed
+	if agentUpdateNeeded {
+		if err := nodejs.InstallDeviceAgent(agentVersion, workDir, true); err != nil {
+			logger.Error("Device Agent package update failed: %v", err)
+			// Try to start the service even if update failed with hope to recover
+			if serviceWasStopped {
+				logger.Debug("Start FlowFuse Device Agent service after update failure")
+				if startErr := service.Start("flowfuse-device-agent"); startErr != nil {
+					logger.Error("Failed to restart service after update failure: %v", startErr)
+				}
+			}
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("device agent update failed: %w", err)
+		}
+		
+		if agentVersion == "latest" {
+			var err error
+			agentVersion, err = nodejs.GetLatestDeviceAgentVersion()
+			if err != nil {
+				return fmt.Errorf("failed to get latest device agent version: %v", err)
+			}
+		}
+		if err := config.UpdateConfigField("agentVersion", agentVersion); err != nil {
+			logger.Error("Failed to update agent version in configuration: %v", err)
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("failed to update agent version in configuration: %w", err)
+		}
+		
+		logger.Debug("Device Agent update successful")
+	}
+	
+	if serviceWasStopped {
+		if err := service.Start("flowfuse-device-agent"); err != nil {
+			logger.Error("Service start failed: %v", err)
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("service start failed: %w", err)
+		}
+		logger.Debug("Service started successfully")
+	}
+
+	logger.Info("Update completed successfully!")
+
+	logger.LogFunctionExit("Update", "success", nil)
 	return nil
 }
