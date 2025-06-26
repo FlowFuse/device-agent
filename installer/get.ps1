@@ -9,8 +9,8 @@ $InstallDir = (Get-Location).Path
 # GitHub repository information
 $REPO_OWNER = "FlowFuse"
 $REPO_NAME = "device-agent"
-$RELEASE = "0.1.0"
-$RELEASE_TAG = "installer-v0.1.0"
+$RELEASE = "1.0.0"
+$RELEASE_TAG = "installer-v1.0.0"
 $BINARY_PREFIX = "flowfuse-device-installer"
 
 # Function to detect CPU architecture
@@ -31,7 +31,7 @@ function Get-DownloadUrl {
         [string]$Architecture
     )
     
-    $binaryName = "${BINARY_PREFIX}-${RELEASE}-windows-${Architecture}.exe"
+    $binaryName = "${BINARY_PREFIX}-windows-${Architecture}.exe"
     return "https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${RELEASE_TAG}/${binaryName}"
 }
 
@@ -61,7 +61,7 @@ function Download-Installer {
     $architecture = Get-WindowsArchitecture
     
     # Construct binary name and download URL
-    $binaryName = "${BINARY_PREFIX}-${RELEASE}-windows-${architecture}.exe"
+    $binaryName = "flowfuse-device-agent-installer.exe"
     $downloadUrl = Get-DownloadUrl -Architecture $architecture
     
     # Create temporary file for download
@@ -71,13 +71,12 @@ function Download-Installer {
     try {
         # Download the binary
         if (-not (Download-File -Url $downloadUrl -OutputPath $tempFileWithExt)) {
-            Write-Error "Failed to download $binaryName from $downloadUrl"
+            Write-Error "Failed to download installer from $downloadUrl"
             exit 1
         }
         
         # Install the binary
-        $finalBinaryName = "flowfuse-device-agent-installer.exe"
-        $finalPath = Join-Path -Path $InstallDir -ChildPath $finalBinaryName
+        $finalPath = Join-Path -Path $InstallDir -ChildPath $binaryName
         
         Copy-Item -Path $tempFileWithExt -Destination $finalPath -Force
         

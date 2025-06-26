@@ -9,8 +9,8 @@ set -e
 # GitHub repository information
 REPO_OWNER="FlowFuse"
 REPO_NAME="device-agent"
-RELEASE="0.1.0"
-RELEASE_TAG="installer-v0.1.0"
+RELEASE="1.0.0"
+RELEASE_TAG="installer-v1.0.0"
 BINARY_PREFIX="flowfuse-device-installer"
 
 # Function to detect operating system
@@ -75,7 +75,7 @@ download_file() {
 get_download_url() {
     local os="$1"
     local arch="$2"
-    local binary_name="${BINARY_PREFIX}-${RELEASE}-${os}-${arch}"
+    local binary_name="${BINARY_PREFIX}-${os}-${arch}"
     
     echo "https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${RELEASE_TAG}/${binary_name}"
 }
@@ -94,7 +94,7 @@ main() {
     arch=$(detect_arch)
     
     # Construct binary name and download URL
-    binary_name="${BINARY_PREFIX}-${RELEASE}-${os}-${arch}"
+    binary_name="flowfuse-device-agent-installer"
     download_url=$(get_download_url "$os" "$arch")
     
     # Create temporary file for download
@@ -103,7 +103,7 @@ main() {
     
     # Download the binary
     if ! download_file "$download_url" "$temp_file"; then
-        echo "Failed to download $binary_name from $download_url"
+        echo "Failed to download installer from $download_url"
         exit 1
     fi
     
@@ -116,8 +116,7 @@ main() {
     install_dir="$(pwd)"
     
     # Install the binary
-    local final_binary_name="flowfuse-device-agent-installer"
-    local final_path="$install_dir/$final_binary_name"
+    local final_path="$install_dir/$binary_name"
     
     # Copy and set permissions
     if ! cp "$temp_file" "$final_path"; then
