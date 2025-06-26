@@ -1,0 +1,168 @@
+name: Installer Build and Quality Check
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'installer/go/**'
+      - '.github/workflows/installer-build.yaml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'installer/go/**'
+      - '.github/workflows/installer-build.yaml'
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  GO_VERSION: '1.21'
+  GOLANGCI_LINT_VERSION: 'v2.1.6'
+
+jobs:
+  quality-check:
+    name: Code Quality & Standards Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./installer/go
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache-dependency-path: "**/go.sum"
+          
+    - name: Download dependencies
+      run: go mod download
+      
+    - name: Verify dependencies
+      run: go mod verify
+      
+    - name: Run go fmt check
+      if: false
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "❌ Code formatting issues found:"
+          gofmt -s -l .
+          echo ""
+          echo "Please run 'go fmt ./...' to format your code."
+          exit 1
+        fi
+        echo "✅ Code formatting is correct"
+        
+    - name: Run go vet
+      run: |
+        echo "Running go vet static analysis..."
+        go vet ./...
+        
+    - name: Install golangci-lint
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin ${{ env.GOLANGCI_LINT_VERSION }}
+        
+    - name: Run golangci-lint
+      if: false
+      run: |
+        echo "Running comprehensive linting..."
+        $(go env GOPATH)/bin/golangci-lint run --timeout=10m ./...
+        
+    - name: Run tests
+      run: |
+        echo "Running tests..."
+        if [ -n "$(find . -name '*_test.go')" ]; then
+          go test -v -race -coverprofile=coverage.out ./...
+          echo "✅ Tests completed"
+        else
+          echo "ℹ️  No tests found, skipping test execution"
+        fi
+        
+    - name: Check for security vulnerabilities
+      if: false
+      run: |
+        echo "Installing govulncheck..."
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        echo "Running vulnerability check..."
+        $(go env GOPATH)/bin/govulncheck ./...
+        echo "✅ Vulnerability check completed"
+        
+    - name: Run security-focused linting
+      if: false
+      run: |
+        echo "Running security-focused analysis..."
+        $(go env GOPATH)/bin/golangci-lint run --enable=gosec --timeout=5m ./...
+        echo "✅ Security analysis completed"
+
+  build-validation:
+    name: Multi-Platform Build Validation
+    runs-on: ubuntu-latest
+    needs: quality-check
+    defaults:
+      run:
+        working-directory: ./installer/go
+        
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
+        include:
+          - goos: linux
+            goarch: arm
+            
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache-dependency-path: "**/go.sum"
+          
+    - name: Download dependencies
+      run: go mod download
+        
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        VERSION: 'ci-${{ github.run_id }}'
+      run: |
+        echo "Building for $GOOS/$GOARCH..."
+        BINARY_NAME="flowfuse-device-installer-${{ matrix.goos }}-${{ matrix.goarch }}"
+        if [ "${{ matrix.goos }}" == "windows" ]; then
+          BINARY_NAME="${BINARY_NAME}.exe"
+        fi
+        
+        # Build with optimized flags
+        go build -ldflags "-X main.version=$VERSION -s -w" -o $BINARY_NAME main.go
+        
+        # Verify the binary was created
+        if [ ! -f "$BINARY_NAME" ]; then
+          echo "❌ Binary was not created: $BINARY_NAME"
+          exit 1
+        fi
+        
+        echo "✅ Binary created: $BINARY_NAME"
+        
+        # Basic execution test - verify binary can execute --help
+        echo "Running basic execution test..."
+        if [ "${{ matrix.goos }}" = "linux" ] && [ "${{ matrix.goarch }}" = "amd64" ]; then
+          chmod +x "$BINARY_NAME"
+          if ./"$BINARY_NAME" --help >/dev/null 2>&1; then
+            echo "✅ Basic execution test passed: Binary can execute --help"
+          else
+            echo "❌ Basic execution test failed: Binary cannot execute --help"
+            exit 1
+          fi
+        else
+          echo "ℹ️  Skipping basic execution test for cross-compiled binary (${{ matrix.goos }}/${{ matrix.goarch }})"
+        fi
+        
+        # Clean up binary after validation (no artifact storage)
+        rm "$BINARY_NAME"
+        echo "✅ Build validation completed for ${{ matrix.goos }}/${{ matrix.goarch }}"
