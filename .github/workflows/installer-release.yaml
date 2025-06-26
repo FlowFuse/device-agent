@@ -80,10 +80,10 @@ jobs:
             output: flowfuse-device-installer-windows-amd64.exe
           - goos: darwin
             goarch: amd64
-            output: flowfuse-device-installer-macos-amd64
+            output: flowfuse-device-installer-darwin-amd64
           - goos: darwin
             goarch: arm64
-            output: flowfuse-device-installer-macos-arm64
+            output: flowfuse-device-installer-darwin-arm64
 
     steps:
     - name: Checkout
@@ -183,8 +183,8 @@ jobs:
           "flowfuse-device-installer-linux-arm64"
           "flowfuse-device-installer-linux-arm"
           "flowfuse-device-installer-windows-amd64.exe"
-          "flowfuse-device-installer-macos-amd64"
-          "flowfuse-device-installer-macos-arm64"
+          "flowfuse-device-installer-darwin-amd64"
+          "flowfuse-device-installer-darwin-arm64"
         )
         
         missing_files=()

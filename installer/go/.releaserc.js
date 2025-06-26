@@ -54,10 +54,10 @@ module.exports = {
           path: 'release-artifacts/flowfuse-device-installer-windows-amd64.exe'
         },
         {
-          path: 'release-artifacts/flowfuse-device-installer-macos-amd64'
+          path: 'release-artifacts/flowfuse-device-installer-darwin-amd64'
         },
         {
-          path: 'release-artifacts/flowfuse-device-installer-macos-arm64'
+          path: 'release-artifacts/flowfuse-device-installer-darwin-arm64'
         }
       ]
     }]
