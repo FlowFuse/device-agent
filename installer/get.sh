@@ -10,7 +10,7 @@ set -e
 REPO_OWNER="FlowFuse"
 REPO_NAME="device-agent"
 RELEASE="1.0.0"
-RELEASE_TAG="installer-v1.0.0"
+RELEASE_TAG="installer-v$RELEASE"
 BINARY_PREFIX="flowfuse-device-installer"
 
 # Function to detect operating system
