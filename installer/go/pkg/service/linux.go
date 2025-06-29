@@ -14,11 +14,11 @@ import (
 
 // ServiceConfig holds the data for the service template
 type ServiceConfig struct {
-	User        string
-	WorkDir     string
-	NodeBinDir  string
-	ServiceName string // Used for sysvinit scripts
-	LogFile 		string // Log file path for openrc scripts
+	User         string
+	WorkDir      string
+	NodeBinDir   string
+	ServiceName  string // Used for sysvinit scripts
+	LogFile      string // Log file path for openrc scripts
 	ErrorLogFile string // Error log file path for openrc scripts
 }
 
@@ -56,7 +56,7 @@ func IsSysVInit() bool {
 func IsOpenRC() bool {
 	logger.LogFunctionEntry("IsOpenRC", nil)
 	defer logger.LogFunctionExit("IsOpenRC", nil, nil)
-	
+
 	_, err := exec.LookPath("rc-service")
 	return err == nil
 }
@@ -108,7 +108,7 @@ func InstallSystemd(serviceName, workDir string) error {
 		"workDir":     workDir,
 	})
 	defer logger.LogFunctionExit("InstallSystemd", nil, nil)
-	
+
 	config := ServiceConfig{
 		User:       utils.ServiceUsername,
 		WorkDir:    workDir,
@@ -264,26 +264,26 @@ func InstallOpenRC(serviceName, workDir string) error {
 	defer logger.LogFunctionExit("InstallOpenRC", nil, nil)
 
 	// Create the log directory
- 	logDir := filepath.Join(workDir, "logs")
- 	mkdirCmd := exec.Command("sudo", "mkdir", "-p", logDir)
- 	if output, err := mkdirCmd.CombinedOutput(); err != nil {
- 		return fmt.Errorf("failed to create directory %s: %w\nOutput: %s", logDir, err, output)
- 	}
+	logDir := filepath.Join(workDir, "logs")
+	mkdirCmd := exec.Command("sudo", "mkdir", "-p", logDir)
+	if output, err := mkdirCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w\nOutput: %s", logDir, err, output)
+	}
 
- 	logger.Debug("Setting ownership of %s to %s...", logDir, utils.ServiceUsername)
- 	chownCmd := exec.Command("sudo", "chown", "-R", utils.ServiceUsername, logDir)
- 	if output, err := chownCmd.CombinedOutput(); err != nil {
- 		return fmt.Errorf("failed to set logs directory ownership: %w\nOutput: %s", err, output)
- 	}
+	logger.Debug("Setting ownership of %s to %s...", logDir, utils.ServiceUsername)
+	chownCmd := exec.Command("sudo", "chown", "-R", utils.ServiceUsername, logDir)
+	if output, err := chownCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to set logs directory ownership: %w\nOutput: %s", err, output)
+	}
 
- 	logFilePath := filepath.Join(logDir, fmt.Sprintf("%s.log", serviceName))
- 	errorLogFilePath := filepath.Join(logDir, fmt.Sprintf("%s-error.log", serviceName))
-	
+	logFilePath := filepath.Join(logDir, fmt.Sprintf("%s.log", serviceName))
+	errorLogFilePath := filepath.Join(logDir, fmt.Sprintf("%s-error.log", serviceName))
+
 	config := ServiceConfig{
-		User:       utils.ServiceUsername,
-		WorkDir:    workDir,
-		NodeBinDir: nodejs.GetNodeBinDir(),
-		LogFile: 		logFilePath,
+		User:         utils.ServiceUsername,
+		WorkDir:      workDir,
+		NodeBinDir:   nodejs.GetNodeBinDir(),
+		LogFile:      logFilePath,
 		ErrorLogFile: errorLogFilePath,
 	}
 
@@ -402,7 +402,7 @@ func StartSysVInit(serviceName string) error {
 }
 
 // StartOpenRC starts an OpenRC service
-// 
+//
 // Parameters:
 //   - serviceName: The name of the OpenRC service to start
 //
@@ -503,15 +503,57 @@ func StopOpenRC(serviceName string) error {
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
 func UninstallLinux(serviceName string) error {
-	if IsSystemd() && IsInstalledSystemd(serviceName) {
-		return UninstallSystemd(serviceName)
-	} else if IsSysVInit() && IsInstalledSysVInit(serviceName) {
-		return UninstallSysVInit(serviceName)
-	} else if IsOpenRC() && IsInstalledSysVInit(serviceName) {
-		return UninstallOpenRC(serviceName)
+	// Try each supported init system, logging results appropriately
+	if IsSystemd() {
+		logger.Debug("Attempting systemd service removal...")
+		if err := UninstallSystemd(serviceName); err != nil {
+			// Check if this was a "not found" error or actual failure
+			if !IsInstalledSystemd(serviceName) {
+				logger.Info("Systemd service %s was not installed, skipping", serviceName)
+			} else {
+				logger.Error("Failed to remove systemd service: %v", err)
+				return err
+			}
+		} else {
+			logger.Debug("Systemd service successfully removed")
+			return nil
+		}
 	}
-	logger.Error("No supported init system found or service not installed")
-	return fmt.Errorf("no supported init system found or service not installed")
+
+	if IsSysVInit() {
+		logger.Debug("Attempting SysVInit service removal...")
+		if err := UninstallSysVInit(serviceName); err != nil {
+			// Check if this was a "not found" error or actual failure
+			if !IsInstalledSysVInit(serviceName) {
+				logger.Info("SysVInit service %s was not installed, skipping", serviceName)
+			} else {
+				logger.Error("Failed to remove SysVInit service: %v", err)
+				return err
+			}
+		} else {
+			logger.Debug("SysVInit service successfully removed")
+			return nil
+		}
+	}
+
+	if IsOpenRC() {
+		logger.Debug("Attempting OpenRC service removal...")
+		if err := UninstallOpenRC(serviceName); err != nil {
+			// Check if this was a "not found" error or actual failure
+			if !IsInstalledSysVInit(serviceName) { // OpenRC uses same check as SysVInit
+				logger.Info("OpenRC service %s was not installed, skipping", serviceName)
+			} else {
+				logger.Error("Failed to remove OpenRC service: %v", err)
+				return err
+			}
+		} else {
+			logger.Debug("OpenRC service successfully removed")
+			return nil
+		}
+	}
+
+	logger.Info("No supported init system found or service was not installed on any system")
+	return nil // Changed from error to nil - not finding service to remove is not an error
 }
 
 // UninstallSystemd removes a systemd service
@@ -530,10 +572,23 @@ func UninstallSystemd(serviceName string) error {
 	_ = disableCmd.Run()
 
 	serviceFilePath := "/etc/systemd/system/" + serviceName + ".service"
-	rmCmd := exec.Command("sudo", "rm", "-f", serviceFilePath)
-	if output, err := rmCmd.CombinedOutput(); err != nil {
-		logger.Error("Failed to remove service file: %s", output)
-		return fmt.Errorf("failed to remove service file: %w\nOutput: %s", err, output)
+
+	// Check if service file exists before attempting removal
+	if _, err := os.Stat(serviceFilePath); err != nil {
+		if os.IsNotExist(err) {
+			logger.Debug("Systemd service file %s does not exist, skipping removal", serviceFilePath)
+		} else {
+			logger.Error("Failed to check service file status: %v", err)
+			return fmt.Errorf("failed to check service file status: %w", err)
+		}
+	} else {
+		// File exists, attempt to remove it
+		rmCmd := exec.Command("sudo", "rm", "-f", serviceFilePath)
+		if output, err := rmCmd.CombinedOutput(); err != nil {
+			logger.Error("Failed to remove service file: %s", output)
+			return fmt.Errorf("failed to remove service file: %w\nOutput: %s", err, output)
+		}
+		logger.Debug("Systemd service file removed successfully")
 	}
 
 	reloadCmd := exec.Command("sudo", "systemctl", "daemon-reload")
@@ -570,10 +625,23 @@ func UninstallSysVInit(serviceName string) error {
 	}
 
 	serviceFilePath := "/etc/init.d/" + serviceName
-	rmCmd := exec.Command("sudo", "rm", "-f", serviceFilePath)
-	if output, err := rmCmd.CombinedOutput(); err != nil {
-		logger.Error("Failed to remove service file: %s", output)
-		return fmt.Errorf("failed to remove service file: %w\nOutput: %s", err, output)
+
+	// Check if service script exists before attempting removal
+	if _, err := os.Stat(serviceFilePath); err != nil {
+		if os.IsNotExist(err) {
+			logger.Debug("SysVInit service script %s does not exist, skipping removal", serviceFilePath)
+		} else {
+			logger.Error("Failed to check service script status: %v", err)
+			return fmt.Errorf("failed to check service script status: %w", err)
+		}
+	} else {
+		// File exists, attempt to remove it
+		rmCmd := exec.Command("sudo", "rm", "-f", serviceFilePath)
+		if output, err := rmCmd.CombinedOutput(); err != nil {
+			logger.Error("Failed to remove service script: %s", output)
+			return fmt.Errorf("failed to remove service script: %w\nOutput: %s", err, output)
+		}
+		logger.Debug("SysVInit service script removed successfully")
 	}
 
 	return nil
@@ -590,15 +658,33 @@ func UninstallSysVInit(serviceName string) error {
 func UninstallOpenRC(serviceName string) error {
 	_ = StopOpenRC(serviceName)
 
+	// Try to remove service from OpenRC registry - ignore errors as service might not be registered
 	rmServiceCmd := exec.Command("sudo", "rc-update", "del", serviceName)
 	if output, err := rmServiceCmd.CombinedOutput(); err != nil {
-		logger.Error("Failed to remove service from OpenRC: %s", output)
-		return fmt.Errorf("failed to remove service from OpenRC: %w\nOutput: %s", err, output)
+		logger.Debug("OpenRC service %s was not registered or removal failed: %s", serviceName, output)
+		// Continue - this is not a fatal error, service script might still exist
+	} else {
+		logger.Debug("OpenRC service removed from registry successfully")
 	}
-	rmCmd := exec.Command("sudo", "rm", "-f", "/etc/init.d/"+serviceName)
-	if output, err := rmCmd.CombinedOutput(); err != nil {
-		logger.Error("Failed to remove service file: %s", output)
-		return fmt.Errorf("failed to remove service file: %w\nOutput: %s", err, output)
+
+	serviceFilePath := "/etc/init.d/" + serviceName
+
+	// Check if service script exists before attempting removal
+	if _, err := os.Stat(serviceFilePath); err != nil {
+		if os.IsNotExist(err) {
+			logger.Debug("OpenRC service script %s does not exist, skipping removal", serviceFilePath)
+		} else {
+			logger.Error("Failed to check service script status: %v", err)
+			return fmt.Errorf("failed to check service script status: %w", err)
+		}
+	} else {
+		// File exists, attempt to remove it
+		rmCmd := exec.Command("sudo", "rm", "-f", serviceFilePath)
+		if output, err := rmCmd.CombinedOutput(); err != nil {
+			logger.Error("Failed to remove OpenRC service script: %s", output)
+			return fmt.Errorf("failed to remove OpenRC service script: %w\nOutput: %s", err, output)
+		}
+		logger.Debug("OpenRC service script removed successfully")
 	}
 
 	return nil

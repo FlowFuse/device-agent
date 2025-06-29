@@ -14,19 +14,19 @@ import (
 
 // LaunchdConfig holds the data for the launchd template
 type LaunchdConfig struct {
-	Label   	string
-	WorkDir 	string
-	LogFile  	string
-	ErrorFile string
-	User 			string
+	Label      string
+	WorkDir    string
+	LogFile    string
+	ErrorFile  string
+	User       string
 	NodeBinDir string
 }
 
 // newsyslogConfig holds the data for the newsyslog configuration
 type newsyslogConfig struct {
-	LogFile 	string
+	LogFile   string
 	ErrorFile string
-	User 			string
+	User      string
 }
 
 // Global variables
@@ -36,7 +36,7 @@ const serviceFilePath = "/Library/LaunchDaemons/" + serviceLabel + ".plist"
 // InstallDarwin installs the service on macOS using launchd
 // It creates a plist file in the LaunchDaemons directory and sets the necessary permissions
 // It also creates a log directory for the service
-// 
+//
 // Parameters:
 //   - workDir: The working directory where the service will operate
 //
@@ -61,11 +61,11 @@ func InstallDarwin(workDir string) error {
 	errorLogFilePath := filepath.Join(logDir, "flowfuse-device-agent-error.log")
 
 	config := LaunchdConfig{
-		Label:   		serviceLabel,
-		WorkDir: 		workDir,
-		LogFile:  	logFilePath,
-		ErrorFile: 	errorLogFilePath,
-		User:    		serviceUser,
+		Label:      serviceLabel,
+		WorkDir:    workDir,
+		LogFile:    logFilePath,
+		ErrorFile:  errorLogFilePath,
+		User:       serviceUser,
 		NodeBinDir: nodejs.GetNodeBinDir(),
 	}
 
@@ -85,7 +85,7 @@ func InstallDarwin(workDir string) error {
 	}
 	tmpFile.Close()
 
-	copyCmd := exec.Command("sudo", "cp","-X", tmpFile.Name(), serviceFilePath)
+	copyCmd := exec.Command("sudo", "cp", "-X", tmpFile.Name(), serviceFilePath)
 	if output, err := copyCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to copy service file: %w\nOutput: %s", err, output)
 	}
@@ -149,22 +149,48 @@ func StopDarwin() error {
 // Returns:
 //   - error: nil if successful, otherwise an error explaining what went wrong
 func UninstallDarwin() error {
-	if IsInstalledDarwin() {
-		StopDarwin()
-		// Unload the service
-		unloadCmd := exec.Command("sudo", "launchctl", "unload", "-w", serviceFilePath)
-		_ = unloadCmd.Run() // Ignore errors
-		// Remove the service file
+	// Always attempt to stop the service first (ignore errors)
+	_ = StopDarwin()
+
+	// Attempt to unload the service (ignore errors - service might not be loaded)
+	unloadCmd := exec.Command("sudo", "launchctl", "unload", "-w", serviceFilePath)
+	_ = unloadCmd.Run()
+
+	// Check if service file exists before attempting removal
+	if _, err := os.Stat(serviceFilePath); err != nil {
+		if os.IsNotExist(err) {
+			logger.Debug("Darwin service file %s does not exist, skipping removal", serviceFilePath)
+		} else {
+			logger.Error("Failed to check service file status: %v", err)
+			return fmt.Errorf("failed to check service file status: %w", err)
+		}
+	} else {
+		// Service file exists, attempt to remove it
 		removeCmd := exec.Command("sudo", "rm", "-f", serviceFilePath)
 		if output, err := removeCmd.CombinedOutput(); err != nil {
+			logger.Error("Failed to remove service file: %s", output)
 			return fmt.Errorf("failed to remove service file: %w\nOutput: %s", err, output)
 		}
-		// Remove the newsyslog configuration file
-		nsConfFilePath := filepath.Join("/etc/newsyslog.d/", fmt.Sprintf("%s.conf", serviceLabel))
-		removeCmd = exec.Command("sudo", "rm", "-rf", nsConfFilePath)
+		logger.Debug("Darwin service file removed successfully")
+	}
+
+	// Check if newsyslog configuration file exists before attempting removal
+	nsConfFilePath := filepath.Join("/etc/newsyslog.d/", fmt.Sprintf("%s.conf", serviceLabel))
+	if _, err := os.Stat(nsConfFilePath); err != nil {
+		if os.IsNotExist(err) {
+			logger.Debug("Darwin newsyslog configuration file %s does not exist, skipping removal", nsConfFilePath)
+		} else {
+			logger.Error("Failed to check newsyslog configuration file status: %v", err)
+			return fmt.Errorf("failed to check newsyslog configuration file status: %w", err)
+		}
+	} else {
+		// Configuration file exists, attempt to remove it
+		removeCmd := exec.Command("sudo", "rm", "-rf", nsConfFilePath)
 		if output, err := removeCmd.CombinedOutput(); err != nil {
+			logger.Error("Failed to remove newsyslog configuration file: %s", output)
 			return fmt.Errorf("failed to remove newsyslog configuration file: %w\nOutput: %s", err, output)
 		}
+		logger.Debug("Darwin newsyslog configuration file removed successfully")
 	}
 
 	return nil
@@ -210,9 +236,9 @@ func createNewsyslogConfig(serviceUser, logFile, errorFile string) error {
 	confFilePath := filepath.Join(nsDir, fmt.Sprintf("%s.conf", serviceLabel))
 	logger.Debug("Configuration file path: %s", confFilePath)
 	config := newsyslogConfig{
-		LogFile: 		logFile,
-		ErrorFile: 	errorFile,
-		User: 			serviceUser,
+		LogFile:   logFile,
+		ErrorFile: errorFile,
+		User:      serviceUser,
 	}
 
 	tmpl, err := template.New("newsyslog").Parse(newsyslogTemplate)

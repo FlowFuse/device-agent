@@ -244,8 +244,13 @@ func UninstallDeviceAgent(baseDir string) error {
 
 	logger.Debug("Uninstall command: %s", uninstallCmd.String())
 
-	if output, err := uninstallCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to uninstall device agent: %w\nOutput: %s", err, output)
+	if _, err := uninstallCmd.CombinedOutput(); err != nil {
+		// try to remove the device agent directory manually
+		deviceAgentPath := filepath.Join(nodeBaseDir, "node_modules", packageName)
+		if err := os.RemoveAll(deviceAgentPath); err != nil {
+			logger.Error("Failed to remove device agent directory: %v", err)
+			return fmt.Errorf("failed to remove device agent directory: %w", err)
+		}
 	}
 
 	logger.Info("FlowFuse Device Agent package removed successfully!")
