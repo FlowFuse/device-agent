@@ -5,10 +5,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
-	"github.com/flowfuse/device-agent-installer/pkg/utils"
 	"github.com/flowfuse/device-agent-installer/pkg/nodejs"
+	"github.com/flowfuse/device-agent-installer/pkg/utils"
 )
 
 // NSSM version used throughout the Windows service management
@@ -59,7 +60,7 @@ func InstallWindows(serviceName, workDir string) error {
 		return fmt.Errorf("failed to create service: %w\nOutput: %s", err, output)
 	}
 
-	// Configure the service 
+	// Configure the service
 	if err := configureService(nssmPath, serviceName, workDir); err != nil {
 		return err
 	}
@@ -84,13 +85,13 @@ func InstallWindows(serviceName, workDir string) error {
 //   - error: nil on success, otherwise an error indicating the failure
 func configureService(nssmPath, serviceName, workDir string) error {
 	serviceParams := map[string]string{
-		"AppDirectory":    							workDir,
-		"DisplayName":     							"FlowFuse Device Agent",
-		"Description":     							fmt.Sprintf("FlowFuse Device Agent Service running from %s", workDir),
-		"AppStdout":       							filepath.Join(workDir, "flowfuse-device-agent.log"),
-		"AppStderr":       							filepath.Join(workDir, "flowfuse-device-agent-error.log"),
-		"AppRestartDelay": 							"30000",
-		"ObjectName":      							"LocalService",
+		"AppDirectory":                 workDir,
+		"DisplayName":                  "FlowFuse Device Agent",
+		"Description":                  fmt.Sprintf("FlowFuse Device Agent Service running from %s", workDir),
+		"AppStdout":                    filepath.Join(workDir, "flowfuse-device-agent.log"),
+		"AppStderr":                    filepath.Join(workDir, "flowfuse-device-agent-error.log"),
+		"AppRestartDelay":              "30000",
+		"ObjectName":                   "LocalService",
 		"AppStdoutCreationDisposition": "4",
 		"AppStderrCreationDisposition": "4",
 		"AppRotateFiles":               "1",
@@ -187,10 +188,35 @@ func UninstallWindows(serviceName string) error {
 	_ = StopWindows(serviceName)
 
 	removeCmd := exec.Command("sc.exe", "delete", serviceName)
-	if output, err := removeCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to remove service: %w\nOutput: %s", err, output)
+	output, err := removeCmd.CombinedOutput()
+	if err != nil {
+		// Parse output to catch actual removal failure
+		outputStr := string(output)
+
+		// Common Windows error codes for service not found:
+		// 1060 = ERROR_SERVICE_DOES_NOT_EXIST
+		// 1072 = ERROR_SERVICE_MARKED_FOR_DELETE
+		if strings.Contains(outputStr, "1060") ||
+			strings.Contains(outputStr, "does not exist") ||
+			strings.Contains(outputStr, "ERROR_SERVICE_DOES_NOT_EXIST") {
+			logger.Debug("Windows service %s does not exist, skipping removal", serviceName)
+			return nil
+		}
+
+		// If service is marked for delete, this is also considered success
+		if strings.Contains(outputStr, "1072") ||
+			strings.Contains(outputStr, "marked for deletion") ||
+			strings.Contains(outputStr, "ERROR_SERVICE_MARKED_FOR_DELETE") {
+			logger.Debug("Windows service %s is marked for deletion, removal successful", serviceName)
+			return nil
+		}
+
+		// Any other error is a real failure
+		logger.Error("Failed to remove Windows service: %s", outputStr)
+		return fmt.Errorf("failed to remove service: %w\nOutput: %s", err, outputStr)
 	}
 
+	logger.Debug("Windows service removed successfully")
 	return nil
 }
 
