@@ -194,11 +194,11 @@ func Uninstall() error {
 	// Remove contents of the working directory
 	logger.Info("Removing working directory...")
 	if err := utils.RemoveWorkingDirectory(workDir); err != nil {
-			logger.Error("Failed to remove working directory content: %v", err)
-			logger.LogFunctionExit("Uninstall", nil, err)
-			return fmt.Errorf("failed to remove working directory content: %w", err)
-		}
-		logger.Debug("Working directory successfully removed")
+		logger.Error("Failed to remove working directory content: %v", err)
+		logger.LogFunctionExit("Uninstall", nil, err)
+		return fmt.Errorf("failed to remove working directory content: %w", err)
+	}
+	logger.Debug("Working directory successfully removed")
 
 	// Remove service account
 	logger.Info("Removing service account...")
