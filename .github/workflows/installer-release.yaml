@@ -42,7 +42,7 @@ jobs:
         
     - name: Calculate next version
       id: semantic
-      uses: cycjimmy/semantic-release-action@cb425203a562475bca039ba4dbf90c7f9ac790f4 # v4.1.1
+      uses: cycjimmy/semantic-release-action@c4a2fa890676fc2db25ad0aacd8ab4a0f1f4c024 # v4.1.1
       with:
         semantic_version: 23.0.3
         working_directory: ./installer/go
@@ -203,7 +203,7 @@ jobs:
         echo "✅ All expected artifacts are present"
         
     - name: Perform release
-      uses: cycjimmy/semantic-release-action@cb425203a562475bca039ba4dbf90c7f9ac790f4 # v4.1.1
+      uses: cycjimmy/semantic-release-action@c4a2fa890676fc2db25ad0aacd8ab4a0f1f4c024 # v4.1.1
       with:
         semantic_version: 23.0.3
         working_directory: ./installer/go
