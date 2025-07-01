@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/flowfuse/device-agent-installer/pkg/config"
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
@@ -142,23 +143,20 @@ func Uninstall() error {
 		return fmt.Errorf("permission check failed: %w", err)
 	}
 
-	// Check if the device agent is installed
-	logger.Debug("Checking if device agent is installed...")
+	// Check if the device agent service is installed and attempt removal
+	logger.Debug("Checking if device agent service is installed...")
 	if !service.IsInstalled("flowfuse-device-agent") {
-		err := fmt.Errorf("FlowFuse Device Agent is not installed on this system")
-		logger.Error("Installation check failed: %v", err)
-		logger.LogFunctionExit("Uninstall", nil, err)
-		return err
+		logger.Info("FlowFuse Device Agent service is not installed on this system, skipping service removal")
+	} else {
+		// Uninstall the service
+		logger.Info("Removing FlowFuse Device Agent service...")
+		if err := service.Uninstall("flowfuse-device-agent"); err != nil {
+			logger.Error("Service removal failed: %v", err)
+			logger.LogFunctionExit("Uninstall", nil, err)
+			return fmt.Errorf("service removal failed: %w", err)
+		}
+		logger.Debug("Service successfully removed")
 	}
-
-	// Uninstall the service
-	logger.Info("Removing FlowFuse Device Agent service...")
-	if err := service.Uninstall("flowfuse-device-agent"); err != nil {
-		logger.Error("Service removal failed: %v", err)
-		logger.LogFunctionExit("Uninstall", nil, err)
-		return fmt.Errorf("service removal failed: %w", err)
-	}
-	logger.Debug("Service successfully removed")
 
 	// Get the working directory
 	logger.Debug("Getting working directory...")
@@ -193,7 +191,7 @@ func Uninstall() error {
 		logger.Debug("Retrieved username from config: %s", savedUsername)
 	}
 
-	// Remove a content of the working directory
+	// Remove contents of the working directory
 	logger.Info("Removing working directory...")
 	if err := utils.RemoveWorkingDirectory(workDir); err != nil {
 		logger.Error("Failed to remove working directory content: %v", err)
@@ -205,8 +203,21 @@ func Uninstall() error {
 	// Remove service account
 	logger.Info("Removing service account...")
 	if err := utils.RemoveServiceUser(savedUsername); err != nil {
-		logger.Error("Could not remove service account: %v", err)
-		logger.Info("Warning: Could not remove service account: %s", err)
+		// Parse error to distinguish between "user not found" and actual removal failure
+		errorStr := err.Error()
+
+		// Check for common "user not found" patterns across platforms
+		if strings.Contains(errorStr, "user does not exist") ||
+			strings.Contains(errorStr, "userdel: user") && strings.Contains(errorStr, "does not exist") ||
+			strings.Contains(errorStr, "Record does not exist") ||
+			strings.Contains(errorStr, "no such user") {
+			logger.Debug("Service account %s does not exist, skipping removal", savedUsername)
+		} else {
+			// This is an actual removal failure for an existing user - stop execution
+			logger.Error("Failed to remove existing service account: %v", err)
+			logger.LogFunctionExit("Uninstall", nil, err)
+			return fmt.Errorf("failed to remove existing service account: %w", err)
+		}
 	} else {
 		logger.Debug("Service account successfully removed")
 	}
@@ -232,10 +243,11 @@ func Uninstall() error {
 //
 // Returns:
 //   - error: An error object if any step of the update fails, nil otherwise
+//
 // func Update(options UpdateOptions) error {
 func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) error {
 	logger.LogFunctionEntry("Update", map[string]interface{}{
-		"updateNode": updateNode,
+		"updateNode":   updateNode,
 		"nodeVersion":  nodeVersion,
 		"updateAgent":  updateAgent,
 		"agentVersion": agentVersion,
@@ -278,17 +290,17 @@ func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) erro
 	// Check if updates are actually needed
 	nodeUpdateNeeded := false
 	agentUpdateNeeded := false
-	
+
 	if updateNode {
-			isNeeded, err := nodejs.IsNodeUpdateRequired(nodeVersion, workDir)
-			if err != nil {
-					logger.Error("Failed to check if Node.js update is needed: %v", err)
-					return fmt.Errorf("failed to check Node.js update requirement: %w", err)
-			}
-			nodeUpdateNeeded = isNeeded
-			if !isNeeded {
-					logger.Info("Node.js version %s is already installed and up to date", nodeVersion)
-			}
+		isNeeded, err := nodejs.IsNodeUpdateRequired(nodeVersion, workDir)
+		if err != nil {
+			logger.Error("Failed to check if Node.js update is needed: %v", err)
+			return fmt.Errorf("failed to check Node.js update requirement: %w", err)
+		}
+		nodeUpdateNeeded = isNeeded
+		if !isNeeded {
+			logger.Info("Node.js version %s is already installed and up to date", nodeVersion)
+		}
 	}
 
 	if updateAgent {
@@ -348,7 +360,7 @@ func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) erro
 				savedAgentVersion = cfg.AgentVersion
 				logger.Debug("FlowFuse Device agent version from config: %s", savedAgentVersion)
 			}
-			
+
 			// Install the device agent package after Node.js update
 			if err := nodejs.InstallDeviceAgent(savedAgentVersion, workDir, false); err != nil {
 				logger.Error("Device Agent package installation failed: %v", err)
@@ -373,7 +385,7 @@ func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) erro
 			logger.LogFunctionExit("Update", nil, err)
 			return fmt.Errorf("device agent update failed: %w", err)
 		}
-		
+
 		if agentVersion == "latest" {
 			var err error
 			agentVersion, err = nodejs.GetLatestDeviceAgentVersion()
@@ -386,10 +398,10 @@ func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) erro
 			logger.LogFunctionExit("Update", nil, err)
 			return fmt.Errorf("failed to update agent version in configuration: %w", err)
 		}
-		
+
 		logger.Debug("Device Agent update successful")
 	}
-	
+
 	if serviceWasStopped {
 		if err := service.Start("flowfuse-device-agent"); err != nil {
 			logger.Error("Service start failed: %v", err)

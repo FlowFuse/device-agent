@@ -251,16 +251,26 @@ func RemoveServiceUser(username string) error {
 
 	switch runtime.GOOS {
 	case "linux":
-		removeUserCmd := exec.Command("sudo", "userdel", "-r", username)
-		if output, err := removeUserCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to remove user %s: %w\nOutput: %s", username, err, output)
+		checkUserCmd := exec.Command("id", username)
+		if err := checkUserCmd.Run(); err == nil {
+			removeUserCmd := exec.Command("sudo", "userdel", "-r", username)
+			if output, err := removeUserCmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("failed to remove user %s: %w\nOutput: %s", username, err, output)
+			}
+		} else {
+			logger.Debug("Service user %s does not exist, nothing to remove", username)
 		}
 		return nil
 
 	case "darwin":
-		removeUserCmd := exec.Command("sudo", "sysadminctl", "-deleteUser", username)
-		if output, err := removeUserCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to remove user %s: %w\nOutput: %s", username, err, output)
+		checkUserCmd := exec.Command("id", username)
+		if err := checkUserCmd.Run(); err == nil {
+			removeUserCmd := exec.Command("sudo", "sysadminctl", "-deleteUser", username)
+			if output, err := removeUserCmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("failed to remove user %s: %w\nOutput: %s", username, err, output)
+			}
+		} else {
+			logger.Debug("Service user %s does not exist, nothing to remove", username)
 		}
 		return nil
 
