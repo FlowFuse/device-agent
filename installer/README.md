@@ -2,8 +2,6 @@
 
 A Go-based installer for the FlowFuse Device Agent that automatically sets up Node.js, installs the device agent package, and configures it as a system service.
 
-{{toc}}
-
 ## Getting Started
 
 ### Requirements
