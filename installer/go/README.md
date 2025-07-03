@@ -2,6 +2,8 @@
 
 A Go-based installer for the FlowFuse Device Agent that automatically sets up Node.js, installs the device agent package, and configures it as a system service.
 
+{{toc}}
+
 ## Getting Started
 
 ### Requirements
@@ -292,3 +294,19 @@ BREAKING CHANGE: The default service user has changed from root to flowfuse for 
 ```
 
 **Important:** Commits without the `installer` scope will not trigger releases or appear in the changelog.
+
+## Release Process
+
+> [!IMPORTANT]
+> A release of the Device Agent does not requre a release of the Device Agent Installer. 
+> 
+> The Device Agent Installer release is not coupled in any way with the Device Agent one.
+
+To release a new version of the FlowFuse Device Agent Installer, follow these steps:
+1. Ensure all changes are committed and follow the commit message format outlined above.
+2. Manually trigger the [Installer Release](https://github.com/FlowFuse/device-agent/actions/workflows/installer-release.yaml) workflow 
+  3. The worflow will:
+    - Build the installer for all platforms
+    - Create a new release on GitHub with the changelog
+    - Upload the built binaries to the release assets
+    - Updates the `get.sh` and `get.ps1` scripts with the version tag
