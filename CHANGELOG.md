@@ -1,3 +1,20 @@
+#### 3.4.0 Release
+
+ - Bump actions/upload-artifact from 4.4.3 to 4.6.2 (#436)
+ - Bump actions/setup-node from 4.0.4 to 4.4.0 (#437)
+ - Bump cycjimmy/semantic-release-action from 4.1.0 to 4.2.1 (#438)
+ - Bump actions/download-artifact from 4.1.8 to 4.3.0 (#439)
+ - Bump docker/setup-buildx-action from 3.11.0 to 3.11.1 (#424)
+ - Bump docker/setup-buildx-action from 3.10.0 to 3.11.0 (#422)
+ - Enable telemetry by default (#443) @knolleary
+ - ci: Rename `macos` to `darwin` in the DAI binary naming scheme (#431) @ppawlowski
+ - ci: Simplify go dependency cache management in DAI related workflows (#430) @ppawlowski
+ - ci: Skip "Default Build & Test" workflow on installer changes (#428) @ppawlowski
+ - ci: Fix installer version set during a release build (#429) @ppawlowski
+ - Add blueprint library plugin and rename team library plugin (#426) @knolleary
+ - Simplified flow file import browsing in terminal (#419) @Steve-Mcl
+ - feat: Introduce `installer-mode` CLI flag (#409) @ppawlowski
+
 #### 3.3.2 Release
 
  - Bump docker/build-push-action from 6.17.0 to 6.18.0 (#410)
