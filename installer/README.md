@@ -306,7 +306,7 @@ To release a new version of the FlowFuse Device Agent Installer, follow these st
 1. Ensure all changes are committed and follow the commit message format outlined above.
 2. Manually trigger the [Installer Release](https://github.com/FlowFuse/device-agent/actions/workflows/installer-release.yaml) workflow 
 3. The worflow will:
-* Build the installer for all platforms
-* Create a new release on GitHub with the changelog
-* Upload the built binaries to the release assets
-* Updates the `get.sh` and `get.ps1` scripts with the version tag
+    * Build the installer for all platforms
+    * Create a new release on GitHub with the changelog
+    * Upload the built binaries to the release assets
+    * Updates the `get.sh` and `get.ps1` scripts with the version tag
