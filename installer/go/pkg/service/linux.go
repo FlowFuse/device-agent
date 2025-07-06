@@ -93,8 +93,7 @@ func InstallLinux(serviceName, workDir string) error {
 //
 // The function checks if systemd is available, creates a service configuration,
 // generates a service file from a template, and installs it using systemd commands.
-// It also sets appropriate permissions, enables the service to start on boot,
-// and starts the service.
+// It also sets appropriate permissions and enables the service to start on boot.
 //
 // Parameters:
 //   - serviceName: the name of the systemd service to create
@@ -154,10 +153,6 @@ func InstallSystemd(serviceName, workDir string) error {
 		return fmt.Errorf("failed to enable service: %w\nOutput: %s", err, output)
 	}
 
-	if err := StartLinux(serviceName); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -177,7 +172,7 @@ func InstallSystemd(serviceName, workDir string) error {
 // The function requires sudo privileges to:
 //   - Copy the service script to /etc/init.d/
 //   - Set permissions on the service script
-//   - Enable and start the service
+//   - Enable the service
 func InstallSysVInit(serviceName, workDir string) error {
 	logger.LogFunctionEntry("InstallSysVInit", map[string]interface{}{
 		"serviceName": serviceName,
@@ -239,16 +234,12 @@ func InstallSysVInit(serviceName, workDir string) error {
 		}
 	}
 
-	if err := StartLinux(serviceName); err != nil {
-		return err
-	}
-
 	return nil
 }
 
 // InstallOpenRC creates and installs an OpenRC service script on Linux systems.
 // The function creates a log directory, sets ownership, generates a service script from a template,
-// and installs it using OpenRC commands. It also sets appropriate permissions and starts the service.
+// and installs it using OpenRC commands. It also sets appropriate permissions and enables the service.
 //
 // Parameters:
 //   - serviceName: the name of the OpenRC service to create
@@ -317,10 +308,6 @@ func InstallOpenRC(serviceName, workDir string) error {
 
 	if output, err := exec.Command("sudo", "rc-update", "add", serviceName).CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to enable service: %w\nOutput: %s", err, output)
-	}
-
-	if err := StartLinux(serviceName); err != nil {
-		return err
 	}
 
 	return nil
