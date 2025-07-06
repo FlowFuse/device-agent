@@ -24,7 +24,7 @@ func PreInstall(serviceName string) error {
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("permission check failed: %w", err)
 	}
-	
+
 	if err := checkConfigFileExists(serviceName); err != nil {
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("configuration file pre-check failed: %w", err)
@@ -58,7 +58,7 @@ func checkConfigFileExists(serviceName string) error {
 
 	if _, err := os.Stat(deviceAgentConfig); !os.IsNotExist(err) {
 		logger.Info("The working directory %s exists and contains Device Agent configuration file", workDir)
-		userResponse := utils.YesNoPrompt("Do you want to remove it and continue installation?")
+		userResponse := utils.PromptYesNo("Do you want to remove it and continue installation?", true)
 		if userResponse {
 			if err := service.Stop(serviceName); err != nil {
 				logger.Debug("Failed to stop FlowFuse Device Agent service: %v - continuing anyway", err)
@@ -84,7 +84,7 @@ func checkConfigFileExists(serviceName string) error {
 //   - nil if libstdc++ is found in any of the checked locations
 //   - error if libstdc++ is not found in any location
 func checkLibstdcExists() error {
-		if runtime.GOOS == "linux" {
+	if runtime.GOOS == "linux" {
 		// Check common library directories with glob patterns
 		globPatterns := []string{
 			"/usr/lib/*/libstdc++.so.6", // Multi-arch directories
