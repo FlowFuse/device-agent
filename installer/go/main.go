@@ -31,7 +31,7 @@ func init() {
 	pflag.StringVarP(&agentVersion, "agent-version", "a", "latest", "Device agent version to install/update to")
 	pflag.StringVarP(&serviceUsername, "service-user", "s", "flowfuse", "Username for the service account")
 	pflag.StringVarP(&flowfuseURL, "url", "u", "https://app.flowfuse.com", "FlowFuse URL")
-	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (required)")
+	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (optional for interactive installation)")
 	pflag.BoolVarP(&showVersion, "version", "v", false, "Display installer version")
 	pflag.BoolVarP(&help, "help", "h", false, "Display help information")
 	pflag.BoolVar(&uninstall, "uninstall", false, "Uninstall the device agent")
@@ -45,7 +45,8 @@ func init() {
 		fmt.Print("\n")
 		fmt.Println("Usage:")
 		fmt.Println("  Installation:")
-		fmt.Println("    ./installer --otc <one-time-code> [--agent-version <version>] [--nodejs-versionjs-version <version>]")
+		fmt.Println("    ./installer --otc <one-time-code> [--agent-version <version>] [--nodejs-version <version>]")
+		fmt.Println("    ./installer [--agent-version <version>] [--nodejs-version <version>] (interactive mode)")
 		fmt.Println("  Update:")
 		fmt.Println("    ./installer --update-agent [--agent-version <version>]")
 		fmt.Println("    ./installer --update-nodejs [--nodejs-version <version>]")
@@ -63,12 +64,15 @@ func init() {
 		os.Exit(0)
 	}
 
-	if !uninstall && !updateNode && !updateAgent && flowfuseOneTimeCode == "" {
-		fmt.Println("[ERROR]: FlowFuse one time code is required for installation")
-		fmt.Print("\n")
-		fmt.Println("Usage:")
-		pflag.PrintDefaults()
-		os.Exit(1)
+	if flowfuseOneTimeCode == "" && !uninstall && !updateNode && !updateAgent {
+		fmt.Println("One time code has not been provided. The Device Agent automatic configuration is not possible.")
+		response := utils.PromptYesNo("Do you want to continue with the installation?", false)
+		if !response {
+			fmt.Println("Installation aborted by user.")
+			os.Exit(1)
+		} else {
+			fmt.Println("Continuing with installation in interactive mode...")
+		}
 	}
 }
 
