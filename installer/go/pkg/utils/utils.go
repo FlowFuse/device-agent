@@ -7,7 +7,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	// "net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
