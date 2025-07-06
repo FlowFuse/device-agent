@@ -5,19 +5,111 @@ import (
 	"archive/zip"
 	"bufio"
 	"compress/gzip"
-	"path/filepath"
 	"fmt"
 	"io"
+	// "net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
+	"gopkg.in/yaml.v3"
 )
 
 // Global variable to store the service username
 var ServiceUsername = "flowfuse"
+
+// DeviceConfig represents the expected structure of the device.yml configuration file
+type DeviceConfig struct {
+	DeviceID         string `yaml:"deviceId"`
+	Token            string `yaml:"token"`
+	CredentialSecret string `yaml:"credentialSecret"`
+	ForgeURL         string `yaml:"forgeURL"`
+	BrokerURL        string `yaml:"brokerURL"`
+	BrokerUsername   string `yaml:"brokerUsername"`
+	BrokerPassword   string `yaml:"brokerPassword"`
+}
+
+// PromptYesNo prompts the user with a yes/no question and returns the boolean result
+// It continues to prompt until a valid response is given and accepts various forms of yes/no responses
+//
+// Parameters:
+//   - question: The question to ask the user
+//
+// Returns:
+//   - bool: true for yes responses (y, yes, Y, YES), false for no or invalid responses
+func PromptYesNo(question string, defaultResponse bool ) bool {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		if defaultResponse {
+			fmt.Printf("%s (Y/n): ", question)
+		} else {
+			fmt.Printf("%s (y/N): ", question)	
+		}
+		var err error
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			logger.Error("Failed to read user input: %v", err)
+			return false
+		}
+
+		response = strings.TrimSpace(strings.ToLower(response))
+
+		switch response {
+		case "":
+			return defaultResponse // Default to true for empty input (Yes is default)
+		case "y", "yes":
+			return true
+		case "n", "no":
+			return false
+		}
+
+		// Invalid input, prompt again
+		fmt.Printf("Invalid response, please answer yes/no.\n")
+	}
+}
+
+// PromptMultilineInput prompts the user for multiline input until they enter an empty line
+// This is useful for collecting configuration file content from the user
+//
+// Parameters:
+//   - prompt: The message to display to the user
+//
+// Returns:
+//   - string: The complete multiline input (without the final empty line)
+//   - error: Any error that occurred while reading input
+func PromptMultilineInput() (string, error) {
+	reader := bufio.NewReader(os.Stdin)
+
+	var lines []string
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return "", fmt.Errorf("failed to read user input: %w", err)
+		}
+
+		// Remove the trailing newline for processing
+		line = strings.TrimSuffix(line, "\n")
+		line = strings.TrimSuffix(line, "\r") // Handle Windows line endings
+
+		// Done if the line is empty
+		if strings.TrimSpace(line) == "" {
+			break
+		}
+
+		lines = append(lines, line)
+	}
+
+	if len(lines) == 0 {
+		return "", fmt.Errorf("no configuration content provided")
+	}
+
+	return strings.Join(lines, "\n"), nil
+}
 
 // CheckPermissions checks if the user who executed the installer has the necessary permissions to operate
 // based on the current operating system.
@@ -106,7 +198,7 @@ func CreateWorkingDirectory() (string, error) {
 }
 
 // GetWorkingDirectory returns the default working directory for the FlowFuse device agent based on the operating system.
-// 
+//
 // Returns:
 //   - string: The path to the working directory
 //   - error: nil if successful, otherwise an error describing what went wrong
@@ -440,7 +532,7 @@ func ExtractTarGz(tarGzFile, destDir, version string) error {
 	// Get the root directory name in the archive
 	var archSuffix string
 	var rootDir string
-	if runtime.GOOS == "linux" { 
+	if runtime.GOOS == "linux" {
 		if runtime.GOARCH == "amd64" {
 			archSuffix = "x64"
 		} else if runtime.GOARCH == "386" {
@@ -607,52 +699,21 @@ func SetEnvPath(path string) (string, error) {
 	}
 }
 
-// YesNoPrompt prompts the user with a yes/no question and returns true for "yes" and false for "no".
-// It continues to prompt until a valid response is given.
-//
-// Parameters:
-//   - message: The question to ask the user
-//
-// Returns:
-//   - bool: true if the user responds with "yes" or "y", false for "no" or "n"
-func YesNoPrompt(message string) bool {
-	choices := "Y/n"
-
-	r := bufio.NewReader(os.Stdin)
-	var input string
-
-	for {
-		fmt.Fprintf(os.Stderr, "%s (%s) ", message, choices)
-		input, _ = r.ReadString('\n')
-		input = strings.TrimSpace(input)
-		if input == "" {
-			return true
-		}
-		input = strings.ToLower(input)
-		if input == "y" || input == "yes" {
-			return true
-		}
-		if input == "n" || input == "no" {
-			return false
-		}
-	}
-}
-
 // IsAlpine checks if the current operating system is Alpine Linux.
 // It checks for the presence of the "/etc/alpine-release" file or looks for "Alpine" in "/etc/os-release".
 //
 // Returns:
 //   - bool: true if the system is Alpine Linux, false otherwise
 func IsAlpine() bool {
-    if _, err := os.Stat("/etc/alpine-release"); err == nil {
-        return true
-    }
+	if _, err := os.Stat("/etc/alpine-release"); err == nil {
+		return true
+	}
 
-    data, err := os.ReadFile("/etc/os-release")
-    if err == nil && strings.Contains(string(data), "Alpine") {
-        return true
-    }
-    return false
+	data, err := os.ReadFile("/etc/os-release")
+	if err == nil && strings.Contains(string(data), "Alpine") {
+		return true
+	}
+	return false
 }
 
 // UseOfficialNodejs determines whether to use official Node.js builds or unofficial builds based on the operating system.
@@ -673,6 +734,7 @@ func UseOfficialNodejs() bool {
 //
 // Parameters:
 //   - binary: The name of the binary to check
+//
 // Returns:
 //   - bool: true if the binary exists in the system's PATH, false otherwise
 func checkBinaryExists(binary string) bool {
@@ -690,7 +752,7 @@ func checkBinaryExists(binary string) bool {
 //   - error: An error if the removal fails, nil otherwise
 func RemoveDirectory(dir string) error {
 	logger.Debug("Removing Node.js directory: %s", dir)
-	
+
 	var removeCmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux", "darwin":
@@ -706,5 +768,102 @@ func RemoveDirectory(dir string) error {
 	}
 
 	logger.Debug("%s directory removed successfully", dir)
+	return nil
+}
+
+// ValidateDeviceConfiguration validates the device.yml configuration content
+// It checks for valid YAML syntax and presence of all required fields
+//
+// Parameters:
+//   - configContent: The YAML configuration content as a string
+//
+// Returns:
+//   - error: nil if configuration is valid, error describing the issue if invalid
+func ValidateDeviceConfiguration(configContent string) error {
+	if strings.TrimSpace(configContent) == "" {
+		return fmt.Errorf("configuration content cannot be empty")
+	}
+
+	var config DeviceConfig
+	if err := yaml.Unmarshal([]byte(configContent), &config); err != nil {
+		return fmt.Errorf("invalid YAML syntax: %w", err)
+	}
+
+	// Check for required fields
+	missingFields := []string{}
+
+	if config.DeviceID == "" {
+		missingFields = append(missingFields, "deviceId")
+	}
+	if config.Token == "" {
+		missingFields = append(missingFields, "token")
+	}
+	if config.CredentialSecret == "" {
+		missingFields = append(missingFields, "credentialSecret")
+	}
+	if config.ForgeURL == "" {
+		missingFields = append(missingFields, "forgeURL")
+	}
+	if config.BrokerURL == "" {
+		missingFields = append(missingFields, "brokerURL")
+	}
+	if config.BrokerUsername == "" {
+		missingFields = append(missingFields, "brokerUsername")
+	}
+	if config.BrokerPassword == "" {
+		missingFields = append(missingFields, "brokerPassword")
+	}
+
+	if len(missingFields) > 0 {
+		return fmt.Errorf("missing required fields: %s", strings.Join(missingFields, ", "))
+	}
+
+	return nil
+}
+
+// SaveDeviceConfiguration saves the device configuration content to the specified file path
+// On Unix systems, it uses sudo to write the file with proper ownership and permissions
+//
+// Parameters:
+//   - configContent: The YAML configuration content as a string
+//   - filePath: The absolute path where the configuration file should be saved
+//
+// Returns:
+//   - error: nil if file was saved successfully, error if the operation failed
+func SaveDeviceConfiguration(configContent, filePath string) error {
+
+	if strings.TrimSpace(configContent) == "" {
+		return fmt.Errorf("configuration content cannot be empty")
+	}
+
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		tempFile, err := os.CreateTemp("", "device-config-*.yml")
+		if err != nil {
+			return fmt.Errorf("failed to create temporary file: %w", err)
+		}
+		defer os.Remove(tempFile.Name())
+
+		if _, err := tempFile.WriteString(configContent); err != nil {
+			tempFile.Close()
+			return fmt.Errorf("failed to write to temporary file: %w", err)
+		}
+		tempFile.Close()
+
+		copyCmd := exec.Command("sudo", "cp", tempFile.Name(), filePath)
+		if output, err := copyCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to copy configuration file: %w\nOutput: %s", err, output)
+		}
+
+	case "windows":
+		if err := os.WriteFile(filePath, []byte(configContent), 0644); err != nil {
+			return fmt.Errorf("failed to write configuration file %s: %w", filePath, err)
+		}
+
+	default:
+		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
+
+	logger.Info("Device configuration saved successfully to: %s", filePath)
 	return nil
 }
