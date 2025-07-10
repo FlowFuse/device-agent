@@ -46,7 +46,7 @@ func PromptYesNo(question string, defaultResponse bool ) bool {
 		if defaultResponse {
 			fmt.Printf("%s (Y/n): ", question)
 		} else {
-			fmt.Printf("%s (y/N): ", question)	
+			fmt.Printf("%s (y/N): ", question)
 		}
 		var err error
 		response, err := reader.ReadString('\n')
@@ -108,6 +108,68 @@ func PromptMultilineInput() (string, error) {
 	}
 
 	return strings.Join(lines, "\n"), nil
+}
+
+// PromptOption prompts the user to select from multiple options and returns the selected index.
+// This function provides a flexible way to present multiple choices to the user with numbered options.
+//
+// Parameters:
+//   - question: The question or prompt to display to the user
+//   - options: A slice of strings representing the available options
+//   - defaultIndex: The default option index (0-based) to select if user just presses Enter
+//
+// Returns:
+//   - int: The index (0-based) of the selected option
+//   - error: Any error that occurred while reading input or if invalid option is selected
+func PromptOption(question string, options []string, defaultIndex int) (int, error) {
+	if len(options) == 0 {
+		return -1, fmt.Errorf("no options provided")
+	}
+	if defaultIndex < 0 || defaultIndex >= len(options) {
+		return -1, fmt.Errorf("invalid default index: %d", defaultIndex)
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Printf("%s\n", question)
+		for i, option := range options {
+			marker := " "
+			if i == defaultIndex {
+				marker = "*"
+			}
+			fmt.Printf("%s %d. %s\n", marker, i+1, option)
+		}
+		fmt.Printf("Please select an option (1-%d) [default: %d]: ", len(options), defaultIndex+1)
+
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			return -1, fmt.Errorf("failed to read user input: %w", err)
+		}
+
+		response = strings.TrimSpace(response)
+
+		// Handle default selection (empty input)
+		if response == "" {
+			return defaultIndex, nil
+		}
+
+		// Try to parse the response as a number
+		var selectedIndex int
+		if _, err := fmt.Sscanf(response, "%d", &selectedIndex); err != nil {
+			fmt.Printf("Invalid input. Please enter a number between 1 and %d.\n", len(options))
+			continue
+		}
+
+		// Convert to 0-based index and validate
+		selectedIndex--
+		if selectedIndex < 0 || selectedIndex >= len(options) {
+			fmt.Printf("Invalid option. Please select a number between 1 and %d.\n", len(options))
+			continue
+		}
+
+		return selectedIndex, nil
+	}
 }
 
 // CheckPermissions checks if the user who executed the installer has the necessary permissions to operate
