@@ -36,13 +36,13 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Setup Node.js
-      uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
       with:
         node-version: '20'
         
     - name: Calculate next version
       id: semantic
-      uses: cycjimmy/semantic-release-action@cb425203a562475bca039ba4dbf90c7f9ac790f4 # v4.1.1
+      uses: cycjimmy/semantic-release-action@16ca923e6ccbb50770c415a0ccd43709a8c5f7a4 # v4.1.1
       with:
         semantic_version: 23.0.3
         working_directory: ./installer/go
@@ -132,7 +132,7 @@ jobs:
         fi
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: ${{ matrix.output }}
         path: installer/go/artifacts/${{ matrix.output }}
@@ -155,12 +155,12 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Setup Node.js
-      uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
       with:
         node-version: '20'
         
     - name: Download all artifacts
-      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
       with:
         path: artifacts
         pattern: flowfuse-device-installer-*
@@ -203,7 +203,7 @@ jobs:
         echo "✅ All expected artifacts are present"
         
     - name: Perform release
-      uses: cycjimmy/semantic-release-action@cb425203a562475bca039ba4dbf90c7f9ac790f4 # v4.1.1
+      uses: cycjimmy/semantic-release-action@16ca923e6ccbb50770c415a0ccd43709a8c5f7a4 # v4.1.1
       with:
         semantic_version: 23.0.3
         working_directory: ./installer/go
