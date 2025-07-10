@@ -40,15 +40,18 @@ func PreInstall(serviceName string) error {
 }
 
 // checkConfigFileExists checks if the Device Agent configuration file exists in the working directory.
-// If it exists, it prompts the user to remove it and continues with the installation.
-// If the user declines, it returns an error indicating that the directory must be removed manually.
+// If it exists, it prompts the user with three options:
+// 1. Keep existing configuration and continue installation
+// 2. Remove all content and do fresh installation
+// 3. Cancel installation
+// Based on the user's choice, it either preserves the config, removes all content, or cancels the installation.
 //
 // Parameters:
-//   - serviceName: the name of the service to stop before removing the directory
+//   - serviceName: the name of the service to stop before removing the directory (if removal is chosen)
 //
 // Returns:
-//   - error: nil if the configuration file does not exist or has been successfully removed,
-//     otherwise an error explaining what went wrong
+//   - error: nil if the configuration file does not exist, user chooses to keep it, or content has been successfully removed,
+//     otherwise an error explaining what went wrong or if user cancels installation
 func checkConfigFileExists(serviceName string) error {
 	workDir, err := utils.GetWorkingDirectory()
 	if err != nil {
@@ -58,8 +61,23 @@ func checkConfigFileExists(serviceName string) error {
 
 	if _, err := os.Stat(deviceAgentConfig); !os.IsNotExist(err) {
 		logger.Info("The working directory %s exists and contains Device Agent configuration file", workDir)
-		userResponse := utils.PromptYesNo("Do you want to remove it and continue installation?", true)
-		if userResponse {
+
+		options := []string{
+			"Keep existing configuration and continue installation",
+			"Remove all content and do fresh installation",
+			"Cancel installation",
+		}
+
+		choice, err := utils.PromptOption("Device Agent configuration already exists. What would you like to do?", options, 0)
+		if err != nil {
+			return fmt.Errorf("failed to get user choice: %w", err)
+		}
+
+		switch choice {
+		case 0: // Keep existing configuration
+			logger.Info("Keeping existing configuration file, continuing with installation...")
+			// Continue without removing anything
+		case 1: // Remove all content and do fresh installation
 			if err := service.Stop(serviceName); err != nil {
 				logger.Debug("Failed to stop FlowFuse Device Agent service: %v - continuing anyway", err)
 			}
@@ -70,8 +88,8 @@ func checkConfigFileExists(serviceName string) error {
 			if err := utils.RemoveWorkingDirectory(workDir); err != nil {
 				return fmt.Errorf("failed to remove working directory contents: %w", err)
 			}
-		} else {
-			return fmt.Errorf("the %s directory has not been removed. Please remove it manually and try again", workDir)
+		case 2: // Cancel installation
+			return fmt.Errorf("installation cancelled by user")
 		}
 	}
 	return nil
