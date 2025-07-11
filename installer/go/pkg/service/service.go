@@ -53,7 +53,7 @@ func Start(serviceName string) error {
 
 // Stop function stops the service with the given name.
 // It returns an error if the operation fails or if the operating system is not supported.
-// 
+//
 // Parameters:
 //   - serviceName: the name of the service to stop
 //
