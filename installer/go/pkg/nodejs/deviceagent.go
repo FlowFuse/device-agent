@@ -308,11 +308,11 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	var configureCmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start")
+		configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--installer-mode")
 		env := os.Environ()
 		configureCmd.Env = append(env, newPath)
 	case "windows":
-		configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start")
+		configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--installer-mode")
 		env := os.Environ()
 		configureCmd.Env = append(env, newPath)
 	default:
