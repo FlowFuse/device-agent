@@ -116,7 +116,7 @@ func Install(nodeVersion, agentVersion, installerDir, url, otc string, update bo
 	logger.Info("The service is now running and will start automatically on system boot.")
 	logger.Info("You can now return to the FlowFuse platform and start creating Node-RED flows on your device")
 	logger.Info("For information on how to manage the FlowFuse Device Agent,")
-	logger.Info("  please refer to the documentation at https://github.com/FlowFuse/device-agent/blob/main/installer/go/README.md")
+	logger.Info("  please refer to the documentation at https://github.com/FlowFuse/device-agent/blob/main/installer/README.md")
 
 	logger.LogFunctionExit("Install", "success", nil)
 	return nil
