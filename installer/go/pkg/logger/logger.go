@@ -81,7 +81,6 @@ func Initialize(debug bool) error {
 
 	mutex.Unlock()
 
-	Info("Logger initialized.")
 	if debug {
 		Debug("Debug logging enabled - detailed logs will be written to %s", logFilePath)
 	}
