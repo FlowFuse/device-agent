@@ -75,8 +75,13 @@ func checkConfigFileExists(serviceName string) error {
 
 		switch choice {
 		case 0: // Keep existing configuration
+			if err := service.Stop(serviceName); err != nil {
+				logger.Debug("Failed to stop FlowFuse Device Agent service: %v - continuing anyway", err)
+			}
+			if err := service.Uninstall(serviceName); err != nil {
+				logger.Debug("Failed to uninstall FlowFuse Device Agent service: %v - continuing anyway", err)
+			}
 			logger.Info("Keeping existing configuration file, continuing with installation...")
-			// Continue without removing anything
 		case 1: // Remove all content and do fresh installation
 			if err := service.Stop(serviceName); err != nil {
 				logger.Debug("Failed to stop FlowFuse Device Agent service: %v - continuing anyway", err)
