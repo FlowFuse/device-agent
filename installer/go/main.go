@@ -127,7 +127,6 @@ func main() {
 	}
 
 	if err != nil {
-		logger.Error("Installation failed: %s", err)
 		exitCode = 1
 	} else {
 		exitCode = 0
