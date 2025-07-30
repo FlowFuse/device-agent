@@ -1,0 +1,55 @@
+name: Publish Installer Scripts to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'installer/get.ps1'
+      - 'installer/get.sh'
+  workflow_dispatch: 
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish Installer Scripts to GitHub Pages
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      
+    - name: Setup Pages
+      uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      
+    - name: Prepare installer scripts for GitHub Pages
+      run: |
+        echo "Preparing installer scripts for deployment..."
+        mkdir -p _site
+        cp installer/get.ps1 _site/
+        cp installer/get.sh _site/
+        echo "Files in _site directory:"
+        ls -la _site/
+        
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+
+    - name: Publish to GitHub Pages
+      id: publish
+      uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+      
+    - name: Output deployment URL
+      run: |
+        echo "🚀 Installer scripts have been published to GitHub Pages!"
+        echo "📍 URL: ${{ steps.publish.outputs.page_url }}"
+        echo ""
+        echo "📥 Direct download links:"
+        echo "   Linux/macOS: ${{ steps.publish.outputs.page_url }}get.sh"
+        echo "   Windows:     ${{ steps.publish.outputs.page_url }}get.ps1"
