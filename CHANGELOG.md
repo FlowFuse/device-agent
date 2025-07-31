@@ -1,3 +1,16 @@
+#### 3.5.0 Release
+
+ - fix(installer): Silent misleading device agent output (#451)
+ - fix(installer): link to README.md in the summary (#449)
+ - Bump cycjimmy/semantic-release-action from 4.2.1 to 4.2.2 (#447)
+ - ci: Introduce `Publish Installer Scripts to GitHub Pages` workflow (#461) @ppawlowski
+ - Add FF Tables support (#460) @hardillb
+ - Bump on-headers and express-session (#454) @app/dependabot
+ - Disable npm audit when installing modules (#456) @knolleary
+ - ci: Update installer's "get" scripts on a release (#452) @ppawlowski
+ - Clear blueprint cache before repopulating (#453) @knolleary
+ - docs: Describe the Installer release process (#445) @ppawlowski
+
 #### 3.4.0 Release
 
  - Bump actions/upload-artifact from 4.4.3 to 4.6.2 (#436)
