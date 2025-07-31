@@ -257,21 +257,22 @@ func UninstallDeviceAgent(baseDir string) error {
 	return nil
 }
 
-// ConfigureDeviceAgent sets up the FlowFuse Device Agent with the provided configuration.
-// It configures the agent to connect to the specified FlowFuse platform URL using the provided token.
+// ConfigureDeviceAgent handles the device agent configuration based on OTC availability.
+// It supports three modes:
+// 1. otc: Configures Device Agent using provided one time code (OTC) and URL
+// 2. manual: Without OTC, prompts for device configuration and saves as device.yml
+// 3. install-only: If neither OTC nor config is provided, it does not configure the Device Agent
 //
 // Parameters:
 //   - url: The URL of the FlowFuse platform to connect to
-//   - token: The authentication token for the device
+//   - token: The authentication token for the device (can be empty for interactive mode)
 //   - baseDir: The base directory where configuration files will be stored
 //
 // Returns:
-//   - error: An error if configuration fails, or nil if successful
-//
-// The function skips configuration if device.yml already exists in the base directory.
-// For Linux, the configuration uses sudo to run as the service user.
-// For Windows, it uses cmd.exe .
-func ConfigureDeviceAgent(url string, token string, baseDir string) error {
+//   - installMode: The mode used ("otc", "manual", "install-only")
+//   - autoStartService: Whether the service should be started automatically
+//   - error: Any error that occurred during configuration
+func ConfigureDeviceAgent(url, token, baseDir string) (string, bool, error) {
 
 	var deviceAgentPath string
 
@@ -282,19 +283,19 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 	deviceConfigPath := filepath.Join(baseDir, "device.yml")
 	if _, err := os.Stat(deviceConfigPath); !os.IsNotExist(err) {
 		logger.Info("Device Agent is already configured, skipping configuration.")
-		return nil
+		return "none", true, nil
 	}
 
 	// Check if node is installed
 	if _, err := os.Stat(nodeBinPath); os.IsNotExist(err) {
 		logger.Error("Node.js not found, please restart installator script")
-		return fmt.Errorf("node.js is not installed locally")
+		return "", false, fmt.Errorf("node.js is not installed locally")
 	}
 
 	newPath, err := utils.SetEnvPath(nodeBinDirPath)
 	if err != nil {
 		logger.Error("Failed to set PATH: %v", err)
-		return fmt.Errorf("failed to set PATH: %w", err)
+		return "", false, fmt.Errorf("failed to set PATH: %w", err)
 	}
 
 	// Getting full path to flowfuse-device-agent binary
@@ -304,49 +305,106 @@ func ConfigureDeviceAgent(url string, token string, baseDir string) error {
 		deviceAgentPath = filepath.Join(nodeBinDirPath, "flowfuse-device-agent.cmd")
 	}
 
-	// Create configure command
-	var configureCmd *exec.Cmd
-	switch runtime.GOOS {
-	case "linux", "darwin":
-		configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--installer-mode")
-		env := os.Environ()
-		configureCmd.Env = append(env, newPath)
-	case "windows":
-		configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--installer-mode")
-		env := os.Environ()
-		configureCmd.Env = append(env, newPath)
-	default:
-		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
-	}
+	if token != "" {
+		// Create configure command
+		var configureCmd *exec.Cmd
+		switch runtime.GOOS {
+		case "linux", "darwin":
+			configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--installer-mode")
+			env := os.Environ()
+			configureCmd.Env = append(env, newPath)
+		case "windows":
+			configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--installer-mode")
+			env := os.Environ()
+			configureCmd.Env = append(env, newPath)
+		default:
+			return "", false, fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+		}
 
-	logger.Debug("Configure command: %s", configureCmd.String())
+		logger.Debug("Configure command: %s", configureCmd.String())
 
-	// Connect stdin, stdout, and stderr for interactive processes
-	configureCmd.Stdin = os.Stdin
-	configureCmd.Stdout = os.Stdout
-	configureCmd.Stderr = os.Stderr
+		// Connect stdin, stdout, and stderr for interactive processes
+		configureCmd.Stdin = os.Stdin
+		configureCmd.Stdout = os.Stdout
+		configureCmd.Stderr = os.Stderr
 
-	logger.Debug("Starting device agent configuration")
+		logger.Debug("Starting device agent configuration")
 
-	// Run the command interactively
-	if err := configureCmd.Run(); err != nil {
-		return fmt.Errorf("failed to configure the device agent: %w", err)
-	}
-	var chownCmd *exec.Cmd
-	switch runtime.GOOS {
-	case "linux":
-		chownCmd = exec.Command("sudo", "chown", "-R", serviceUser+":"+serviceUser, baseDir)
-	case "darwin":
-		chownCmd = exec.Command("sudo", "chown", "-R", serviceUser, baseDir)
-	case "windows":
+		// Run the command interactively
+		if err := configureCmd.Run(); err != nil {
+			return "", false, fmt.Errorf("failed to configure the device agent: %w", err)
+		}
+
+		var chownCmd *exec.Cmd
+		switch runtime.GOOS {
+		case "linux":
+			chownCmd = exec.Command("sudo", "chown", "-R", serviceUser+":"+serviceUser, baseDir)
+		case "darwin":
+			chownCmd = exec.Command("sudo", "chown", "-R", serviceUser, baseDir)
+		case "windows":
+			logger.Info("Configuration completed successfully!")
+			return "otc", true, nil
+		}
+		// Set permissions for the working directory
+		if output, err := chownCmd.CombinedOutput(); err != nil {
+			return "", false, fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
+		}
+
 		logger.Info("Configuration completed successfully!")
-		return nil
-	}
-	// Set permissions for the working directory
-	if output, err := chownCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
-	}
+		return "otc", true, nil
+	} else {
+	
+		logger.Info("No OTC (One-Time Code) provided. Automatic configuration is not possible.")
+		logger.Info("You can either:")
+		logger.Info("  1. Install the device agent only (you'll need to configure it manually later)")
+		logger.Info("  2. Provide a device configuration file now")
 
-	logger.Info("Configuration completed successfully!")
-	return nil
+		configProvided := utils.PromptYesNo("Do you want to provide a device agent configuration now?", true)
+
+		if configProvided {
+			// Manual configuration mode
+			logger.Info("Please paste your device configuration below.")
+			logger.Info("The configuration should be in YAML format with all required fields.")
+			logger.Info("Enter an empty line when done:")
+
+			configContent, err := utils.PromptMultilineInput()
+			if err != nil {
+				logger.Error("Failed to read configuration input: %v", err)
+				return "", false, fmt.Errorf("failed to read configuration input: %w", err)
+			}
+
+			// Validate configuration
+			if err := utils.ValidateDeviceConfiguration(configContent); err != nil {
+				logger.Error("Invalid device configuration: %v", err)
+				return "", false, fmt.Errorf("invalid device configuration: %w", err)
+			}
+
+			// Save configuration to device.yml
+			if err := utils.SaveDeviceConfiguration(configContent, deviceConfigPath); err != nil {
+				logger.Error("Failed to save device configuration: %v", err)
+				return "", false, fmt.Errorf("failed to save device configuration: %w", err)
+			}
+
+			var chownCmd *exec.Cmd
+			switch runtime.GOOS {
+			case "linux":
+				chownCmd = exec.Command("sudo", "chown", "-R", serviceUser+":"+serviceUser, baseDir)
+			case "darwin":
+				chownCmd = exec.Command("sudo", "chown", "-R", serviceUser, baseDir)
+			case "windows":
+				logger.Info("Configuration completed successfully!")
+				return "manual", true, nil
+			}
+			// Set permissions for the working directory
+			if output, err := chownCmd.CombinedOutput(); err != nil {
+				return "", false, fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
+			}
+
+			logger.Info("Configuration completed successfully!")
+			return "manual", true, nil
+		}
+
+		logger.Info("Configuration completed successfully!")
+		return "install-only", false, nil
+	}
 }
