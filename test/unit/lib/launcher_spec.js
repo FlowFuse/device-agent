@@ -41,7 +41,8 @@ describe('Launcher', function () {
                 stderr: { on: (event, cb) => {} },
                 kill: () => {
                     callbacks.exit && callbacks.exit(0)
-                }
+                },
+                unref: () => {}
             }
         }))
     })
@@ -60,7 +61,7 @@ describe('Launcher', function () {
     })
 
     it('Creates a new launcher instance', async function () {
-        const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
+        const launcher = newLauncher({ config, checkIn: () => {} }, null, 'projectId', setup.snapshot)
         should(launcher).be.an.Object()
         await launcher.writeFlow()
         await launcher.writeCredentials()
@@ -89,6 +90,7 @@ describe('Launcher', function () {
         arg2.env.NODE_PATH.should.containEql(path.join(__dirname, '..', '..', '..', 'node_modules'))
         arg2.env.should.have.property('FF_PROJECT_NAME', 'TEST_PROJECT')
         arg2.env.should.have.property('TZ')
+        await launcher.stop()
     })
 
     it('Create Snapshot Flow/Creds Files, instance bound device', async function () {
@@ -322,7 +324,7 @@ describe('Launcher', function () {
         runtimeSettings.logging.auditLogger.should.have.property('token', configWithPlatformInfo.token)
     })
     it('calls logAuditEvent when it crashes', async function () {
-        const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
+        const launcher = newLauncher({ config, checkIn: () => {} }, null, 'projectId', setup.snapshot)
         should(launcher).be.an.Object()
         await launcher.writeFlow()
         await launcher.writeCredentials()
@@ -345,6 +347,7 @@ describe('Launcher', function () {
         logAuditEventStub.calledOnce.should.be.true()
         logAuditEventStub.args[0][0].should.eql('crashed')
         logAuditEventStub.args[0][1].should.be.an.Object()
+        await launcher.stop()
     })
 
     describe('Proxy Support', function () {
@@ -360,7 +363,7 @@ describe('Launcher', function () {
             process.env.no_proxy = 'no_proxy'
             process.env.all_proxy = 'all_proxy'
 
-            const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
+            const launcher = newLauncher({ config, checkIn: () => {} }, null, 'projectId', setup.snapshot)
             should(launcher).be.an.Object()
             await launcher.writeFlow()
             await launcher.writeCredentials()
@@ -381,6 +384,7 @@ describe('Launcher', function () {
             arg2.env.should.have.property('https_proxy', 'http://https_proxy')
             arg2.env.should.have.property('no_proxy', 'no_proxy')
             arg2.env.should.have.property('all_proxy', 'all_proxy')
+            await launcher.stop()
         })
     })
 })
