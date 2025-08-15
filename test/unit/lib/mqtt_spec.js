@@ -400,6 +400,12 @@ describe('MQTT Comms', function () {
     it.skip('MQTT command stopLog stops logs', async function () {
         // TODO
     })
+    it.skip('MQTT command startResource starts resource', async function () {
+        // TODO
+    })
+    it.skip('MQTT command stopResources stops resource', async function () {
+        // TODO
+    })
     it.skip('MQTT command upload gets a response with a snapshot', async function () {
         // TODO
     })
