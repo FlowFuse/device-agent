@@ -91,12 +91,22 @@ func Install(nodeVersion, agentVersion, installerDir, url, otc string, update bo
 	}
 	logger.Debug("Device agent configuration successful, mode: %s, autoStart: %v", installMode, autoStartService)
 
+	if service.IsInstalled("flowfuse-device-agent") {
+		logger.Debug("Removing FlowFuse Device Agent service...")
+		if err := service.Uninstall("flowfuse-device-agent"); err != nil {
+			logger.Error("Service removal failed: %v", err)
+			logger.LogFunctionExit("Install", nil, err)
+			return fmt.Errorf("service removal failed: %w", err)
+		}
+	}
+
 	logger.Info("Configuring FlowFuse Device Agent to run as system service...")
 	if err := service.Install("flowfuse-device-agent", workDir); err != nil {
 		logger.Error("Service setup failed: %v", err)
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("service setup failed: %w", err)
 	}
+	
 	logger.Debug("Service setup successful")
 
 	// Start the service if auto-start is enabled for this installation mode
