@@ -1,6 +1,6 @@
 {
     "name": "@flowfuse/device-agent",
-    "version": "3.5.0",
+    "version": "3.6.0",
     "description": "An Edge Agent for running Node-RED instances deployed from the FlowFuse Platform",
     "exports": {
         "./libraryPlugin": "./lib/plugins/libraryPlugin.js",
@@ -45,9 +45,12 @@
         "http-proxy-agent": "^7.0.2",
         "https-proxy-agent": "^7.0.4",
         "memorystore": "^1.6.7",
+        "mnemonist": "^0.40.3",
         "mqtt": "^5.10.1",
+        "parse-prometheus-text-format": "^1.1.1",
         "passport": "0.6.0",
         "passport-oauth2": "^1.6.1",
+        "prom-client": "^15.1.3",
         "proxy-from-env": "^1.1.0",
         "semver": "^7.3.8",
         "ws": "^8.13.0",
