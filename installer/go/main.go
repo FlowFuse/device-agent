@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/flowfuse/device-agent-installer/cmd"
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
@@ -17,11 +16,12 @@ var (
 	flowfuseOneTimeCode string
 	nodeVersion         string
 	serviceUsername     string
-	instVersion 				string // Version of the installer, set during build
-	showVersion					bool
+	installDir          string
+	instVersion         string
+	showVersion         bool
 	help                bool
 	uninstall           bool
-	updateNode        	bool
+	updateNode          bool
 	updateAgent         bool
 	debugMode           bool
 )
@@ -32,6 +32,7 @@ func init() {
 	pflag.StringVarP(&serviceUsername, "service-user", "s", "flowfuse", "Username for the service account")
 	pflag.StringVarP(&flowfuseURL, "url", "u", "https://app.flowfuse.com", "FlowFuse URL")
 	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (optional for interactive installation)")
+	pflag.StringVarP(&installDir, "dir", "d", "", "Custom installation directory (default: /opt/flowfuse-device on Unix, c:\\opt\\flowfuse-device on Windows)")
 	pflag.BoolVarP(&showVersion, "version", "v", false, "Display installer version")
 	pflag.BoolVarP(&help, "help", "h", false, "Display help information")
 	pflag.BoolVar(&uninstall, "uninstall", false, "Uninstall the device agent")
@@ -53,6 +54,7 @@ func init() {
 		fmt.Println("    ./installer --update-agent --update-nodejs [--agent-version <version>] [--nodejs-version <version>]")
 		fmt.Println("  Uninstall:")
 		fmt.Println("    ./installer --uninstall")
+		fmt.Println("    ./installer --uninstall --dir <custom-working-directory>")
 		fmt.Print("\n")
 		fmt.Println("Options:")
 		pflag.PrintDefaults()
@@ -78,13 +80,8 @@ func init() {
 
 func main() {
 	utils.ServiceUsername = serviceUsername
-
-	exePath, err := os.Executable()
-	if err != nil {
-		fmt.Println("Error determining executable path:", err)
-		os.Exit(1)
-	}
-	installerDir := filepath.Dir(exePath)
+	var err error
+	var exitCode int
 
 	// Initialize logger
 	if err := logger.Initialize(debugMode); err != nil {
@@ -112,18 +109,15 @@ func main() {
 		logger.Debug("FlowFuse Device Agent Installer version: %s", instVersion)
 	}
 
-	var exitCode int
-
 	if uninstall {
-		logger.Info("Uninstalling FlowFuse Device Agent...")
-		err = cmd.Uninstall()
+		err = cmd.Uninstall(installDir)
 	} else if updateNode || updateAgent {
 		logger.Info("Updating FlowFuse Device Agent...")
-		err = cmd.Update(agentVersion, nodeVersion, updateAgent, updateNode)
+		err = cmd.Update(agentVersion, nodeVersion, installDir, updateAgent, updateNode)
 	} else {
 		logger.Info("Installing FlowFuse Device Agent...")
 
-		err = cmd.Install(nodeVersion, agentVersion, installerDir, flowfuseURL, flowfuseOneTimeCode, false)
+		err = cmd.Install(nodeVersion, agentVersion, flowfuseURL, flowfuseOneTimeCode, installDir, false)
 	}
 
 	if err != nil {
