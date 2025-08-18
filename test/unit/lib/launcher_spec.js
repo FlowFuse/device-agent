@@ -41,7 +41,8 @@ describe('Launcher', function () {
                 stderr: { on: (event, cb) => {} },
                 kill: () => {
                     callbacks.exit && callbacks.exit(0)
-                }
+                },
+                unref: () => {}
             }
         }))
     })
@@ -60,7 +61,7 @@ describe('Launcher', function () {
     })
 
     it('Creates a new launcher instance', async function () {
-        const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
+        const launcher = newLauncher({ config, checkIn: () => {} }, null, 'projectId', setup.snapshot)
         should(launcher).be.an.Object()
         await launcher.writeFlow()
         await launcher.writeCredentials()
@@ -89,6 +90,7 @@ describe('Launcher', function () {
         arg2.env.NODE_PATH.should.containEql(path.join(__dirname, '..', '..', '..', 'node_modules'))
         arg2.env.should.have.property('FF_PROJECT_NAME', 'TEST_PROJECT')
         arg2.env.should.have.property('TZ')
+        await launcher.stop()
     })
 
     it('Create Snapshot Flow/Creds Files, instance bound device', async function () {
@@ -183,6 +185,112 @@ describe('Launcher', function () {
         settings.flowforge.projectLink.broker.should.have.property('url', '') // should be set to empty string
         settings.flowforge.projectLink.broker.should.have.property('username', '') // should be set to empty string
         settings.flowforge.projectLink.broker.should.have.property('password', '') // should be set to empty string
+    })
+    it('Write Settings - mqttNodes', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...config,
+                deviceId: 'deviceid',
+                token: 'ffxxx_1234567890',
+                brokerURL: 'BURL',
+                brokerUsername: 'BUSER:TEAMID:deviceid',
+                brokerPassword: 'BPASS'
+            }
+        }, null, 'PROJECTID', setup.snapshot, { mqttNodes: { linked: true } })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('flowforge')
+        settings.flowforge.should.have.property('mqttNodes')
+        settings.flowforge.should.have.property('teamID', 'TEAMID')
+        settings.flowforge.mqttNodes.should.have.property('featureEnabled', true)
+        settings.flowforge.mqttNodes.should.have.property('token', 'ffxxx_1234567890')
+        settings.flowforge.mqttNodes.should.have.property('linked', true)
+        settings.flowforge.mqttNodes.should.have.property('broker')
+        settings.flowforge.mqttNodes.broker.should.have.property('url', 'BURL')
+        settings.flowforge.mqttNodes.broker.should.have.property('username', 'device:deviceid') // auto generates specific format
+        settings.flowforge.mqttNodes.broker.should.have.property('password', 'BPASS') // uses broker/projectLink pw
+    })
+    it('Write Settings - mqttNodes - with provided username and password', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...config,
+                deviceId: 'deviceid',
+                token: 'ffxxx_1234567890',
+                brokerURL: 'BURL',
+                brokerUsername: 'BUSER:TEAMID:deviceid',
+                brokerPassword: 'BPASS'
+            }
+        }, null, 'PROJECTID', setup.snapshot, { mqttNodes: { linked: true, username: 'customUser', password: 'customPass' } })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('flowforge')
+        settings.flowforge.should.have.property('mqttNodes')
+        settings.flowforge.should.have.property('teamID', 'TEAMID')
+        settings.flowforge.mqttNodes.should.have.property('featureEnabled', true)
+        settings.flowforge.mqttNodes.should.have.property('token', 'ffxxx_1234567890')
+        settings.flowforge.mqttNodes.should.have.property('linked', true)
+        settings.flowforge.mqttNodes.should.have.property('broker')
+        settings.flowforge.mqttNodes.broker.should.have.property('url', 'BURL')
+        settings.flowforge.mqttNodes.broker.should.have.property('username', 'customUser') // uses provided username
+        settings.flowforge.mqttNodes.broker.should.have.property('password', 'customPass') // uses provided password
+    })
+    it('Write Settings - mqttNodes - linked:false ', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...config,
+                token: 'ffxxx_1234567890',
+                deviceId: 'deviceid',
+                brokerURL: 'BURL',
+                brokerUsername: 'BUSER:TEAMID:deviceid',
+                brokerPassword: 'BPASS'
+            }
+        }, null, 'PROJECTID', setup.snapshot, { features: { teamBroker: true }, mqttNodes: { linked: false } })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('flowforge')
+        settings.flowforge.should.have.property('mqttNodes')
+        settings.flowforge.mqttNodes.should.have.property('featureEnabled', true)
+        settings.flowforge.mqttNodes.should.have.property('linked', false)
+        settings.flowforge.mqttNodes.should.have.property('token', 'ffxxx_1234567890')
+        settings.flowforge.mqttNodes.should.have.property('broker')
+        settings.flowforge.mqttNodes.broker.should.have.property('url', 'BURL') // should be set to empty string
+        settings.flowforge.mqttNodes.broker.should.have.property('username', 'device:deviceid') // should be set to empty string
+        settings.flowforge.mqttNodes.broker.should.have.property('password', 'BPASS') // should be set to empty string
+    })
+    it('Write Settings - mqttNodes - with broker and feature flag `teamBroker` false', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...config,
+                brokerURL: 'BURL',
+                brokerUsername: 'BUSER:TEAMID:deviceid',
+                brokerPassword: 'BPASS'
+            }
+        }, null, 'PROJECTID', setup.snapshot, { features: { teamBroker: false } })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('flowforge')
+        settings.flowforge.should.have.property('mqttNodes')
+        settings.flowforge.mqttNodes.should.have.property('featureEnabled', false) // explicitly disabled
+        settings.flowforge.mqttNodes.should.have.property('broker')
+        settings.flowforge.mqttNodes.broker.should.have.property('url', '') // should be set to empty string
+        settings.flowforge.mqttNodes.broker.should.have.property('username', '') // should be set to empty string
+        settings.flowforge.mqttNodes.broker.should.have.property('password', '') // should be set to empty string
+    })
+    it('Write Settings - mqttNodes - with no broker settings', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...config
+            }
+        }, null, 'PROJECTID', setup.snapshot, { features: { teamBroker: false } })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('flowforge')
+        settings.flowforge.should.not.have.property('mqttNodes')
     })
 
     it('Write package.json', async function () {
@@ -322,7 +430,7 @@ describe('Launcher', function () {
         runtimeSettings.logging.auditLogger.should.have.property('token', configWithPlatformInfo.token)
     })
     it('calls logAuditEvent when it crashes', async function () {
-        const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
+        const launcher = newLauncher({ config, checkIn: () => {} }, null, 'projectId', setup.snapshot)
         should(launcher).be.an.Object()
         await launcher.writeFlow()
         await launcher.writeCredentials()
@@ -345,6 +453,7 @@ describe('Launcher', function () {
         logAuditEventStub.calledOnce.should.be.true()
         logAuditEventStub.args[0][0].should.eql('crashed')
         logAuditEventStub.args[0][1].should.be.an.Object()
+        await launcher.stop()
     })
 
     describe('Proxy Support', function () {
@@ -360,7 +469,7 @@ describe('Launcher', function () {
             process.env.no_proxy = 'no_proxy'
             process.env.all_proxy = 'all_proxy'
 
-            const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
+            const launcher = newLauncher({ config, checkIn: () => {} }, null, 'projectId', setup.snapshot)
             should(launcher).be.an.Object()
             await launcher.writeFlow()
             await launcher.writeCredentials()
@@ -381,6 +490,7 @@ describe('Launcher', function () {
             arg2.env.should.have.property('https_proxy', 'http://https_proxy')
             arg2.env.should.have.property('no_proxy', 'no_proxy')
             arg2.env.should.have.property('all_proxy', 'all_proxy')
+            await launcher.stop()
         })
     })
 })
