@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/flowfuse/device-agent-installer/cmd"
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
@@ -42,19 +43,24 @@ func init() {
 	pflag.Parse()
 
 	if help {
+		exePath, err := os.Executable()
+		if err != nil || exePath == "" {
+			exePath = os.Args[0]
+		}
+		exeName := filepath.Base(exePath)
 		fmt.Println("FlowFuse Device Agent Installer")
 		fmt.Print("\n")
 		fmt.Println("Usage:")
 		fmt.Println("  Installation:")
-		fmt.Println("    ./installer --otc <one-time-code> [--agent-version <version>] [--nodejs-version <version>]")
-		fmt.Println("    ./installer [--agent-version <version>] [--nodejs-version <version>] (interactive mode)")
+		fmt.Printf("    %s --otc <one-time-code> [--agent-version <version>] [--nodejs-version <version>]\n", exeName)
+		fmt.Printf("    %s [--agent-version <version>] [--nodejs-version <version>] (interactive mode)\n", exeName)
 		fmt.Println("  Update:")
-		fmt.Println("    ./installer --update-agent [--agent-version <version>]")
-		fmt.Println("    ./installer --update-nodejs [--nodejs-version <version>]")
-		fmt.Println("    ./installer --update-agent --update-nodejs [--agent-version <version>] [--nodejs-version <version>]")
+		fmt.Printf("    %s --update-agent [--agent-version <version>]\n", exeName)
+		fmt.Printf("    %s --update-nodejs [--nodejs-version <version>]\n", exeName)
+		fmt.Printf("    %s --update-agent --update-nodejs [--agent-version <version>] [--nodejs-version <version>]\n", exeName)
 		fmt.Println("  Uninstall:")
-		fmt.Println("    ./installer --uninstall")
-		fmt.Println("    ./installer --uninstall --dir <custom-working-directory>")
+		fmt.Printf("    %s --uninstall\n", exeName)
+		fmt.Printf("    %s --uninstall --dir <custom-working-directory>\n", exeName)
 		fmt.Print("\n")
 		fmt.Println("Options:")
 		pflag.PrintDefaults()
