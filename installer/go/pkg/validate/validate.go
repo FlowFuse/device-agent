@@ -133,7 +133,7 @@ func checkLibstdcExists() error {
 	return nil
 }
 
-// ValidateUninstallDirectory validates that the directory contains a device.yml file
+// ValidateUninstallDirectory validates that the directory contains either device.yml or installer.conf files
 // before allowing uninstall to proceed. This prevents accidental removal of directories
 // not related to the FlowFuse Device Agent.
 //
@@ -154,10 +154,13 @@ func ValidateUninstallDirectory(workDir string) error {
 		return fmt.Errorf("directory does not exist: %s", workDir)
 	}
 
-	// Check if device.yml exists in the directory
+	// Check if device.yml or installer.conf exists in the directory
 	deviceYmlPath := filepath.Join(workDir, "device.yml")
-	if _, err := os.Stat(deviceYmlPath); os.IsNotExist(err) {
-		logger.LogFunctionExit("ValidateUninstallDirectory", nil, err)
+	installerConfPath := filepath.Join(workDir, "installer.conf")
+	_, deviceYmlErr := os.Stat(deviceYmlPath)
+	_, installerConfErr := os.Stat(installerConfPath)
+	if os.IsNotExist(deviceYmlErr) && os.IsNotExist(installerConfErr) {
+		logger.LogFunctionExit("ValidateUninstallDirectory", nil, fmt.Errorf("missing required files in %s: %v, %v", workDir, deviceYmlErr, installerConfErr))
 		return fmt.Errorf("%s is not the FlowFuse Device Agent directory. If you installed it in a custom directory, please specify it using `--dir` flag", workDir)
 	}
 
