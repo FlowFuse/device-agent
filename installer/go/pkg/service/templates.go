@@ -15,7 +15,7 @@ WorkingDirectory={{.WorkDir}}
 
 Environment="NODE_OPTIONS=--max_old_space_size=512"
 Environment="PATH={{.NodeBinDir}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=/usr/bin/env -S flowfuse-device-agent
+ExecStart=/usr/bin/env -S flowfuse-device-agent --dir {{.WorkDir}}
 # Use SIGINT to stop
 KillSignal=SIGINT
 # Auto restart on crash
@@ -44,7 +44,7 @@ const SysVInitServiceTemplate = `#!/bin/sh
 
 PATH={{.NodeBinDir}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 DAEMON="{{.NodeBinDir}}/flowfuse-device-agent"
-DAEMON_ARGS=""
+DAEMON_ARGS="--dir {{.WorkDir}}"
 NAME="{{.ServiceName}}"
 DESC="FlowFuse Device Agent"
 PIDFILE=/var/run/$NAME.pid
@@ -109,6 +109,8 @@ const launchdTemplate = `<?xml version="1.0" encoding="UTF-8"?>
     <array>
         <string>{{.NodeBinDir}}/node</string>
         <string>{{.NodeBinDir}}/flowfuse-device-agent</string>
+        <string>--dir</string>
+        <string>{{.WorkDir}}</string>
     </array>
     <key>UserName</key>
     <string>{{.User}}</string>
@@ -145,7 +147,7 @@ const OpenRCServiceTemplate = `#!/sbin/openrc-run
 name="FlowFuse Device Agent"
 description="FlowFuse Device Agent"
 supervisor="supervise-daemon"
-command="{{.NodeBinDir}}/flowfuse-device-agent"
+command="{{.NodeBinDir}}/flowfuse-device-agent--dir {{.WorkDir}}"
 supervise_daemon_args=" -d {{.WorkDir}} --stdout {{.LogFile}} --stderr {{.ErrorLogFile}} -e "PATH=\"{{.NodeBinDir}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"\""
 command_user="{{.User}}"
 

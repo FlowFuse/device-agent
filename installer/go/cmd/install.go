@@ -30,33 +30,34 @@ import (
 // Parameters:
 //   - nodeVersion: The version of Node.js to install or use
 //   - agentVersion: The version of the FlowFuse Device Agent to install
-//   - installerDir: The directory where the installer files are located
 //   - url: The URL of the FlowFuse instance to connect to
 //   - otc: The one-time code (OTC) used for device registration
+//   - customWorkDir: Optional custom working directory path. If empty, uses default path.
+//   - update: Whether this is an update operation
 //
 // Returns:
 //   - error: An error object if any step of the installation fails, nil otherwise
 //
 // The function logs detailed information about each step of the process.
-func Install(nodeVersion, agentVersion, installerDir, url, otc string, update bool) error {
+func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update bool) error {
 	logger.LogFunctionEntry("Install", map[string]interface{}{
-		"nodeVersion":  nodeVersion,
-		"agentVersion": agentVersion,
-		"installerDir": installerDir,
-		"url":          url,
-		"otc":          otc,
+		"nodeVersion":   nodeVersion,
+		"agentVersion":  agentVersion,
+		"url":           url,
+		"otc":           otc,
+		"customWorkDir": customWorkDir,
 	})
 
 	// Run pre-install validation
 	logger.Debug("Running pre-check...")
-	if err := validate.PreInstall("flowfuse-device-agent"); err != nil {
+	if err := validate.PreInstall("flowfuse-device-agent", customWorkDir); err != nil {
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("pre-check failed: %w", err)
 	}
 
 	// Create working directory
 	logger.Debug("Creating working directory...")
-	workDir, err := utils.CreateWorkingDirectory()
+	workDir, err := utils.CreateWorkingDirectory(customWorkDir)
 	if err != nil {
 		logger.Error("Failed to create working directory: %v", err)
 		logger.LogFunctionExit("Install", nil, err)
@@ -122,7 +123,7 @@ func Install(nodeVersion, agentVersion, installerDir, url, otc string, update bo
 	// Save the configuration
 	if agentVersion == "latest" {
 		var err error
-		agentVersion, err = nodejs.GetLatestDeviceAgentVersion()
+		agentVersion, err = nodejs.GetLatestDeviceAgentVersion(workDir)
 		if err != nil {
 			return fmt.Errorf("failed to get latest device agent version: %v", err)
 		}
@@ -133,7 +134,7 @@ func Install(nodeVersion, agentVersion, installerDir, url, otc string, update bo
 		AgentVersion:    agentVersion,
 	}
 	logger.Debug("Saving configuration: %+v", cfg)
-	if err := config.SaveConfig(cfg); err != nil {
+	if err := config.SaveConfig(cfg, workDir); err != nil {
 		logger.Error("Could not save configuration: %v", err)
 	}
 	logger.Info("")
@@ -171,8 +172,38 @@ func Install(nodeVersion, agentVersion, installerDir, url, otc string, update bo
 // default values when the configuration cannot be loaded.
 //
 // Returns an error if any step in the uninstallation process fails.
-func Uninstall() error {
-	logger.LogFunctionEntry("Uninstall", nil)
+func Uninstall(customWorkDir string) error {
+	logger.LogFunctionEntry("Uninstall", map[string]interface{}{
+		"customWorkDir": customWorkDir,
+	})
+
+	// Get the working directory first to show it in the confirmation prompt
+	logger.Debug("Getting working directory...")
+	workDir, err := utils.GetWorkingDirectory(customWorkDir)
+	if err != nil {
+		logger.Error("Failed to get working directory: %v", err)
+		logger.LogFunctionExit("Uninstall", nil, err)
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	// Validate that this is actually a FlowFuse Device Agent installation
+	logger.Debug("Validating uninstall directory...")
+	if err := validate.ValidateUninstallDirectory(workDir); err != nil {
+		logger.Error("Uninstall validation failed: %v", err)
+		logger.LogFunctionExit("Uninstall", nil, err)
+		return fmt.Errorf("uninstall validation failed: %w", err)
+	}
+	logger.Debug("Uninstall directory validation passed")
+
+	// Show confirmation prompt with the directory path
+	logger.Info("This will uninstall the FlowFuse Device Agent from: %s\n", workDir)
+
+	confirmed := utils.PromptYesNo("Do you want to proceed with the removal?", false)
+	if !confirmed {
+		logger.Info("Uninstall cancelled by user")
+		logger.LogFunctionExit("Uninstall", "cancelled", nil)
+		return nil
+	}
 
 	logger.Debug("Running pre-check...")
 	if err := utils.CheckPermissions(); err != nil {
@@ -197,7 +228,7 @@ func Uninstall() error {
 
 	// Get the working directory
 	logger.Debug("Getting working directory...")
-	workDir, err := utils.GetWorkingDirectory()
+	workDir, err = utils.GetWorkingDirectory(customWorkDir)
 	if err != nil {
 		logger.Error("Failed to get working directory: %v", err)
 		logger.LogFunctionExit("Uninstall", nil, err)
@@ -217,7 +248,7 @@ func Uninstall() error {
 	// Load saved configuration to get the system username
 	logger.Debug("Loading saved configuration...")
 	savedUsername := ""
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(customWorkDir)
 	if err != nil {
 		logger.Error("Could not load configuration: %v", err)
 		logger.Debug("Will use the current username setting for uninstallation.")
@@ -282,12 +313,13 @@ func Uninstall() error {
 //   - error: An error object if any step of the update fails, nil otherwise
 //
 // func Update(options UpdateOptions) error {
-func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) error {
+func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, updateNode bool) error {
 	logger.LogFunctionEntry("Update", map[string]interface{}{
-		"updateNode":   updateNode,
-		"nodeVersion":  nodeVersion,
-		"updateAgent":  updateAgent,
-		"agentVersion": agentVersion,
+		"updateNode":    updateNode,
+		"nodeVersion":   nodeVersion,
+		"updateAgent":   updateAgent,
+		"agentVersion":  agentVersion,
+		"customWorkDir": customWorkDir,
 	})
 
 	// Validate that at least one update option is specified
@@ -316,7 +348,7 @@ func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) erro
 
 	// Get the working directory
 	logger.Debug("Getting working directory...")
-	workDir, err := utils.GetWorkingDirectory()
+	workDir, err := utils.GetWorkingDirectory(customWorkDir)
 	if err != nil {
 		logger.Error("Failed to get working directory: %v", err)
 		logger.LogFunctionExit("Update", nil, err)
@@ -341,7 +373,7 @@ func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) erro
 	}
 
 	if updateAgent {
-		isNeeded, err := nodejs.IsAgentUpdateRequired(agentVersion)
+		isNeeded, err := nodejs.IsAgentUpdateRequired(agentVersion, workDir)
 		if err != nil {
 			logger.Error("Failed to check if Device Agent update is needed: %v", err)
 			return fmt.Errorf("failed to check Device Agent update requirement: %w", err)
@@ -378,7 +410,7 @@ func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) erro
 			logger.LogFunctionExit("Update", nil, err)
 			return fmt.Errorf("node.js update failed: %w", err)
 		}
-		if err := config.UpdateConfigField("nodeVersion", nodeVersion); err != nil {
+		if err := config.UpdateConfigField("nodeVersion", nodeVersion, customWorkDir); err != nil {
 			logger.Error("Failed to update node version in configuration: %v", err)
 			logger.LogFunctionExit("Update", nil, err)
 			return fmt.Errorf("failed to update node version in configuration: %w", err)
@@ -389,7 +421,7 @@ func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) erro
 			// Load saved configuration
 			logger.Debug("Loading configuration...")
 			savedAgentVersion := ""
-			cfg, err := config.LoadConfig()
+			cfg, err := config.LoadConfig(customWorkDir)
 			if err != nil {
 				logger.Error("Could not load configuration: %v", err)
 				return fmt.Errorf("could not load configuration: %w", err)
@@ -425,12 +457,12 @@ func Update(agentVersion, nodeVersion string, updateAgent, updateNode bool) erro
 
 		if agentVersion == "latest" {
 			var err error
-			agentVersion, err = nodejs.GetLatestDeviceAgentVersion()
+			agentVersion, err = nodejs.GetLatestDeviceAgentVersion(workDir)
 			if err != nil {
 				return fmt.Errorf("failed to get latest device agent version: %v", err)
 			}
 		}
-		if err := config.UpdateConfigField("agentVersion", agentVersion); err != nil {
+		if err := config.UpdateConfigField("agentVersion", agentVersion, customWorkDir); err != nil {
 			logger.Error("Failed to update agent version in configuration: %v", err)
 			logger.LogFunctionExit("Update", nil, err)
 			return fmt.Errorf("failed to update agent version in configuration: %w", err)
