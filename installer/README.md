@@ -36,7 +36,7 @@ powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 
 | Flag | Short | Default | Description |
 |------|--------|---------|-------------|
-| `--otc` | `-o` | *required* | FlowFuse one time code for authentication (required) |
+| `--otc` | `-o` | *optional* | FlowFuse one time code for authentication (optional for interactive installation) |
 | `--url` | `-u` | `https://app.flowfuse.com` | FlowFuse URL |
 | `--nodejs-version` | `-n` | `20.19.1` | Node.js version to install (minimum) |
 | `--agent-version` | `-a` | `latest` | Device agent version to install/update to |

@@ -19,7 +19,11 @@ import (
 // 2. Creates a working directory for the installation
 // 3. Ensures Node.js is installed at the required version
 // 4. Installs the Device Agent npm package
-// 5. Configures the Device Agent with the provided URL and one-time code
+// 5. Handles different installation modes based on OTC availability:
+//   - Traditional: With OTC, configures and starts service
+//   - Manual config: Without OTC, prompts for config and saves device.yml
+//   - Install-only: Without OTC and no config, installs but doesn't start service
+//
 // 6. Sets up the Device Agent to run as a system service
 // 7. Saves the installation configuration
 //
@@ -79,12 +83,22 @@ func Install(nodeVersion, agentVersion, installerDir, url, otc string, update bo
 
 	// Configure the device agent
 	logger.Info("Configuring FlowFuse Device Agent...")
-	if err := nodejs.ConfigureDeviceAgent(url, otc, workDir); err != nil {
+	installMode, autoStartService, err := nodejs.ConfigureDeviceAgent(url, otc, workDir)
+	if err != nil {
 		logger.Error("Device agent configuration failed: %v", err)
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("device agent configuration failed: %w", err)
 	}
-	logger.Debug("Device agent configuration successful")
+	logger.Debug("Device agent configuration successful, mode: %s, autoStart: %v", installMode, autoStartService)
+
+	if service.IsInstalled("flowfuse-device-agent") {
+		logger.Debug("Removing FlowFuse Device Agent service...")
+		if err := service.Uninstall("flowfuse-device-agent"); err != nil {
+			logger.Error("Service removal failed: %v", err)
+			logger.LogFunctionExit("Install", nil, err)
+			return fmt.Errorf("service removal failed: %w", err)
+		}
+	}
 
 	logger.Info("Configuring FlowFuse Device Agent to run as system service...")
 	if err := service.Install("flowfuse-device-agent", workDir); err != nil {
@@ -92,7 +106,18 @@ func Install(nodeVersion, agentVersion, installerDir, url, otc string, update bo
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("service setup failed: %w", err)
 	}
+	
 	logger.Debug("Service setup successful")
+
+	// Start the service if auto-start is enabled for this installation mode
+	if autoStartService {
+		if err := service.Start("flowfuse-device-agent"); err != nil {
+			logger.Error("Service start failed: %v", err)
+			logger.LogFunctionExit("Install", nil, err)
+			return fmt.Errorf("service start failed: %w", err)
+		}
+		logger.Debug("Service started successfully")
+	}
 
 	// Save the configuration
 	if agentVersion == "latest" {
@@ -111,10 +136,22 @@ func Install(nodeVersion, agentVersion, installerDir, url, otc string, update bo
 	if err := config.SaveConfig(cfg); err != nil {
 		logger.Error("Could not save configuration: %v", err)
 	}
-
+	logger.Info("")
 	logger.Info("FlowFuse Device Agent installation completed successfully!")
-	logger.Info("The service is now running and will start automatically on system boot.")
-	logger.Info("You can now return to the FlowFuse platform and start creating Node-RED flows on your device")
+
+	switch installMode {
+	case "otc", "manual":
+		logger.Info("The service is now running and will start automatically on system boot.")
+		logger.Info("You can now return to the FlowFuse platform and start creating Node-RED flows on your device")
+	case "install-only":
+		logger.Info("The Device Agent has been installed but it is not configured.")
+		logger.Info("To complete the setup: ")
+		logger.Info(" 1. Create a device.yml configuration file in %s directory", workDir)
+		logger.Info(" 2. Start the Device Agent service")
+	case "none":
+		logger.Info("The device agent was already configured. The service has been set up and is running.")
+	}
+
 	logger.Info("For information on how to manage the FlowFuse Device Agent,")
 	logger.Info("  please refer to the documentation at https://github.com/FlowFuse/device-agent/blob/main/installer/README.md")
 

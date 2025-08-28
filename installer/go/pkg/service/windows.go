@@ -28,7 +28,6 @@ const nssmVersion = "2.24"
 //     - Restart delay (30 seconds)
 //     - Node.js environment options (memory limit of 512MB)
 //     - Service user (LocalService)
-//  6. Starts the newly created service
 //
 // Parameters:
 //   - serviceName: The name to use for the Windows service
@@ -62,11 +61,6 @@ func InstallWindows(serviceName, workDir string) error {
 
 	// Configure the service
 	if err := configureService(nssmPath, serviceName, workDir); err != nil {
-		return err
-	}
-
-	// Start the service
-	if err := StartWindows(serviceName); err != nil {
 		return err
 	}
 
