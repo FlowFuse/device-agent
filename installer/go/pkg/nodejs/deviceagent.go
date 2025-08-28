@@ -314,10 +314,12 @@ func ConfigureDeviceAgent(url, token, baseDir string) (string, bool, error) {
 		case "linux", "darwin":
 			configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--dir", baseDir, "--otc-no-start", "--installer-mode")
 			env := os.Environ()
+			configureCmd.Dir = baseDir
 			configureCmd.Env = append(env, newPath)
 		case "windows":
 			configureCmd = exec.Command("powershell", "-Command", "&", fmt.Sprintf(`'%s'`, deviceAgentPath), "-o", token, "-u", url, "--dir", fmt.Sprintf(`'%s'`, baseDir), "--otc-no-start", "--installer-mode")
 			env := os.Environ()
+			configureCmd.Dir = baseDir
 			configureCmd.Env = append(env, newPath)
 		default:
 			return "", false, fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
