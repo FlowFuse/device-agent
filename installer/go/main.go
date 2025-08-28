@@ -97,8 +97,8 @@ func main() {
 	}
 
 	// Log startup information
-	logger.Debug("Command line arguments: node=%s, agent=%s, user=%s, url=%s, debug=%v",
-		nodeVersion, agentVersion, serviceUsername, flowfuseURL, debugMode)
+	logger.Debug("Command line arguments: node=%s, agent=%s, user=%s, url=%s, debug=%v, customInstallDir=%s",
+		nodeVersion, agentVersion, serviceUsername, flowfuseURL, debugMode, installDir)
 	operatingSystem, architecture := utils.GetOSDetails()
 	logger.Debug("Detected system: %s, detected architecture: %s", operatingSystem, architecture)
 
