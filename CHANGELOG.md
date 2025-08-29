@@ -1,3 +1,10 @@
+#### 3.6.1 Release
+
+ - Don't install dev dependencies in docker (#479)
+ - Bump actions/upload-pages-artifact from 3.0.1 to 4.0.0 (#477)
+ - Add support for nr-tables-node (#482) @hardillb
+ - feat(installer): install Device Agent without One-Time-Code (#446) @ppawlowski
+
 #### 3.6.0 Release
 
  - Bump docker/metadata-action from 5.7.0 to 5.8.0 (#467)
