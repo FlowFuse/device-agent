@@ -20,6 +20,10 @@ import (
 // Global variable to store the service username
 var ServiceUsername = "flowfuse"
 
+// DefaultPort is the default TCP port for the device agent when not specified elsewhere
+// This can be overridden at runtime by the CLI flag in main.go
+var DefaultPort = 1880
+
 // DeviceConfig represents the expected structure of the device.yml configuration file
 type DeviceConfig struct {
 	DeviceID         string `yaml:"deviceId"`
@@ -343,7 +347,7 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 		}
 
 		logger.Debug("Granting Modify permission to LocalService on %s...", path)
-		cmd := exec.Command("icacls", path, "/grant", `*S-1-5-19:(OI)(CI)M`, "/T" )
+		cmd := exec.Command("icacls", path, "/grant", `*S-1-5-19:(OI)(CI)M`, "/T")
 		if output, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to grant Modify to LocalService on %s: %w\nOutput: %s", path, err, output)
 		}
