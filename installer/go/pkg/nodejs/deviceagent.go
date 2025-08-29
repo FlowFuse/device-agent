@@ -274,7 +274,7 @@ func UninstallDeviceAgent(baseDir string) error {
 //   - installMode: The mode used ("otc", "manual", "install-only")
 //   - autoStartService: Whether the service should be started automatically
 //   - error: Any error that occurred during configuration
-func ConfigureDeviceAgent(url, token, baseDir string) (string, bool, error) {
+func ConfigureDeviceAgent(url, token, baseDir string, port int) (string, bool, error) {
 
 	var deviceAgentPath string
 
@@ -312,12 +312,12 @@ func ConfigureDeviceAgent(url, token, baseDir string) (string, bool, error) {
 		var configureCmd *exec.Cmd
 		switch runtime.GOOS {
 		case "linux", "darwin":
-			configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--dir", baseDir, "--otc-no-start", "--installer-mode")
+			configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--dir", baseDir, "--port", fmt.Sprintf("%d", port), "--otc-no-start", "--installer-mode")
 			env := os.Environ()
 			configureCmd.Dir = baseDir
 			configureCmd.Env = append(env, newPath)
 		case "windows":
-			configureCmd = exec.Command("powershell", "-Command", "&", fmt.Sprintf(`'%s'`, deviceAgentPath), "-o", token, "-u", url, "--dir", fmt.Sprintf(`'%s'`, baseDir), "--otc-no-start", "--installer-mode")
+			configureCmd = exec.Command("powershell", "-Command", "&", fmt.Sprintf(`'%s'`, deviceAgentPath), "-o", token, "-u", url, "--dir", fmt.Sprintf(`'%s'`, baseDir), "--port", fmt.Sprintf(`'%d'`, port), "--otc-no-start", "--installer-mode", "-v")
 			env := os.Environ()
 			configureCmd.Dir = baseDir
 			configureCmd.Env = append(env, newPath)
