@@ -16,6 +16,7 @@ type InstallerConfig struct {
 	ServiceUsername string `json:"serviceUsername"`
 	AgentVersion    string `json:"agentVersion"`
 	NodeVersion     string `json:"nodeVersion"`
+	Port            int    `json:"port"`
 }
 
 // GetConfigPath returns the path to the installer configuration file.
@@ -117,6 +118,7 @@ func LoadConfig(customWorkDir string) (*InstallerConfig, error) {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return &InstallerConfig{
 			ServiceUsername: utils.ServiceUsername,
+			Port:            utils.DefaultPort,
 		}, nil
 	}
 
@@ -128,6 +130,11 @@ func LoadConfig(customWorkDir string) (*InstallerConfig, error) {
 	var cfg InstallerConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	// Backward compatibility: default port if missing
+	if cfg.Port == 0 {
+		cfg.Port = utils.DefaultPort
 	}
 
 	return &cfg, nil
