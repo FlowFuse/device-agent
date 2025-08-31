@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
@@ -14,6 +15,7 @@ import (
 // InstallerConfig holds the configuration for the installer
 type InstallerConfig struct {
 	ServiceUsername string `json:"serviceUsername"`
+	ServiceName     string `json:"serviceName"`
 	AgentVersion    string `json:"agentVersion"`
 	NodeVersion     string `json:"nodeVersion"`
 	Port            int    `json:"port"`
@@ -176,6 +178,10 @@ func UpdateConfigField(fieldName, value, customWorkDir string) error {
 		cfg.AgentVersion = value
 	case "nodeVersion":
 		cfg.NodeVersion = value
+	case "serviceName":
+	case "port":
+		port, _ := strconv.Atoi(value)
+		cfg.Port = port
 	default:
 		logger.LogFunctionExit("UpdateConfigField", "error", fmt.Errorf("unknown field name: %s", fieldName))
 		return fmt.Errorf("unknown field name: %s", fieldName)
