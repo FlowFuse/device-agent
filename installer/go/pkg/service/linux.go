@@ -20,10 +20,14 @@ type ServiceConfig struct {
 	ServiceName  string // Used for sysvinit scripts
 	LogFile      string // Log file path for openrc scripts
 	ErrorLogFile string // Error log file path for openrc scripts
+	Port         int
 }
 
 // IsSystemd returns true if the system uses systemd, false otherwise
 // This is determined by checking if the "systemctl" command is available
+//
+// Returns:
+//   - true if systemd is found, false otherwise
 func IsSystemd() bool {
 	logger.LogFunctionEntry("IsSystemd", nil)
 	_, err := exec.LookPath("systemctl")
@@ -67,22 +71,24 @@ func IsOpenRC() bool {
 // Parameters:
 //   - serviceName: the name of the service to create
 //   - workDir: the working directory for the service
+//   - port: the port number the service will use
 //
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
-func InstallLinux(serviceName, workDir string) error {
+func InstallLinux(serviceName, workDir string, port int) error {
 	logger.LogFunctionEntry("InstallLinux", map[string]interface{}{
 		"serviceName": serviceName,
 		"workDir":     workDir,
+		"port":        port,
 	})
 	defer logger.LogFunctionExit("InstallLinux", nil, nil)
 
 	if IsSystemd() {
-		return InstallSystemd(serviceName, workDir)
+		return InstallSystemd(serviceName, workDir, port)
 	} else if IsSysVInit() {
-		return InstallSysVInit(serviceName, workDir)
+		return InstallSysVInit(serviceName, workDir, port)
 	} else if IsOpenRC() {
-		return InstallOpenRC(serviceName, workDir)
+		return InstallOpenRC(serviceName, workDir, port)
 	} else {
 		logger.Error("No supported init system found (systemd or sysvinit)")
 		return fmt.Errorf("no supported init system found (systemd or sysvinit)")
@@ -98,10 +104,11 @@ func InstallLinux(serviceName, workDir string) error {
 // Parameters:
 //   - serviceName: the name of the systemd service to create
 //   - workDir: the working directory for the service
+//   - port: the port number the service will use
 //
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
-func InstallSystemd(serviceName, workDir string) error {
+func InstallSystemd(serviceName, workDir string, port int) error {
 	logger.LogFunctionEntry("InstallSystemd", map[string]interface{}{
 		"serviceName": serviceName,
 		"workDir":     workDir,
@@ -112,6 +119,7 @@ func InstallSystemd(serviceName, workDir string) error {
 		User:       utils.ServiceUsername,
 		WorkDir:    workDir,
 		NodeBinDir: nodejs.GetNodeBinDir(),
+		Port:       port,
 	}
 
 	serviceFilePath := "/etc/systemd/system/" + serviceName + ".service"
@@ -165,6 +173,7 @@ func InstallSystemd(serviceName, workDir string) error {
 // Parameters:
 //   - serviceName: the name of the service to create
 //   - workDir: the working directory for the service
+//   - port: the port number the service will use
 //
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
@@ -173,7 +182,7 @@ func InstallSystemd(serviceName, workDir string) error {
 //   - Copy the service script to /etc/init.d/
 //   - Set permissions on the service script
 //   - Enable the service
-func InstallSysVInit(serviceName, workDir string) error {
+func InstallSysVInit(serviceName, workDir string, port int) error {
 	logger.LogFunctionEntry("InstallSysVInit", map[string]interface{}{
 		"serviceName": serviceName,
 		"workDir":     workDir,
@@ -185,6 +194,7 @@ func InstallSysVInit(serviceName, workDir string) error {
 		WorkDir:     workDir,
 		NodeBinDir:  nodejs.GetNodeBinDir(),
 		ServiceName: serviceName,
+		Port:        port,
 	}
 
 	serviceFilePath := "/etc/init.d/" + serviceName
@@ -244,10 +254,11 @@ func InstallSysVInit(serviceName, workDir string) error {
 // Parameters:
 //   - serviceName: the name of the OpenRC service to create
 //   - workDir: the working directory for the service
+//   - port: the port number the service will use
 //
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
-func InstallOpenRC(serviceName, workDir string) error {
+func InstallOpenRC(serviceName, workDir string, port int) error {
 	logger.LogFunctionEntry("InstallOpenRC", map[string]interface{}{
 		"serviceName": serviceName,
 		"workDir":     workDir,
@@ -276,6 +287,7 @@ func InstallOpenRC(serviceName, workDir string) error {
 		NodeBinDir:   nodejs.GetNodeBinDir(),
 		LogFile:      logFilePath,
 		ErrorLogFile: errorLogFilePath,
+		Port:         port,
 	}
 
 	serviceFilePath := "/etc/init.d/" + serviceName

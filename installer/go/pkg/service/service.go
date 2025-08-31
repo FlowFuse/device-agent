@@ -16,15 +16,15 @@ import (
 //
 // Returns:
 //   - error: nil if successful, otherwise an error explaining what went wrong
-func Install(serviceName, workDir string) error {
+func Install(serviceName, workDir string, port int) error {
 	logger.Info("Installing FlowFuse Device Agent service for %s...", runtime.GOOS)
 	switch runtime.GOOS {
 	case "linux":
-		return InstallLinux(serviceName, workDir)
+		return InstallLinux(serviceName, workDir, port)
 	case "windows":
-		return InstallWindows(serviceName, workDir)
+		return InstallWindows(serviceName, workDir, port)
 	case "darwin":
-		return InstallDarwin(workDir)
+		return InstallDarwin(serviceName, workDir, port)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -45,7 +45,7 @@ func Start(serviceName string) error {
 	case "windows":
 		return StartWindows(serviceName)
 	case "darwin":
-		return StartDarwin()
+		return StartDarwin(serviceName)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -67,7 +67,7 @@ func Stop(serviceName string) error {
 	case "windows":
 		return StopWindows(serviceName)
 	case "darwin":
-		return StopDarwin()
+		return StopDarwin(serviceName)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -88,7 +88,7 @@ func Uninstall(serviceName string) error {
 	case "windows":
 		return UninstallWindows(serviceName)
 	case "darwin":
-		return UninstallDarwin()
+		return UninstallDarwin(serviceName)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -108,7 +108,7 @@ func IsInstalled(serviceName string) bool {
 	case "windows":
 		return IsInstalledWindows(serviceName)
 	case "darwin":
-		return IsInstalledDarwin()
+		return IsInstalledDarwin(serviceName)
 	default:
 		logger.Info("Service installation check not supported on %s", runtime.GOOS)
 		return false
