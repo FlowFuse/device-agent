@@ -179,6 +179,7 @@ func UpdateConfigField(fieldName, value, customWorkDir string) error {
 	case "nodeVersion":
 		cfg.NodeVersion = value
 	case "serviceName":
+		cfg.ServiceName = value
 	case "port":
 		port, _ := strconv.Atoi(value)
 		cfg.Port = port
