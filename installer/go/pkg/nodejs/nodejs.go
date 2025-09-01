@@ -10,9 +10,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/flowfuse/device-agent-installer/pkg/config"
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
-	"github.com/flowfuse/device-agent-installer/pkg/config"
 )
 
 // NodeDir is the directory where Node.js files will be stored
@@ -42,7 +42,7 @@ func EnsureNodeJs(versionStr, baseDir string, update bool) error {
 
 	setNodeDirectories(baseDir)
 
-	if isNodeInstalled(versionStr) {
+	if isNodeInstalled(versionStr, baseDir) {
 		logger.Info("Node.js version %s found.", versionStr)
 		return nil
 	}
@@ -60,12 +60,12 @@ func EnsureNodeJs(versionStr, baseDir string, update bool) error {
 // Returns:
 //   - bool: true if Node.js is installed and the installed version matches
 //     or is compatible with the specified version, false otherwise.
-func isNodeInstalled(versionStr string) bool {
+func isNodeInstalled(versionStr, baseDir string) bool {
 	logger.LogFunctionEntry("isNodeInstalled", map[string]interface{}{
 		"versionStr": versionStr,
 	})
 
-	if output, err := getInstalledNodeVersion(); err != nil {
+	if output, err := getInstalledNodeVersion(baseDir); err != nil {
 		logger.Debug("Failed to get installed Node.js version: %v", err)
 	} else {
 		installedVersionStr := strings.TrimSpace(string(output))
@@ -90,6 +90,10 @@ func isNodeInstalled(versionStr string) bool {
 // Parameters:
 //   - basedir: The base directory where Node.js is or will be installed.
 func setNodeDirectories(basedir string) {
+	logger.LogFunctionEntry("setNodeDirectories", map[string]interface{}{
+		"basedir": basedir,
+	})
+	
 	nodeBaseDir = filepath.Join(basedir, NodeDir)
 	if runtime.GOOS == "windows" {
 		nodeBinPath = filepath.Join(nodeBaseDir, "node.exe")
@@ -98,9 +102,11 @@ func setNodeDirectories(basedir string) {
 		nodeBinPath = filepath.Join(nodeBaseDir, "bin", "node")
 		npmBinPath = filepath.Join(nodeBaseDir, "bin", "npm")
 	}
-	logger.Debug("Node.js base dir: %s", nodeBaseDir)
-	logger.Debug("Node.js path: %s", nodeBinPath)
-	logger.Debug("NPM path: %s", npmBinPath)
+	logger.LogFunctionExit("setNodeDirectories", map[string]interface{}{
+		"node.js base dir": nodeBaseDir,
+		"Node.js path": nodeBinPath,
+		"NPM path": npmBinPath,
+	}, nil)
 }
 
 // GetNodePath returns the path to the Node.js binary.
@@ -126,16 +132,16 @@ func GetNodeBinDir() string {
 	}
 }
 
-// GetInstalledNodeVersion retrieves the currently installed Node.js version 
+// GetInstalledNodeVersion retrieves the currently installed Node.js version
 // from the installer configuration file
 //
 // Returns:
 //   - string: The installed Node.js version (without 'v' prefix)
 //   - error: An error if Node.js is not found or version cannot be determined
-func getInstalledNodeVersion() (string, error) {
+func getInstalledNodeVersion(baseDir string) (string, error) {
 	logger.Debug("Loading configuration...")
 	savedNodejsVersion := ""
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(baseDir)
 	if err != nil {
 		logger.Error("Could not load configuration: %v", err)
 		return "", fmt.Errorf("could not load configuration: %w", err)
@@ -213,7 +219,7 @@ func installNodeJs(version string, update bool) error {
 //   - A string containing the complete URL to download the appropriate NodeJS tarball
 //   - An error if the current architecture or operating system is unsupported
 func getNodeDownloadURL(version string) (string, error) {
-	var baseUrl string 
+	var baseUrl string
 	var arch string
 	switch runtime.GOARCH {
 	case "amd64":
@@ -354,18 +360,18 @@ func downloadAndExtractNode(url, version string) error {
 //   - bool: true if an update is required, false if the installed version is sufficient
 //   - error: An error if the version cannot be determined or compared
 func IsNodeUpdateRequired(nodeVersion, workDir string) (bool, error) {
-    
-    currentVersion, err := getInstalledNodeVersion()
-    if err != nil {
-			logger.Debug("Could not get installed Node.js version, assuming update is needed: %v", err)
-			return true, nil // Can't determine version, assume update needed
-    }
-    
-		if currentVersion == nodeVersion {
-			return false, nil 
-		}
 
-    return true, nil
+	currentVersion, err := getInstalledNodeVersion(workDir)
+	if err != nil {
+		logger.Debug("Could not get installed Node.js version, assuming update is needed: %v", err)
+		return true, nil // Can't determine version, assume update needed
+	}
+
+	if currentVersion == nodeVersion {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // UpdateNodeJs updates the Node.js installation to the specified version.

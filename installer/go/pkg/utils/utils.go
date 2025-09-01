@@ -39,7 +39,7 @@ type DeviceConfig struct {
 //
 // Returns:
 //   - bool: true for yes responses (y, yes, Y, YES), false for no or invalid responses
-func PromptYesNo(question string, defaultResponse bool ) bool {
+func PromptYesNo(question string, defaultResponse bool) bool {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -231,39 +231,13 @@ func checkWindowsPermissions() error {
 	return nil
 }
 
-// CreateWorkingDirectory creates and returns the working directory path for the FlowFuse device agent.
-// On Unix systems, it creates the directory at "/opt/flowfuse-device" with 0755 permissions.
-// On Windows systems, it creates the directory at "c:\opt\flowfuse-device".
-// For other operating systems, it returns an error indicating the OS is not supported.
+// getDefaultWorkingDirectory returns the default working directory for the FlowFuse device agent based on the operating system.
+// This is a helper function that provides a single source of truth for default working directory paths.
 //
 // Returns:
-//   - string: The path to the created working directory
+//   - string: The default path to the working directory
 //   - error: nil if successful, otherwise an error describing what went wrong
-func CreateWorkingDirectory() (string, error) {
-	var workDir string
-
-	switch runtime.GOOS {
-	case "linux", "darwin":
-		workDir = "/opt/flowfuse-device"
-	case "windows":
-		workDir = `c:\opt\flowfuse-device`
-	default:
-		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
-	}
-
-	if err := createDirWithPermissions(workDir, 0755); err != nil {
-		return "", err
-	}
-
-	return workDir, nil
-}
-
-// GetWorkingDirectory returns the default working directory for the FlowFuse device agent based on the operating system.
-//
-// Returns:
-//   - string: The path to the working directory
-//   - error: nil if successful, otherwise an error describing what went wrong
-func GetWorkingDirectory() (string, error) {
+func getDefaultWorkingDirectory() (string, error) {
 	switch runtime.GOOS {
 	case "linux", "darwin":
 		return "/opt/flowfuse-device", nil
@@ -274,12 +248,54 @@ func GetWorkingDirectory() (string, error) {
 	}
 }
 
+// CreateWorkingDirectory creates and returns the working directory path for the FlowFuse device agent.
+// If customPath is provided and not empty, it uses that path; otherwise, it uses the default OS-specific path.
+// On Unix systems, the default is "/opt/flowfuse-device" with 0755 permissions.
+// On Windows systems, the default is "c:\opt\flowfuse-device".
+//
+// Parameters:
+//   - customPath: Optional custom path to use instead of the default. If empty, uses default path.
+//
+// Returns:
+//   - string: The path to the created working directory
+//   - error: nil if successful, otherwise an error describing what went wrong
+func CreateWorkingDirectory(customPath string) (string, error) {
+	workDir, err := GetWorkingDirectory(customPath)
+	if err != nil {
+		return "", err
+	}
+
+	if err := createDirWithPermissions(workDir, 0755); err != nil {
+		return "", err
+	}
+
+	return workDir, nil
+}
+
+// GetWorkingDirectory returns the working directory for the FlowFuse device agent.
+// If customPath is provided and not empty, it returns that path; otherwise, it returns the default OS-specific path.
+//
+// Parameters:
+//   - customPath: Optional custom path to use instead of the default. If empty, uses default path.
+//
+// Returns:
+//   - string: The path to the working directory
+//   - error: nil if successful, otherwise an error describing what went wrong
+func GetWorkingDirectory(customPath string) (string, error) {
+	if customPath != "" {
+		return customPath, nil
+	}
+	return getDefaultWorkingDirectory()
+}
+
 // createDirWithPermissions creates a directory at the specified path with the given permissions.
 // If the directory already exists, no action is taken.
 // Before creating directory, it creates a service user with the specified username and password.
 // On Linux systems, the function first attempts to create the directory without sudo. If that fails, it tries with sudo. After creation, it sets
 // the ownership of the directory to a service user.
-// On Windows systems, it creates the directory.
+// On Windows systems, it creates the directory, then grants Modify permissions to LocalService (SID S-1-5-19) with inheritance for files and subdirectories.
+// This mirrors: icacls "path" /grant "NT AUTHORITY\LocalService":M
+// Using the SID and (OI)(CI) for inheritance; /T applies to existing children as well.
 //
 // Parameters:
 //   - path: The file system path where the directory should be created
@@ -324,6 +340,12 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 	case "windows":
 		if err := os.MkdirAll(path, permissions); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", path, err)
+		}
+
+		logger.Debug("Granting Modify permission to LocalService on %s...", path)
+		cmd := exec.Command("icacls", path, "/grant", `*S-1-5-19:(OI)(CI)M`, "/T" )
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to grant Modify to LocalService on %s: %w\nOutput: %s", path, err, output)
 		}
 		return nil
 

@@ -15,17 +15,21 @@ import (
 // 1. Checks if the working directory exists and attempts to remove it if it does
 // 2. Verifies if user has the necessary permissions to run the installer
 //
+// Parameters:
+//   - serviceName: The name of the service to stop before removing the directory
+//   - customWorkDir: Optional custom working directory path. If empty, uses default path.
+//
 // Returns:
 //   - nil if all checks pass
 //   - error if any check fails
-func PreInstall(serviceName string) error {
+func PreInstall(serviceName, customWorkDir string) error {
 	if err := utils.CheckPermissions(); err != nil {
 		logger.Error("Permission check failed: %v", err)
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("permission check failed: %w", err)
 	}
 
-	if err := checkConfigFileExists(serviceName); err != nil {
+	if err := checkConfigFileExists(serviceName, customWorkDir); err != nil {
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("configuration file pre-check failed: %w", err)
 	}
@@ -48,12 +52,13 @@ func PreInstall(serviceName string) error {
 //
 // Parameters:
 //   - serviceName: the name of the service to stop before removing the directory (if removal is chosen)
+//   - customWorkDir: Optional custom working directory path. If empty, uses default path.
 //
 // Returns:
 //   - error: nil if the configuration file does not exist, user chooses to keep it, or content has been successfully removed,
 //     otherwise an error explaining what went wrong or if user cancels installation
-func checkConfigFileExists(serviceName string) error {
-	workDir, err := utils.GetWorkingDirectory()
+func checkConfigFileExists(serviceName, customWorkDir string) error {
+	workDir, err := utils.GetWorkingDirectory(customWorkDir)
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
@@ -125,5 +130,41 @@ func checkLibstdcExists() error {
 		}
 		return fmt.Errorf("libstdc++ is not installed, please install it before proceeding")
 	}
+	return nil
+}
+
+// ValidateUninstallDirectory validates that the directory contains either device.yml or installer.conf files
+// before allowing uninstall to proceed. This prevents accidental removal of directories
+// not related to the FlowFuse Device Agent.
+//
+// Parameters:
+//   - workDir: The directory path to validate
+//
+// Returns:
+//   - error: nil if validation passes, otherwise an error explaining why validation failed
+func ValidateUninstallDirectory(workDir string) error {
+	logger.LogFunctionEntry("ValidateUninstallDirectory", map[string]interface{}{
+		"workDir": workDir,
+	})
+
+	// Check if directory exists
+	if _, err := os.Stat(workDir); os.IsNotExist(err) {
+		logger.Error("Directory does not exist: %s", workDir)
+		logger.LogFunctionExit("ValidateUninstallDirectory", nil, err)
+		return fmt.Errorf("directory does not exist: %s", workDir)
+	}
+
+	// Check if device.yml or installer.conf exists in the directory
+	deviceYmlPath := filepath.Join(workDir, "device.yml")
+	installerConfPath := filepath.Join(workDir, "installer.conf")
+	_, deviceYmlErr := os.Stat(deviceYmlPath)
+	_, installerConfErr := os.Stat(installerConfPath)
+	if os.IsNotExist(deviceYmlErr) && os.IsNotExist(installerConfErr) {
+		logger.LogFunctionExit("ValidateUninstallDirectory", nil, fmt.Errorf("missing required files in %s: %v, %v", workDir, deviceYmlErr, installerConfErr))
+		return fmt.Errorf("%s is not the FlowFuse Device Agent directory. If you installed it in a custom directory, please specify it using `--dir` flag", workDir)
+	}
+
+	logger.Debug("Validation passed: device.yml found in %s", workDir)
+	logger.LogFunctionExit("ValidateUninstallDirectory", "success", nil)
 	return nil
 }

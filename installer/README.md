@@ -41,6 +41,7 @@ powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 | `--nodejs-version` | `-n` | `20.19.1` | Node.js version to install (minimum) |
 | `--agent-version` | `-a` | `latest` | Device agent version to install/update to |
 | `--service-user` | `-s` | `flowfuse` | Username for the service account (linux/macos)|
+| `--dir` | `-d` | `/opt/flowfuse-device` (Linux/macOS) or `C:\opt\flowfuse-device` (Windows) | Installation directory for the device agent |
 | `--uninstall` | | `false` | Uninstall the device agent |
 | `--update-nodejs` | | `false` | Update bundled Node.js to specified version |
 | `--update-agent` | | `false` | Update the Device Agent package to specified version |

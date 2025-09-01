@@ -91,11 +91,11 @@ func InstallDeviceAgent(version, baseDir string, update bool) error {
 // Returns:
 //   - string: The version of the installed Device Agent, or an empty string if not found
 //   - error: An error if the command fails or if the output cannot be parsed
-func GetInstalledDeviceAgentVersion() (string, error) {
+func GetInstalledDeviceAgentVersion(baseDir string) (string, error) {
 	// Load saved configuration
 	logger.Debug("Loading configuration...")
 	savedAgentVersion := ""
-	cfg, err := config.LoadConfig()
+	cfg, err := config.LoadConfig(baseDir)
 	if err != nil {
 		logger.Error("Could not load configuration: %v", err)
 		return "", fmt.Errorf("could not load configuration: %w", err)
@@ -111,18 +111,19 @@ func GetInstalledDeviceAgentVersion() (string, error) {
 // the FlowFuse Device Agent package available in npmjs registry.
 // It runs the npm view command to get the latest version.
 //
+// Parameters:
+//   - baseDir: The base directory where Node.js is installed
+//
 // Returns:
 //   - string: The latest version of the Device Agent package
 //   - error: An error if the command fails or if the output cannot be parsed
-func GetLatestDeviceAgentVersion() (string, error) {
+func GetLatestDeviceAgentVersion(baseDir string) (string, error) {
+	logger.LogFunctionEntry("GetLatestDeviceAgentVersion", map[string]interface{}{
+		"baseDir": baseDir,
+	})
+
 	var viewCmd *exec.Cmd
 	serviceUser := utils.ServiceUsername
-
-	baseDir, err := utils.GetWorkingDirectory()
-	if err != nil {
-		logger.Error("Failed to get working directory: %v", err)
-		return "", fmt.Errorf("failed to get working directory: %w", err)
-	}
 
 	setNodeDirectories(baseDir)
 	nodeBinDirPath := GetNodeBinDir()
@@ -134,21 +135,25 @@ func GetLatestDeviceAgentVersion() (string, error) {
 
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		viewCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), "view", packageName, "version")
+		viewCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), "view", packageName, "version", "--no-update-notifier", "-silent")
 		env := os.Environ()
 		viewCmd.Env = append(env, newPath)
 	case "windows":
-		viewCmd = exec.Command("cmd", "/C", npmBinPath, "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), "view", packageName, "version")
+		viewCmd = exec.Command("powershell", "-Command", "&", fmt.Sprintf(`'%s'`, npmBinPath), "--cache", fmt.Sprintf(`'%s'`, filepath.Join(nodeBaseDir, ".npm-cache")), "view", packageName, "version", "--no-update-notifier", "-silent")
 		env := os.Environ()
 		viewCmd.Env = append(env, newPath)
 	default:
+		logger.LogFunctionExit("GetLatestDeviceAgentVersion", nil, fmt.Errorf("unsupported operating system: %s", runtime.GOOS))
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
 
 	output, err := viewCmd.CombinedOutput()
+	logger.Debug("GetLatestDeviceAgentVersion command output: %s", output)
 	if err != nil {
+		logger.LogFunctionExit("GetLatestDeviceAgentVersion", output, err)
 		return "", fmt.Errorf("failed to get latest device agent version: %w\nOutput: %s", err, output)
 	}
+	logger.LogFunctionExit("GetLatestDeviceAgentVersion", output, nil)
 	return strings.TrimSpace(string(output)), nil
 }
 
@@ -159,23 +164,25 @@ func GetLatestDeviceAgentVersion() (string, error) {
 //
 // Parameters:
 //   - requestedAgentVersion: The version of the Device Agent that is requested to be installed
+//   - baseDir: The base directory where Node.js and Device Agent are installed
 //
 // Returns:
 //   - bool: true if an update is needed, false otherwise
 //   - error: An error if the current version cannot be retrieved or if the comparison fails
-func IsAgentUpdateRequired(requestedAgentVersion string) (bool, error) {
+func IsAgentUpdateRequired(requestedAgentVersion, baseDir string) (bool, error) {
 	logger.LogFunctionEntry("IsAgentUpdateRequired", map[string]interface{}{
 		"requestedAgentVersion": requestedAgentVersion,
+		"baseDir":               baseDir,
 	})
 	var err error
 
 	if requestedAgentVersion == "latest" {
-		requestedAgentVersion, err = GetLatestDeviceAgentVersion()
+		requestedAgentVersion, err = GetLatestDeviceAgentVersion(baseDir)
 		if err != nil {
 			return false, fmt.Errorf("failed to get latest device agent version: %v", err)
 		}
 	}
-	currentVersion, err := GetInstalledDeviceAgentVersion()
+	currentVersion, err := GetInstalledDeviceAgentVersion(baseDir)
 	if err != nil {
 		return false, fmt.Errorf("failed to get current device agent version: %v", err)
 	}
@@ -228,12 +235,7 @@ func UninstallDeviceAgent(baseDir string) error {
 		env := os.Environ()
 		uninstallCmd.Env = append(env, npmPrefix, newPath)
 	case "windows":
-		workDir, err := utils.GetWorkingDirectory()
-		if err != nil {
-			return fmt.Errorf("failed to get working directory: %w", err)
-		}
-
-		deviceAgentPath := filepath.Join(workDir, "node", "node_modules", "@flowfuse", "device-agent")
+		deviceAgentPath := filepath.Join(baseDir, "node", "node_modules", "@flowfuse", "device-agent")
 		uninstallCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", deviceAgentPath)
 		env := os.Environ()
 		uninstallCmd.Env = append(env, npmPrefix, newPath)
@@ -310,12 +312,14 @@ func ConfigureDeviceAgent(url, token, baseDir string) (string, bool, error) {
 		var configureCmd *exec.Cmd
 		switch runtime.GOOS {
 		case "linux", "darwin":
-			configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--installer-mode")
+			configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--dir", baseDir, "--otc-no-start", "--installer-mode")
 			env := os.Environ()
+			configureCmd.Dir = baseDir
 			configureCmd.Env = append(env, newPath)
 		case "windows":
-			configureCmd = exec.Command("cmd", "/C", deviceAgentPath, "-o", token, "-u", url, "--otc-no-start", "--installer-mode")
+			configureCmd = exec.Command("powershell", "-Command", "&", fmt.Sprintf(`'%s'`, deviceAgentPath), "-o", token, "-u", url, "--dir", fmt.Sprintf(`'%s'`, baseDir), "--otc-no-start", "--installer-mode")
 			env := os.Environ()
+			configureCmd.Dir = baseDir
 			configureCmd.Env = append(env, newPath)
 		default:
 			return "", false, fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
@@ -353,7 +357,7 @@ func ConfigureDeviceAgent(url, token, baseDir string) (string, bool, error) {
 		logger.Info("Configuration completed successfully!")
 		return "otc", true, nil
 	} else {
-	
+
 		logger.Info("No OTC (One-Time Code) provided. Automatic configuration is not possible.")
 		logger.Info("You can either:")
 		logger.Info("  1. Install the device agent only (you'll need to configure it manually later)")

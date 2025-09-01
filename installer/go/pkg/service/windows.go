@@ -37,7 +37,7 @@ const nssmVersion = "2.24"
 //   - error: nil on success, otherwise an error with detailed failure information
 func InstallWindows(serviceName, workDir string) error {
 	// First, download and extract NSSM if it doesn't exist
-	nssmPath, err := ensureNSSM()
+	nssmPath, err := ensureNSSM(workDir)
 	if err != nil {
 		return fmt.Errorf("failed to ensure NSSM is available: %w", err)
 	}
@@ -91,6 +91,7 @@ func configureService(nssmPath, serviceName, workDir string) error {
 		"AppRotateFiles":               "1",
 		"AppRotateOnline":              "1",
 		"AppRotateBytes":               "10240",
+		"AppParameters":                fmt.Sprintf("--dir=\"%s\"", workDir),
 	}
 
 	for param, value := range serviceParams {
@@ -235,10 +236,10 @@ func IsInstalledWindows(serviceName string) bool {
 // Returns:
 //   - string: The path to the NSSM executable
 //   - error: An error if the NSSM executable could not be found or downloaded
-func ensureNSSM() (string, error) {
+func ensureNSSM(workDir string) (string, error) {
 	downloadUrl := fmt.Sprintf("https://nssm.cc/release/nssm-%s.zip", nssmVersion)
 
-	nssmPath, err := findNSSM()
+	nssmPath, err := findNSSM(workDir)
 	if err == nil {
 		return nssmPath, nil
 	}
@@ -248,11 +249,6 @@ func ensureNSSM() (string, error) {
 	arch := "win64"
 	if os.Getenv("PROCESSOR_ARCHITECTURE") == "x86" {
 		arch = "win32"
-	}
-
-	workDir, err := utils.GetWorkingDirectory()
-	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %w", err)
 	}
 
 	// Create directory for NSSM
@@ -302,15 +298,10 @@ func ensureNSSM() (string, error) {
 // Returns:
 //   - string: The full path to nssm.exe if found
 //   - error: An error if NSSM could not be found in the expected location
-func findNSSM() (string, error) {
+func findNSSM(workDir string) (string, error) {
 	arch := "win64"
 	if os.Getenv("PROCESSOR_ARCHITECTURE") == "x86" {
 		arch = "win32"
-	}
-
-	workDir, err := utils.GetWorkingDirectory()
-	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %w", err)
 	}
 
 	nssmPath := filepath.Join(workDir, "nssm", fmt.Sprintf("nssm-%s", nssmVersion), arch, "nssm.exe")

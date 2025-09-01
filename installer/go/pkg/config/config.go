@@ -22,8 +22,15 @@ type InstallerConfig struct {
 // It first retrieves the working directory using utils.GetWorkingDirectory()
 // and then appends "installer.conf" to form the complete path.
 // If retrieving the working directory fails, it returns an empty string and an error.
-func GetConfigPath() (string, error) {
-	workDir, err := utils.GetWorkingDirectory()
+//
+// Parameters:
+//   - customWorkDir: Optional custom working directory path. If empty, uses default path.
+//
+// Returns:
+//   - string: The path to the configuration file
+//   - error: An error if retrieving the working directory fails
+func GetConfigPath(customWorkDir string) (string, error) {
+	workDir, err := utils.GetWorkingDirectory(customWorkDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to get working directory: %w", err)
 	}
@@ -40,11 +47,12 @@ func GetConfigPath() (string, error) {
 //
 // Parameters:
 //   - cfg: The InstallerConfig to be saved
+//   - customWorkDir: Optional custom working directory path. If empty, uses default path.
 //
 // Returns:
 //   - error: nil if successful, otherwise an error detailing what went wrong
-func SaveConfig(cfg *InstallerConfig) error {
-	configPath, err := GetConfigPath()
+func SaveConfig(cfg *InstallerConfig, customWorkDir string) error {
+	configPath, err := GetConfigPath(customWorkDir)
 	if err != nil {
 		return err
 	}
@@ -85,19 +93,22 @@ func SaveConfig(cfg *InstallerConfig) error {
 	return nil
 }
 
-// LoadConfig loads the installer configuration from the default configuration path.
+// LoadConfig loads the installer configuration from the configuration path.
 //
 // It first attempts to get the path to the configuration file using GetConfigPath().
 // If the configuration file doesn't exist, it returns a default configuration with
 // the ServiceUsername set to the predefined utils.ServiceUsername value.
 // If the file exists, it reads and parses the JSON content into an InstallerConfig struct.
 //
+// Parameters:
+//   - customWorkDir: Optional custom working directory path. If empty, uses default path.
+//
 // Returns:
 //   - *InstallerConfig: The loaded configuration or default if file doesn't exist
 //   - error: An error if the config path cannot be determined, the file cannot be read,
 //     or the JSON content cannot be parsed
-func LoadConfig() (*InstallerConfig, error) {
-	configPath, err := GetConfigPath()
+func LoadConfig(customWorkDir string) (*InstallerConfig, error) {
+	configPath, err := GetConfigPath(customWorkDir)
 	if err != nil {
 		return nil, err
 	}
@@ -134,16 +145,18 @@ func LoadConfig() (*InstallerConfig, error) {
 // Parameters:
 //   - fieldName: The name of the field to update (case-sensitive)
 //   - value: The new value for the field
+//   - customWorkDir: Optional custom working directory path. If empty, uses default path.
 //
 // Returns:
 //   - error: nil if successful, otherwise an error detailing what went wrong
-func UpdateConfigField(fieldName, value string) error {
+func UpdateConfigField(fieldName, value, customWorkDir string) error {
 	logger.LogFunctionEntry("UpdateConfigField", map[string]interface{}{
-		"fieldName": fieldName,
-		"value":     value,
+		"fieldName":     fieldName,
+		"value":         value,
+		"customWorkDir": customWorkDir,
 	})
 
-	cfg, err := LoadConfig()
+	cfg, err := LoadConfig(customWorkDir)
 	if err != nil {
 		return fmt.Errorf("failed to load existing config: %w", err)
 	}
@@ -162,7 +175,7 @@ func UpdateConfigField(fieldName, value string) error {
 	}
 
 	// Save the updated configuration
-	if err := SaveConfig(cfg); err != nil {
+	if err := SaveConfig(cfg, customWorkDir); err != nil {
 		logger.LogFunctionExit("UpdateConfigField", "error", err)
 		return fmt.Errorf("failed to save updated config: %w", err)
 	}
