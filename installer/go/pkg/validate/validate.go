@@ -20,6 +20,7 @@ import (
 // Parameters:
 //   - customWorkDir: Optional custom working directory path. If empty, uses default path.
 //	 - port: The TCP port to validate for availability.
+//   - serviceName: The name of the service to stop before removing the directory
 //
 // Returns:
 //   - nil if all checks pass

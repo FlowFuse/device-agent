@@ -91,6 +91,7 @@ func configureService(nssmPath, serviceName, workDir string, port int) error {
 		"AppRotateFiles":               "1",
 		"AppRotateOnline":              "1",
 		"AppRotateBytes":               "10240",
+		"AppParameters":                fmt.Sprintf("--dir=\"%s\"", workDir),
 	}
 
 	for param, value := range serviceParams {

@@ -292,6 +292,36 @@ describe('Launcher', function () {
         settings.should.have.property('flowforge')
         settings.flowforge.should.not.have.property('mqttNodes')
     })
+    it('Write Settings - Tables Nodes - with feature flag `tables` true', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...config,
+                brokerURL: 'BURL',
+                brokerUsername: 'BUSER:TEAMID:deviceid',
+                brokerPassword: 'BPASS'
+            }
+        }, null, 'PROJECTID', setup.snapshot, { features: { tables: true } })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.flowforge.should.have.property('tables')
+        console.log(settings.flowforge)
+        // settings.flowforge.tables.should.have.property('token') // no tokens in the test setup
+    })
+    it('Write Settings - Tables Nodes - with feature flag `tables` fale', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...config,
+                brokerURL: 'BURL',
+                brokerUsername: 'BUSER:TEAMID:deviceid',
+                brokerPassword: 'BPASS'
+            }
+        }, null, 'PROJECTID', setup.snapshot, { features: { tables: false } })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.flowforge.should.not.have.property('tables')
+    })
 
     it('Write package.json', async function () {
         const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
