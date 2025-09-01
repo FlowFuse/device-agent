@@ -25,6 +25,7 @@ var (
 	updateNode          bool
 	updateAgent         bool
 	debugMode           bool
+	port                int
 )
 
 func init() {
@@ -34,6 +35,7 @@ func init() {
 	pflag.StringVarP(&flowfuseURL, "url", "u", "https://app.flowfuse.com", "FlowFuse URL")
 	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (optional for interactive installation)")
 	pflag.StringVarP(&installDir, "dir", "d", "", "Custom installation directory (default: /opt/flowfuse-device on Unix, c:\\opt\\flowfuse-device on Windows)")
+	pflag.IntVarP(&port, "port", "p", 1880, "TCP port for the device agent (1-65535)")
 	pflag.BoolVarP(&showVersion, "version", "v", false, "Display installer version")
 	pflag.BoolVarP(&help, "help", "h", false, "Display help information")
 	pflag.BoolVar(&uninstall, "uninstall", false, "Uninstall the device agent")
@@ -52,8 +54,8 @@ func init() {
 		fmt.Print("\n")
 		fmt.Println("Usage:")
 		fmt.Println("  Installation:")
-		fmt.Printf("    %s --otc <one-time-code> [--agent-version <version>] [--nodejs-version <version>]\n", exeName)
-		fmt.Printf("    %s [--agent-version <version>] [--nodejs-version <version>] (interactive mode)\n", exeName)
+		fmt.Printf("    %s --otc <one-time-code> [--agent-version <version>] [--nodejs-version <version>] [--dir <custom-dir>] [--port <n>]\n", exeName)
+		fmt.Printf("    %s [--agent-version <version>] [--nodejs-version <version>] [--dir <custom-dir>] [--port <n>] (interactive mode)\n", exeName)
 		fmt.Println("  Update:")
 		fmt.Printf("    %s --update-agent [--agent-version <version>]\n", exeName)
 		fmt.Printf("    %s --update-nodejs [--nodejs-version <version>]\n", exeName)
@@ -71,23 +73,18 @@ func init() {
 		fmt.Printf("FlowFuse Device Agent Installer Version: %s\n", instVersion)
 		os.Exit(0)
 	}
-
-	if flowfuseOneTimeCode == "" && !uninstall && !updateNode && !updateAgent {
-		fmt.Println("One time code has not been provided. The Device Agent automatic configuration is not possible.")
-		response := utils.PromptYesNo("Do you want to continue with the installation?", false)
-		if !response {
-			fmt.Println("Installation aborted by user.")
-			os.Exit(1)
-		} else {
-			fmt.Println("Continuing with installation in interactive mode...")
-		}
-	}
 }
 
 func main() {
 	utils.ServiceUsername = serviceUsername
+	utils.DefaultPort = port
 	var err error
 	var exitCode int
+
+	if port < 1025 || port > 65535 {
+		fmt.Println("Invalid --port value. Please specify a port in range 1025-65535.")
+		os.Exit(2)
+	}
 
 	// Initialize logger
 	if err := logger.Initialize(debugMode); err != nil {
@@ -97,8 +94,8 @@ func main() {
 	}
 
 	// Log startup information
-	logger.Debug("Command line arguments: node=%s, agent=%s, user=%s, url=%s, debug=%v, customInstallDir=%s",
-		nodeVersion, agentVersion, serviceUsername, flowfuseURL, debugMode, installDir)
+	logger.Debug("Command line arguments: node=%s, agent=%s, user=%s, url=%s, debug=%v, customInstallDir=%s, port=%s",
+		nodeVersion, agentVersion, serviceUsername, flowfuseURL, debugMode, installDir, port)
 	operatingSystem, architecture := utils.GetOSDetails()
 	logger.Debug("Detected system: %s, detected architecture: %s", operatingSystem, architecture)
 
@@ -115,6 +112,17 @@ func main() {
 		logger.Debug("FlowFuse Device Agent Installer version: %s", instVersion)
 	}
 
+	if flowfuseOneTimeCode == "" && !uninstall && !updateNode && !updateAgent {
+		fmt.Println("One time code has not been provided. The Device Agent automatic configuration is not possible.")
+		response := utils.PromptYesNo("Do you want to continue with the installation?", false)
+		if !response {
+			fmt.Println("Installation aborted by user.")
+			os.Exit(1)
+		} else {
+			fmt.Println("Continuing with installation in interactive mode...")
+		}
+	}
+
 	if uninstall {
 		err = cmd.Uninstall(installDir)
 	} else if updateNode || updateAgent {
@@ -122,8 +130,7 @@ func main() {
 		err = cmd.Update(agentVersion, nodeVersion, installDir, updateAgent, updateNode)
 	} else {
 		logger.Info("Installing FlowFuse Device Agent...")
-
-		err = cmd.Install(nodeVersion, agentVersion, flowfuseURL, flowfuseOneTimeCode, installDir, false)
+		err = cmd.Install(nodeVersion, agentVersion, flowfuseURL, flowfuseOneTimeCode, installDir, false, port)
 	}
 
 	if err != nil {
