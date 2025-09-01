@@ -53,7 +53,7 @@ powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 ### Management Commands
 
 ```bash
-# Minimal usage (defaults to port 1880)
+# Minimal usage
 ./flowfuse-device-agent-installer --otc ONE_TIME_CODE
 
 # Install with custom settings
