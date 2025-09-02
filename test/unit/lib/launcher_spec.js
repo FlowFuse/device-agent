@@ -308,7 +308,7 @@ describe('Launcher', function () {
         console.log(settings.flowforge)
         // settings.flowforge.tables.should.have.property('token') // no tokens in the test setup
     })
-    it('Write Settings - Tables Nodes - with feature flag `tables` fale', async function () {
+    it('Write Settings - Tables Nodes - with feature flag `tables` false', async function () {
         const launcher = newLauncher({
             config: {
                 ...config,
