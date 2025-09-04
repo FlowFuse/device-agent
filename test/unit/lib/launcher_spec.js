@@ -308,7 +308,7 @@ describe('Launcher', function () {
         console.log(settings.flowforge)
         // settings.flowforge.tables.should.have.property('token') // no tokens in the test setup
     })
-    it('Write Settings - Tables Nodes - with feature flag `tables` fale', async function () {
+    it('Write Settings - Tables Nodes - with feature flag `tables` false', async function () {
         const launcher = newLauncher({
             config: {
                 ...config,
@@ -323,6 +323,88 @@ describe('Launcher', function () {
         settings.flowforge.should.not.have.property('tables')
     })
 
+    it('Write Settings - assistant - defaults', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...configWithPlatformInfo,
+                brokerURL: 'BURL',
+                brokerUsername: 'BUSER:TEAMID:deviceid',
+                brokerPassword: 'BPASS'
+            }
+        }, null, 'PROJECTID', setup.snapshot, { features: { tables: false } })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.flowforge.should.have.property('assistant').and.be.an.Object()
+        settings.flowforge.assistant.should.eql({
+            enabled: false,
+            url: 'https://test/api/v1/assistant/',
+            token: 'test-token',
+            requestTimeout: 60000
+        })
+    })
+    it('Write Settings - assistant - mcp settings pass through', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...configWithPlatformInfo,
+                brokerURL: 'BURL',
+                brokerUsername: 'BUSER:TEAMID:deviceid',
+                brokerPassword: 'BPASS'
+            }
+        }, null, 'PROJECTID', setup.snapshot, {
+            features: { tables: false },
+            assistant: {
+                mcp: {
+                    enabled: true
+                }
+            }
+        })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.flowforge.should.have.property('assistant').and.be.an.Object()
+        settings.flowforge.assistant.should.eql({
+            enabled: false,
+            url: 'https://test/api/v1/assistant/',
+            token: 'test-token',
+            requestTimeout: 60000,
+            mcp: {
+                enabled: true
+            }
+        })
+    })
+    it('Write Settings - assistant - completions/inline settings pass through', async function () {
+        const launcher = newLauncher({
+            config: {
+                ...configWithPlatformInfo,
+                brokerURL: 'BURL',
+                brokerUsername: 'BUSER:TEAMID:deviceid',
+                brokerPassword: 'BPASS'
+            }
+        }, null, 'PROJECTID', setup.snapshot, {
+            features: { tables: false },
+            assistant: {
+                completions: {
+                    enabled: true,
+                    inlineEnabled: true
+                }
+            }
+        })
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.flowforge.should.have.property('assistant').and.be.an.Object()
+        settings.flowforge.assistant.should.eql({
+            enabled: false,
+            url: 'https://test/api/v1/assistant/',
+            token: 'test-token',
+            requestTimeout: 60000,
+            completions: {
+                enabled: true,
+                inlineEnabled: true
+            }
+        })
+    })
     it('Write package.json', async function () {
         const launcher = newLauncher({ config }, null, 'projectId', setup.snapshot)
         await launcher.writePackage()
