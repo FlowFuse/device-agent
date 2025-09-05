@@ -2,10 +2,12 @@ package validate
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 
+	"github.com/flowfuse/device-agent-installer/pkg/config"
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/service"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
@@ -16,20 +18,27 @@ import (
 // 2. Verifies if user has the necessary permissions to run the installer
 //
 // Parameters:
-//   - serviceName: The name of the service to stop before removing the directory
 //   - customWorkDir: Optional custom working directory path. If empty, uses default path.
+//	 - port: The TCP port to validate for availability.
+//   - serviceName: The name of the service to stop before removing the directory
 //
 // Returns:
 //   - nil if all checks pass
 //   - error if any check fails
-func PreInstall(serviceName, customWorkDir string) error {
+func PreInstall(customWorkDir string, port int) error {
 	if err := utils.CheckPermissions(); err != nil {
 		logger.Error("Permission check failed: %v", err)
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("permission check failed: %w", err)
 	}
 
-	if err := checkConfigFileExists(serviceName, customWorkDir); err != nil {
+	if err := checkUnusedPort(port); err != nil {
+		logger.Error("Port check failed: %v", err)
+		logger.LogFunctionExit("PreInstall", nil, err)
+		return fmt.Errorf("port check failed: %w", err)
+	}
+
+	if err := checkConfigFileExists(customWorkDir); err != nil {
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("configuration file pre-check failed: %w", err)
 	}
@@ -51,21 +60,43 @@ func PreInstall(serviceName, customWorkDir string) error {
 // Based on the user's choice, it either preserves the config, removes all content, or cancels the installation.
 //
 // Parameters:
-//   - serviceName: the name of the service to stop before removing the directory (if removal is chosen)
 //   - customWorkDir: Optional custom working directory path. If empty, uses default path.
 //
 // Returns:
 //   - error: nil if the configuration file does not exist, user chooses to keep it, or content has been successfully removed,
 //     otherwise an error explaining what went wrong or if user cancels installation
-func checkConfigFileExists(serviceName, customWorkDir string) error {
+func checkConfigFileExists(customWorkDir string) error {
+	logger.LogFunctionEntry("checkConfigFileExists", map[string]interface{}{
+		"customWorkDir": customWorkDir,
+	})
+
 	workDir, err := utils.GetWorkingDirectory(customWorkDir)
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
 	deviceAgentConfig := filepath.Join(workDir, "device.yml")
+	installerConfPath := filepath.Join(workDir, "installer.conf")
+	_, deviceAgentConfigErr := os.Stat(deviceAgentConfig)
+	_, installerConfErr := os.Stat(installerConfPath)
+	logger.Debug(fmt.Sprintf("DeviceAgentConfigErr: %s", deviceAgentConfigErr))
+	logger.Debug(fmt.Sprintf("installerConfErr: %s", installerConfErr))
+	logger.Debug(fmt.Sprintf("devAgentExists: %t", os.IsNotExist(deviceAgentConfigErr)))
+	logger.Debug(fmt.Sprintf("installerConfExists: %t", os.IsNotExist(installerConfErr)))
 
-	if _, err := os.Stat(deviceAgentConfig); !os.IsNotExist(err) {
+	if deviceAgentConfigErr == nil || installerConfErr == nil {
 		logger.Info("The working directory %s exists and contains Device Agent configuration file", workDir)
+
+		// Derive per-port service name from installer config (fallback to default port)
+		cfg, cfgErr := config.LoadConfig(customWorkDir)
+		port := utils.DefaultPort
+		if cfgErr != nil {
+			logger.Debug("Could not load installer config to derive port: %v. Using default port %d", cfgErr, port)
+		} else {
+			port = cfg.Port
+			logger.Debug("Derived port %d from installer config for service operations", port)
+		}
+		perPortService := fmt.Sprintf("flowfuse-device-agent-%d", port)
+		legacyService := "flowfuse-device-agent"
 
 		options := []string{
 			"Keep existing configuration and continue installation",
@@ -80,19 +111,38 @@ func checkConfigFileExists(serviceName, customWorkDir string) error {
 
 		switch choice {
 		case 0: // Keep existing configuration
-			if err := service.Stop(serviceName); err != nil {
-				logger.Debug("Failed to stop FlowFuse Device Agent service: %v - continuing anyway", err)
-			}
-			if err := service.Uninstall(serviceName); err != nil {
-				logger.Debug("Failed to uninstall FlowFuse Device Agent service: %v - continuing anyway", err)
+			// Try per-port service first, then legacy name
+			if service.IsInstalled(perPortService) {
+				if err := service.Stop(perPortService); err != nil {
+					logger.Debug("Failed to stop service %s: %v - continuing", perPortService, err)
+				}
+				if err := service.Uninstall(perPortService); err != nil {
+					logger.Debug("Failed to uninstall service %s: %v - continuing", perPortService, err)
+				}
+			} else if service.IsInstalled(legacyService) {
+				if err := service.Stop(legacyService); err != nil {
+					logger.Debug("Failed to stop legacy service %s: %v - continuing", legacyService, err)
+				}
+				if err := service.Uninstall(legacyService); err != nil {
+					logger.Debug("Failed to uninstall legacy service %s: %v - continuing", legacyService, err)
+				}
 			}
 			logger.Info("Keeping existing configuration file, continuing with installation...")
 		case 1: // Remove all content and do fresh installation
-			if err := service.Stop(serviceName); err != nil {
-				logger.Debug("Failed to stop FlowFuse Device Agent service: %v - continuing anyway", err)
-			}
-			if err := service.Uninstall(serviceName); err != nil {
-				logger.Debug("Failed to uninstall FlowFuse Device Agent service: %v - continuing anyway", err)
+			if service.IsInstalled(perPortService) {
+				if err := service.Stop(perPortService); err != nil {
+					logger.Debug("Failed to stop service %s: %v - continuing", perPortService, err)
+				}
+				if err := service.Uninstall(perPortService); err != nil {
+					logger.Debug("Failed to uninstall service %s: %v - continuing", perPortService, err)
+				}
+			} else if service.IsInstalled(legacyService) {
+				if err := service.Stop(legacyService); err != nil {
+					logger.Debug("Failed to stop legacy service %s: %v - continuing", legacyService, err)
+				}
+				if err := service.Uninstall(legacyService); err != nil {
+					logger.Debug("Failed to uninstall legacy service %s: %v - continuing", legacyService, err)
+				}
 			}
 			logger.Info("Removing contents of %s ...", workDir)
 			if err := utils.RemoveWorkingDirectory(workDir); err != nil {
@@ -102,6 +152,7 @@ func checkConfigFileExists(serviceName, customWorkDir string) error {
 			return fmt.Errorf("installation cancelled by user")
 		}
 	}
+	logger.LogFunctionExit("checkConfigFileExists", nil, nil)
 	return nil
 }
 
@@ -166,5 +217,27 @@ func ValidateUninstallDirectory(workDir string) error {
 
 	logger.Debug("Validation passed: device.yml found in %s", workDir)
 	logger.LogFunctionExit("ValidateUninstallDirectory", "success", nil)
+	return nil
+}
+
+// checkUnusedPort validates if specified TCP port is not in use by any process.
+//
+// Parameters
+//   - port: The TCP port to validate for availability.
+//
+// Returns:
+//   - error: nil if the port is available, otherwise an error indicating the port is in use
+func checkUnusedPort(port int) error {
+	logger.LogFunctionEntry("checkUnusedPort", map[string]interface{}{
+		"port": port,
+	})
+	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	if err != nil {
+		logger.LogFunctionExit("checkUnusedPort", "error", err)
+		logger.Debug("Port %d is in use: %v", port, err)
+		return fmt.Errorf("port %d is in use. Please select another port and try again", port)
+	}
+	defer listener.Close()
+	logger.LogFunctionExit("checkUnusedPort", "success", nil)
 	return nil
 }

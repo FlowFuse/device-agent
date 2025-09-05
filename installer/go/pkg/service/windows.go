@@ -35,7 +35,7 @@ const nssmVersion = "2.24"
 //
 // Returns:
 //   - error: nil on success, otherwise an error with detailed failure information
-func InstallWindows(serviceName, workDir string) error {
+func InstallWindows(serviceName, workDir string, port int) error {
 	// First, download and extract NSSM if it doesn't exist
 	nssmPath, err := ensureNSSM(workDir)
 	if err != nil {
@@ -60,7 +60,7 @@ func InstallWindows(serviceName, workDir string) error {
 	}
 
 	// Configure the service
-	if err := configureService(nssmPath, serviceName, workDir); err != nil {
+	if err := configureService(nssmPath, serviceName, workDir, port); err != nil {
 		return err
 	}
 
@@ -77,11 +77,11 @@ func InstallWindows(serviceName, workDir string) error {
 //
 // Returns:
 //   - error: nil on success, otherwise an error indicating the failure
-func configureService(nssmPath, serviceName, workDir string) error {
+func configureService(nssmPath, serviceName, workDir string, port int) error {
 	serviceParams := map[string]string{
 		"AppDirectory":                 workDir,
-		"DisplayName":                  "FlowFuse Device Agent",
-		"Description":                  fmt.Sprintf("FlowFuse Device Agent Service running from %s", workDir),
+		"DisplayName":                  fmt.Sprintf("FlowFuse Device Agent (%d)", port),
+		"Description":                  fmt.Sprintf("FlowFuse Device Agent Service running from %s on port %d", workDir, port),
 		"AppStdout":                    filepath.Join(workDir, "flowfuse-device-agent.log"),
 		"AppStderr":                    filepath.Join(workDir, "flowfuse-device-agent-error.log"),
 		"AppRestartDelay":              "30000",
@@ -107,6 +107,12 @@ func configureService(nssmPath, serviceName, workDir string) error {
 	logger.Debug("Set environment command: %s", envCmd.String())
 	if output, err := envCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to set environment variables: %w\nOutput: %s", err, output)
+	}
+
+	// Set AppParameters to include workdir and port
+	appParams := fmt.Sprintf("--dir \"%s\" --port %d", workDir, port)
+	if err := setNssmParam(nssmPath, serviceName, "AppParameters", appParams); err != nil {
+		return err
 	}
 
 	return nil

@@ -42,6 +42,7 @@ powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 | `--agent-version` | `-a` | `latest` | Device agent version to install/update to |
 | `--service-user` | `-s` | `flowfuse` | Username for the service account (linux/macos)|
 | `--dir` | `-d` | `/opt/flowfuse-device` (Linux/macOS) or `C:\opt\flowfuse-device` (Windows) | Installation directory for the device agent |
+| `--port` | `-p` | `1880` | TCP port for the device agent (1025–65535). Service name is suffixed with the port, e.g., `flowfuse-device-agent-1880`. |
 | `--uninstall` | | `false` | Uninstall the device agent |
 | `--update-nodejs` | | `false` | Update bundled Node.js to specified version |
 | `--update-agent` | | `false` | Update the Device Agent package to specified version |
@@ -56,7 +57,10 @@ powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 ./flowfuse-device-agent-installer --otc ONE_TIME_CODE
 
 # Install with custom settings
-./flowfuse-device-agent-installer --otc ONE_TIME_CODE --url https://your-flowfuse-instance.com --node 18.20.0
+./flowfuse-device-agent-installer --otc ONE_TIME_CODE --url https://your-flowfuse-instance.com --nodejs-version 20.19.1
+
+# Install in non-default directory and port
+./flowfuse-device-agent-installer --otc ONE_TIME_CODE --dir /custom/dir --port 1882
 
 # Enable debug logging
 ./flowfuse-device-agent-installer --otc ONE_TIME_CODE --debug
@@ -73,69 +77,53 @@ powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 
 ### Managing FlowFuse Device Agent service
 
+Services are named per-port, e.g., `flowfuse-device-agent-1880`. On macOS, the launchd label is `com.flowfuse.device-agent-1880`.
+
 #### Linux (systemd)
 
 ```bash
-# Start the service
-sudo systemctl start flowfuse-device-agent
-# Stop the service
-sudo systemctl stop flowfuse-device-agent
-# Restart the service
-sudo systemctl restart flowfuse-device-agent
-# Check service status
-sudo systemctl status flowfuse-device-agent
+# Replace <port> with your configured port (default 1880)
+sudo systemctl start flowfuse-device-agent-<port>
+sudo systemctl stop flowfuse-device-agent-<port>
+sudo systemctl restart flowfuse-device-agent-<port>
+sudo systemctl status flowfuse-device-agent-<port>
 ```
 
 #### Linux (SysVinit)
 
 ```bash
-# Start the service
-sudo service flowfuse-device-agent start
-# Stop the service
-sudo service flowfuse-device-agent stop
-# Restart the service
-sudo service flowfuse-device-agent restart
-# Check service status
-sudo service flowfuse-device-agent status
+sudo service flowfuse-device-agent-<port> start
+sudo service flowfuse-device-agent-<port> stop
+sudo service flowfuse-device-agent-<port> restart
+sudo service flowfuse-device-agent-<port> status
 ```
 
 #### Linux (OpenRC)
 
 ```bash
-# Start the service 
-sudo rc-service flowfuse-device-agent start
-# Stop the service
-sudo rc-service flowfuse-device-agent stop
-# Restart the service
-sudo rc-service flowfuse-device-agent restart
-# Check service status
-sudo rc-service flowfuse-device-agent status
+sudo rc-service flowfuse-device-agent-<port> start
+sudo rc-service flowfuse-device-agent-<port> stop
+sudo rc-service flowfuse-device-agent-<port> restart
+sudo rc-service flowfuse-device-agent-<port> status
 ```
 
 #### macOS (launchd)
 
 ```bash
-# Start the service
-sudo launchctl start com.flowfuse.device-agent
-# Stop the service
-sudo launchctl stop com.flowfuse.device-agent
-# Restart the service
-sudo launchctl kickstart -k system/com.flowfuse.device-agent
-# Check service status
-sudo launchctl print system/com.flowfuse.device-agent
+# Replace <port> with your configured port (default 1880)
+sudo launchctl start com.flowfuse.device-agent-<port>
+sudo launchctl stop com.flowfuse.device-agent-<port>
+sudo launchctl kickstart -k system/com.flowfuse.device-agent-<port>
+sudo launchctl print system/com.flowfuse.device-agent-<port>
 ```
 
 #### Windows (Service Control)
 
 ```bash
-# Start the service
-sc.exe start flowfuse-device-agent
-# Stop the service
-sc.exe stop flowfuse-device-agent
-# Restart the service
-sc.exe restart flowfuse-device-agent
-# Check service status
-sc.exe query flowfuse-device-agent
+# Replace <port> with your configured port (default 1880)
+sc.exe start flowfuse-device-agent-<port>
+sc.exe stop flowfuse-device-agent-<port>
+sc.exe query flowfuse-device-agent-<port>
 ```
 
 ### Updating components
@@ -160,7 +148,7 @@ Specifying `--update-agent` without a version will update to the latest availabl
 
 ### Log Files
 - **Linux/macOS**: `/opt/flowfuse-device/logs/flowfuse-device-agent.log`
-  - **Linux(systemd)**: `journalctl -u flowfuse-device-agent`
+- **Linux(systemd)**: `journalctl -u 'flowfuse-device-agent-*'`
 - **Windows**: `C:\opt\flowfuse-device\logs\flowfuse-device-agent.log`
 
 ## Development

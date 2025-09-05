@@ -34,23 +34,27 @@ import (
 //   - otc: The one-time code (OTC) used for device registration
 //   - customWorkDir: Optional custom working directory path. If empty, uses default path.
 //   - update: Whether this is an update operation
+//   - port: The TCP port number the device agent will use
 //
 // Returns:
 //   - error: An error object if any step of the installation fails, nil otherwise
 //
 // The function logs detailed information about each step of the process.
-func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update bool) error {
+func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update bool, port int) error {
 	logger.LogFunctionEntry("Install", map[string]interface{}{
 		"nodeVersion":   nodeVersion,
 		"agentVersion":  agentVersion,
 		"url":           url,
 		"otc":           otc,
 		"customWorkDir": customWorkDir,
+		"port":          port,
 	})
+
+	serviceName := fmt.Sprintf("flowfuse-device-agent-%d", port)
 
 	// Run pre-install validation
 	logger.Debug("Running pre-check...")
-	if err := validate.PreInstall("flowfuse-device-agent", customWorkDir); err != nil {
+	if err := validate.PreInstall(customWorkDir, port); err != nil {
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("pre-check failed: %w", err)
 	}
@@ -84,7 +88,7 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 
 	// Configure the device agent
 	logger.Info("Configuring FlowFuse Device Agent...")
-	installMode, autoStartService, err := nodejs.ConfigureDeviceAgent(url, otc, workDir)
+	installMode, autoStartService, err := nodejs.ConfigureDeviceAgent(url, otc, workDir, port)
 	if err != nil {
 		logger.Error("Device agent configuration failed: %v", err)
 		logger.LogFunctionExit("Install", nil, err)
@@ -92,9 +96,9 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 	}
 	logger.Debug("Device agent configuration successful, mode: %s, autoStart: %v", installMode, autoStartService)
 
-	if service.IsInstalled("flowfuse-device-agent") {
+	if service.IsInstalled(serviceName) {
 		logger.Debug("Removing FlowFuse Device Agent service...")
-		if err := service.Uninstall("flowfuse-device-agent"); err != nil {
+		if err := service.Uninstall(serviceName); err != nil {
 			logger.Error("Service removal failed: %v", err)
 			logger.LogFunctionExit("Install", nil, err)
 			return fmt.Errorf("service removal failed: %w", err)
@@ -102,17 +106,17 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 	}
 
 	logger.Info("Configuring FlowFuse Device Agent to run as system service...")
-	if err := service.Install("flowfuse-device-agent", workDir); err != nil {
+	if err := service.Install(serviceName, workDir, port); err != nil {
 		logger.Error("Service setup failed: %v", err)
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("service setup failed: %w", err)
 	}
-	
+
 	logger.Debug("Service setup successful")
 
 	// Start the service if auto-start is enabled for this installation mode
 	if autoStartService {
-		if err := service.Start("flowfuse-device-agent"); err != nil {
+		if err := service.Start(serviceName); err != nil {
 			logger.Error("Service start failed: %v", err)
 			logger.LogFunctionExit("Install", nil, err)
 			return fmt.Errorf("service start failed: %w", err)
@@ -130,8 +134,10 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 	}
 	cfg := &config.InstallerConfig{
 		ServiceUsername: utils.ServiceUsername,
+		ServiceName:     serviceName,
 		NodeVersion:     nodeVersion,
 		AgentVersion:    agentVersion,
+		Port:            port,
 	}
 	logger.Debug("Saving configuration: %+v", cfg)
 	if err := config.SaveConfig(cfg, workDir); err != nil {
@@ -213,17 +219,31 @@ func Uninstall(customWorkDir string) error {
 
 	// Check if the device agent service is installed and attempt removal
 	logger.Debug("Checking if device agent service is installed...")
-	if !service.IsInstalled("flowfuse-device-agent") {
-		logger.Info("FlowFuse Device Agent service is not installed on this system, skipping service removal")
-	} else {
-		// Uninstall the service
+
+	// Determine service name based on config
+	var serviceName string
+	cfg, _ := config.LoadConfig(customWorkDir)
+	if cfg != nil {
+		s := cfg.ServiceName
+		logger.Debug("Loaded service name from config: %s", s)
+		switch s {
+			case "":
+				serviceName = "flowfuse-device-agent"
+			default:
+				serviceName = s
+		}
+	}
+
+	if service.IsInstalled(serviceName) {
 		logger.Info("Removing FlowFuse Device Agent service...")
-		if err := service.Uninstall("flowfuse-device-agent"); err != nil {
+		if err := service.Uninstall(serviceName); err != nil {
 			logger.Error("Service removal failed: %v", err)
 			logger.LogFunctionExit("Uninstall", nil, err)
 			return fmt.Errorf("service removal failed: %w", err)
 		}
 		logger.Debug("Service successfully removed")
+	} else {
+		logger.Info("FlowFuse Device Agent service is not installed on this system, skipping service removal")
 	}
 
 	// Get the working directory
@@ -248,7 +268,7 @@ func Uninstall(customWorkDir string) error {
 	// Load saved configuration to get the system username
 	logger.Debug("Loading saved configuration...")
 	savedUsername := ""
-	cfg, err := config.LoadConfig(customWorkDir)
+	cfg, err = config.LoadConfig(customWorkDir)
 	if err != nil {
 		logger.Error("Could not load configuration: %v", err)
 		logger.Debug("Will use the current username setting for uninstallation.")
@@ -337,9 +357,23 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 		return fmt.Errorf("permission check failed: %w", err)
 	}
 
+	// Determine service name based on config
+	var serviceName string
+	cfg, _ := config.LoadConfig(customWorkDir)
+	if cfg != nil {
+		s := cfg.ServiceName
+		logger.Debug("Loaded service name from config: %s", s)
+		switch s {
+			case "":
+				serviceName = "flowfuse-device-agent"
+			default:
+				serviceName = s
+		}
+	}
+
 	// Check if the device agent is installed
-	logger.Debug("Checking if device agent is installed...")
-	if !service.IsInstalled("flowfuse-device-agent") {
+	logger.Debug("Checking if device agent (%s) is installed...", serviceName)
+	if !service.IsInstalled(serviceName) {
 		err := fmt.Errorf("FlowFuse Device Agent is not installed on this system")
 		logger.Error("Installation check failed: %v", err)
 		logger.LogFunctionExit("Update", nil, err)
@@ -387,7 +421,7 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 	// Stop the service temporarily for the update (if we're updating anything)
 	serviceWasStopped := false
 	if nodeUpdateNeeded || agentUpdateNeeded {
-		if err := service.Stop("flowfuse-device-agent"); err != nil {
+		if err := service.Stop(serviceName); err != nil {
 			logger.Error("Service stop failed: %v", err)
 			logger.LogFunctionExit("Update", nil, err)
 			return fmt.Errorf("service stop failed: %w", err)
@@ -403,7 +437,7 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 			// Try to start the service even if Node.js update failed
 			if serviceWasStopped {
 				logger.Debug("Starting FlowFuse Device Agent service after Node.js update failure")
-				if startErr := service.Start("flowfuse-device-agent"); startErr != nil {
+				if startErr := service.Start(serviceName); startErr != nil {
 					logger.Error("Failed to restart service after Node.js update failure: %v", startErr)
 				}
 			}
@@ -421,7 +455,7 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 			// Load saved configuration
 			logger.Debug("Loading configuration...")
 			savedAgentVersion := ""
-			cfg, err := config.LoadConfig(customWorkDir)
+			cfg, err = config.LoadConfig(customWorkDir)
 			if err != nil {
 				logger.Error("Could not load configuration: %v", err)
 				return fmt.Errorf("could not load configuration: %w", err)
@@ -447,7 +481,7 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 			// Try to start the service even if update failed with hope to recover
 			if serviceWasStopped {
 				logger.Debug("Start FlowFuse Device Agent service after update failure")
-				if startErr := service.Start("flowfuse-device-agent"); startErr != nil {
+				if startErr := service.Start(serviceName); startErr != nil {
 					logger.Error("Failed to restart service after update failure: %v", startErr)
 				}
 			}
@@ -472,12 +506,21 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 	}
 
 	if serviceWasStopped {
-		if err := service.Start("flowfuse-device-agent"); err != nil {
+		if err := service.Start(serviceName); err != nil {
 			logger.Error("Service start failed: %v", err)
 			logger.LogFunctionExit("Update", nil, err)
 			return fmt.Errorf("service start failed: %w", err)
 		}
 		logger.Debug("Service started successfully")
+	}
+
+	// Update service name for legacy installs
+	if cfg != nil && cfg.ServiceName == "" {
+		if config.UpdateConfigField("serviceName", serviceName, customWorkDir); err != nil {
+			logger.Error("Failed to update service name in configuration: %v", err)
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("failed to update service name in configuration: %w", err)
+		}
 	}
 
 	logger.Info("Update completed successfully!")
