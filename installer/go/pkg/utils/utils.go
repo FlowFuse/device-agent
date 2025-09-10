@@ -964,3 +964,36 @@ func SaveDeviceConfiguration(configContent, filePath string) error {
 	logger.Info("Device configuration saved successfully to: %s", filePath)
 	return nil
 }
+
+// ShowInstallSummary prints a user-friendly summary at the end of installation.
+// It tailors the message based on the installation mode and includes helpful next steps.
+//
+// Parameters:
+//   - installMode: one of "otc", "manual", "install-only", or "none"
+//   - url: the FlowFuse platform URL to direct the user back to
+//   - workDir: the working directory where device.yml would reside (for manual mode)
+func ShowInstallSummary(installMode, url, workDir string) {
+	logger.Info("")
+	logger.Info("FlowFuse Device Agent installation completed successfully!")
+
+	switch installMode {
+	case "otc", "manual":
+		logger.Info("The FlowFuse Device Agent is now running and will start automatically on system boot.")
+		logger.Info("You can return to the FlowFuse platform (%s) and start creating Node-RED flows on your device.", url)
+		logger.Info("If you encounter any issues, check the service status or refer to the documentation.")
+	case "install-only":
+		logger.Info("Installation complete! The FlowFuse Device Agent has been installed but requires configuration.")
+		logger.Info("To finish setup:")
+		logger.Info("  1. Create a device.yml configuration file in the %s directory", workDir)
+		logger.Info("  2. Start the Device Agent service")
+		logger.Info("Refer to the documentation for detailed configuration steps and examples.")
+		logger.Info("Once configured, you can return to the FlowFuse platform (%s) and start creating Node-RED flows on your device.", url)
+	case "none":
+		logger.Info("The FlowFuse Device Agent was already configured. The service is running and ready to use.")
+		logger.Info("You can return to the FlowFuse platform (%s) and start creating Node-RED flows on your device.", url)
+	}
+
+	logger.Info("")
+	logger.Info("For more details on managing the FlowFuse Device Agent, including commands for starting, stopping, and updating the service, visit:")
+	logger.Info("https://flowfuse.com/docs/device-agent/install/overview")
+}

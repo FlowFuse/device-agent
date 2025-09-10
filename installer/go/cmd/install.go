@@ -143,24 +143,7 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 	if err := config.SaveConfig(cfg, workDir); err != nil {
 		logger.Error("Could not save configuration: %v", err)
 	}
-	logger.Info("")
-	logger.Info("FlowFuse Device Agent installation completed successfully!")
-
-	switch installMode {
-	case "otc", "manual":
-		logger.Info("The service is now running and will start automatically on system boot.")
-		logger.Info("You can now return to the FlowFuse platform and start creating Node-RED flows on your device")
-	case "install-only":
-		logger.Info("The Device Agent has been installed but it is not configured.")
-		logger.Info("To complete the setup: ")
-		logger.Info(" 1. Create a device.yml configuration file in %s directory", workDir)
-		logger.Info(" 2. Start the Device Agent service")
-	case "none":
-		logger.Info("The device agent was already configured. The service has been set up and is running.")
-	}
-
-	logger.Info("For information on how to manage the FlowFuse Device Agent,")
-	logger.Info("  please refer to the documentation at https://github.com/FlowFuse/device-agent/blob/main/installer/README.md")
+	utils.ShowInstallSummary(installMode, url, workDir)
 
 	logger.LogFunctionExit("Install", "success", nil)
 	return nil
