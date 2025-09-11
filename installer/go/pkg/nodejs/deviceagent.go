@@ -359,11 +359,16 @@ func ConfigureDeviceAgent(url, token, baseDir string, port int) (string, bool, e
 	} else {
 
 		logger.Info("No OTC (One-Time Code) provided. Automatic configuration is not possible.")
-		logger.Info("You can either:")
-		logger.Info("  1. Install the device agent only (you'll need to configure it manually later)")
-		logger.Info("  2. Provide a device configuration file now")
-
-		configProvided := utils.PromptYesNo("Do you want to provide a device agent configuration now?", true)
+		options := []string{
+			"Provide a device configuration file now",
+			"Install the device agent only (you'll need to configure it manually later)",
+		}
+		choice, err := utils.PromptOption("You can either:", options, 0)
+		if err != nil {
+			logger.Error("Failed to get user selection: %v", err)
+			return "", false, fmt.Errorf("failed to get user selection: %w", err)
+		}
+		configProvided := choice == 0
 
 		if configProvided {
 			// Manual configuration mode
