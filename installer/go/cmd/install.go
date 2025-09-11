@@ -288,26 +288,30 @@ func Uninstall(customWorkDir string) error {
 	}
 	logger.Debug("Working directory successfully removed")
 
-	// Remove service account
-	logger.Info("Removing service account...")
-	if err := utils.RemoveServiceUser(savedUsername); err != nil {
-		// Parse error to distinguish between "user not found" and actual removal failure
-		errorStr := err.Error()
+	// Confirm service account removal
+	confirmUseraccountRemoval := utils.ConfirmUserRemoval(savedUsername)
+	if confirmUseraccountRemoval {
+		// Remove service account
+		logger.Info("Removing service account...")
+		if err := utils.RemoveServiceUser(savedUsername); err != nil {
+			// Parse error to distinguish between "user not found" and actual removal failure
+			errorStr := err.Error()
 
-		// Check for common "user not found" patterns across platforms
-		if strings.Contains(errorStr, "user does not exist") ||
-			strings.Contains(errorStr, "userdel: user") && strings.Contains(errorStr, "does not exist") ||
-			strings.Contains(errorStr, "Record does not exist") ||
-			strings.Contains(errorStr, "no such user") {
-			logger.Debug("Service account %s does not exist, skipping removal", savedUsername)
+			// Check for common "user not found" patterns across platforms
+			if strings.Contains(errorStr, "user does not exist") ||
+				strings.Contains(errorStr, "userdel: user") && strings.Contains(errorStr, "does not exist") ||
+				strings.Contains(errorStr, "Record does not exist") ||
+				strings.Contains(errorStr, "no such user") {
+				logger.Debug("Service account %s does not exist, skipping removal", savedUsername)
+			} else {
+				// This is an actual removal failure for an existing user - stop execution
+				logger.Error("Failed to remove existing service account: %v", err)
+				logger.LogFunctionExit("Uninstall", nil, err)
+				return fmt.Errorf("failed to remove existing service account: %w", err)
+			}
 		} else {
-			// This is an actual removal failure for an existing user - stop execution
-			logger.Error("Failed to remove existing service account: %v", err)
-			logger.LogFunctionExit("Uninstall", nil, err)
-			return fmt.Errorf("failed to remove existing service account: %w", err)
+			logger.Debug("Service account successfully removed")
 		}
-	} else {
-		logger.Debug("Service account successfully removed")
 	}
 
 	logger.Info("FlowFuse Device Agent has been uninstalled!")

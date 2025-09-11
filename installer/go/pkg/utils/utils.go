@@ -462,6 +462,21 @@ func RemoveServiceUser(username string) error {
 	}
 }
 
+// ConfirmUserRemoval prompts the user to confirm whether they want to remove the specified service user account.
+// It uses the PromptYesNo function to ask the user a yes/no question.
+// It skips the prompt if running on Windows, as we do not create a service user there.
+//
+// Parameters:
+//   - username: The name of the service user account to confirm removal for
+// Returns:
+//   - bool: true if the user confirms removal, false otherwise
+func ConfirmUserRemoval(username string) bool {
+	if runtime.GOOS == "windows" {
+		return false
+	}
+	return PromptYesNo(fmt.Sprintf("Do you also want to remove the service account '%s'?", username), true)
+}
+
 // RemoveWorkingDirectory attempts to remove the content of the specified working directory,
 // while preserving the directory itself and any files specified in the preserveFiles parameter.
 //
