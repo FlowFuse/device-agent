@@ -964,3 +964,65 @@ func SaveDeviceConfiguration(configContent, filePath string) error {
 	logger.Info("Device configuration saved successfully to: %s", filePath)
 	return nil
 }
+
+// HasEnoughDiskSpace checks if the filesystem containing dir has at least requiredBytes available.
+//
+// Parameters:
+//   - dir: the directory to check
+//   - requiredBytes: the amount of free space required (in bytes)
+//
+// Returns:
+//   - ok: true if free >= requiredBytes
+//   - freeBytes: the free bytes available to the calling user on that filesystem
+//   - err: non-nil on failure to determine free space
+func HasEnoughDiskSpace(dir string, requiredBytes uint64) (bool, uint64, error) {
+	if dir == "" {
+		return false, 0, fmt.Errorf("dir cannot be empty")
+	}
+
+	existing, err := nearestExistingPath(dir)
+	if err != nil {
+		return false, 0, err
+	}
+
+	free, err := diskFreeBytes(existing)
+	if err != nil {
+		return false, 0, err
+	}
+
+	return free >= requiredBytes, free, nil
+}
+
+// nearestExistingPath climbs up from dir until it finds an existing directory.
+// It does not create directories and returns an error on non-ENOENT stat errors.
+//
+// Parameters:
+//   - dir: a directory to check
+//
+// Returns:
+//   - string: the nearest existing parent path
+//   - error: non-nil if no existing parent path is found or on stat errors
+func nearestExistingPath(path string) (string, error) {
+	cleanPath := filepath.Clean(path)
+	for {
+		if cleanPath == "" {
+			return "", fmt.Errorf("no existing parent for path")
+		}
+
+		if _, err := os.Stat(cleanPath); err == nil {
+			return cleanPath, nil
+		} else if !os.IsNotExist(err) {
+			return "", fmt.Errorf("stat %s: %w", cleanPath, err)
+		}
+
+		parent := filepath.Dir(cleanPath)
+		if parent == cleanPath {
+			// Reached root; if it didn't exist above, consider it not found
+			if _, err := os.Stat(cleanPath); err == nil {
+				return cleanPath, nil
+			}
+			return "", fmt.Errorf("no existing parent for path")
+		}
+		cleanPath = parent
+	}
+}
