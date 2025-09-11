@@ -979,7 +979,8 @@ func ShowInstallSummary(installMode, url, workDir string) {
 	switch installMode {
 	case "otc", "manual":
 		logger.Info("The FlowFuse Device Agent is now running and will start automatically on system boot.")
-		logger.Info("You can return to the FlowFuse platform (%s) and start creating Node-RED flows on your device.", url)
+		logger.Info("You can return to the FlowFuse platform and start creating Node-RED flows on your device:")
+		logger.Info("%s", url)
 		logger.Info("If you encounter any issues, check the service status or refer to the documentation.")
 	case "install-only":
 		logger.Info("Installation complete! The FlowFuse Device Agent has been installed but requires configuration.")
@@ -987,10 +988,12 @@ func ShowInstallSummary(installMode, url, workDir string) {
 		logger.Info("  1. Create a device.yml configuration file in the %s directory", workDir)
 		logger.Info("  2. Start the Device Agent service")
 		logger.Info("Refer to the documentation for detailed configuration steps and examples.")
-		logger.Info("Once configured, you can return to the FlowFuse platform (%s) and start creating Node-RED flows on your device.", url)
+		logger.Info("Once configured, you can return to the FlowFuse platform and start creating Node-RED flows on your device:")
+		logger.Info("%s", url)
 	case "none":
 		logger.Info("The FlowFuse Device Agent was already configured. The service is running and ready to use.")
-		logger.Info("You can return to the FlowFuse platform (%s) and start creating Node-RED flows on your device.", url)
+		logger.Info("You can return to the FlowFuse platform and start creating Node-RED flows on your device:")
+		logger.Info("%s", url)
 	}
 
 	logger.Info("")
