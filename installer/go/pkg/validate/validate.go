@@ -86,10 +86,10 @@ func checkConfigFileExists(customWorkDir string) error {
 	installerConfPath := filepath.Join(workDir, "installer.conf")
 	_, deviceAgentConfigErr := os.Stat(deviceAgentConfig)
 	_, installerConfErr := os.Stat(installerConfPath)
-	logger.Debug(fmt.Sprintf("DeviceAgentConfigErr: %s", deviceAgentConfigErr))
-	logger.Debug(fmt.Sprintf("installerConfErr: %s", installerConfErr))
-	logger.Debug(fmt.Sprintf("devAgentExists: %t", os.IsNotExist(deviceAgentConfigErr)))
-	logger.Debug(fmt.Sprintf("installerConfExists: %t", os.IsNotExist(installerConfErr)))
+	logger.Debug("DeviceAgentConfigErr: %v", deviceAgentConfigErr)
+	logger.Debug("installerConfErr: %v", installerConfErr)
+	logger.Debug("devAgentExists: %t", os.IsNotExist(deviceAgentConfigErr))
+	logger.Debug("installerConfExists: %t", os.IsNotExist(installerConfErr))
 
 	if deviceAgentConfigErr == nil || installerConfErr == nil {
 		logger.Info("The working directory %s exists and contains Device Agent configuration file", workDir)
@@ -252,7 +252,7 @@ func checkUnusedPort(port int) error {
 
 // checkFreeDiskSpace validates free disk space for the install directory and OS temp directory.
 // It requires at least requiredBytes free in each distinct location.
-///
+// /
 // Parameters:
 //   - customWorkDir: Install directory path. If empty, uses default path.
 //   - requiredBytes: Minimum required free space in bytes.
