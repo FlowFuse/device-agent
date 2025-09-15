@@ -268,5 +268,5 @@ jobs:
         
         # Stage, commit, and push changes
         git add ./installer/get.sh ./installer/get.ps1
-        git commit -m "chore: update installer scripts to version $VERSION [skip ci]"
+        git commit -m "chore: update installer scripts to version $VERSION"
         git push origin main
