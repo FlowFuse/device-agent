@@ -289,7 +289,9 @@ func checkFreeDiskSpace(customWorkDir string, requiredBytes uint64) error {
 			return fmt.Errorf("failed to check disk space for %s (%s): %w", t.label, t.path, err)
 		}
 		if !ok {
-			err := fmt.Errorf("insufficient disk space in %s (%s): need at least %d bytes, available %d bytes", t.label, t.path, requiredBytes, free)
+			requiredMB := float64(requiredBytes) / (1024 * 1024)
+			freeMB := float64(free) / (1024 * 1024)
+			err := fmt.Errorf("insufficient disk space in %s (%s): need at least %.1f MB, available %.1f MB", t.label, t.path, requiredMB, freeMB)
 			logger.LogFunctionExit("checkFreeDiskSpace", nil, err)
 			return err
 		}
