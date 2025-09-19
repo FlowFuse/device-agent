@@ -198,26 +198,54 @@ func CheckPermissions() error {
 	}
 }
 
-// checkUnixPermissions checks if the current user has sudo access without requiring a password.
-// It runs 'sudo -nv' command which will succeed if the user has sudo privileges without needing
-// to enter a password. If the command fails, it checks if sudo is available on the system at all.
-// If sudo is not available, it returns an error; otherwise it just logs informational messages.
+// checkUnixPermissions validates that sudo can be used by the current user and, if necessary,
+// interactively prompts for password to cache credentials for further installer execution.
+//
+// Behavior:
+//  1. Inform the user about upcoming sudo usage and potential prompts.
+//  2. Ensure sudo is installed; return error if missing.
+//  3. Try non-interactive sudo timestamp validation: `sudo -n -v`.
+//     - If it succeeds, return.
+//  4. Detect passwordless sudo by attempting a non-interactive command (`sudo -n /bin/true` or `sudo -n true`).
+//     - If it succeeds, return without prompting.
+//  5. Fallback to interactive `sudo -v` to cache credentials now.
+//     - If this fails (user cancels or denied), return an error because sudo is required.
 //
 // Returns:
-//   - nil if sudo is available (either with or without password)
-//   - error if sudo is not available on the system
+//   - nil when sudo is usable (passwordless or credentials cached)
+//   - error if sudo is missing or interactive authentication fails
 func checkUnixPermissions() error {
-	cmd := exec.Command("sudo", "-nv")
-	err := cmd.Run()
+	logger.Info("This installer will perform operations that require sudo.")
+	logger.Info("You may be prompted for your password if required.")
 
-	if err != nil {
-		_, err := exec.LookPath("sudo")
-		if err != nil {
-			return fmt.Errorf("sudo command not found on this system: %w", err)
-		}
+	if !checkBinaryExists("sudo", false) {
+		return fmt.Errorf("sudo is not installed or not found in PATH")
+	}
 
-		logger.Info("This installer requires sudo access for some operations.")
-		logger.Info("You will be prompted for your password when needed.")
+	if err := exec.Command("sudo", "-n", "-v").Run(); err == nil {
+		logger.Debug("Sudo timestamp is valid.")
+		return nil
+	} else {
+		logger.Debug("Sudo timestamp is invalid or expired. Proceeding with passwordles check")
+	}
+
+	tryArgs := []string{"-n", "/bin/true"}
+	if _, statErr := os.Stat("/bin/true"); statErr != nil {
+		tryArgs = []string{"-n", "true"}
+	}
+	if err := exec.Command("sudo", tryArgs...).Run(); err == nil {
+		logger.Debug("Passwordless sudo or valid sudo timestamp detected; proceeding without password prompt.")
+		return nil
+	} else {
+		logger.Debug("Passwordless sudo not available; will prompt for password.")
+	}
+
+	interactive := exec.Command("sudo", "-v")
+	interactive.Stdin = os.Stdin
+	interactive.Stdout = os.Stdout
+	interactive.Stderr = os.Stderr
+	if err := interactive.Run(); err != nil {
+		return fmt.Errorf("sudo authentication is required to continue: %w", err)
 	}
 
 	return nil
@@ -314,9 +342,6 @@ func createDirWithPermissions(path string, permissions os.FileMode) error {
 	if err != nil {
 		return fmt.Errorf("failed to create service user: %w", err)
 	}
-	if runtime.GOOS != "windows" {
-		logger.Debug("Service user %s created successfully", serviceUser)
-	}
 
 	switch runtime.GOOS {
 	case "linux", "darwin":
@@ -380,15 +405,16 @@ func CreateServiceUser(username string) (string, error) {
 		} else {
 			logger.Info("Creating service user %s...", username)
 			var createUserCmd *exec.Cmd
-			if checkBinaryExists("useradd") {
-				createUserCmd = exec.Command("sudo", "useradd", "-m", "-s", "/sbin/nologin", username)
+			if checkBinaryExists("useradd", true) {
+				createUserCmd = exec.Command("sudo", "useradd", "--system", "--create-home", "--home-dir", fmt.Sprintf("/home/%s", username), "--shell", "/sbin/nologin", username)
 			} else {
-				createUserCmd = exec.Command("sudo", "adduser", "-S", "-D", "-H", "-s", "/sbin/nologin", username)
+				createUserCmd = exec.Command("sudo", "adduser", "--system", "--shell", "/sbin/nologin", "--home", fmt.Sprintf("/home/%s", username), username)
 			}
 			if output, err := createUserCmd.CombinedOutput(); err != nil {
 				return "", fmt.Errorf("failed to create user: %w\nOutput: %s", err, output)
 			}
 		}
+		logger.Debug("Service user %s created successfully", username)
 		return username, nil
 
 	case "darwin":
@@ -403,7 +429,7 @@ func CreateServiceUser(username string) (string, error) {
 				return "", fmt.Errorf("failed to create user: %w\nOutput: %s", err, output)
 			}
 		}
-
+		logger.Debug("Service user %s created successfully", username)
 		return username, nil
 
 	case "windows":
@@ -846,12 +872,25 @@ func UseOfficialNodejs() bool {
 //
 // Parameters:
 //   - binary: The name of the binary to check
+//   - useSudo: Whether to check using sudo (for Unix systems)
 //
 // Returns:
-//   - bool: true if the binary exists in the system's PATH, false otherwise
-func checkBinaryExists(binary string) bool {
-	_, err := exec.LookPath(binary)
-	return err == nil
+//   - bool: true if the binary exists in the PATH, false otherwise
+func checkBinaryExists(binary string, useSudo bool) bool {
+	if useSudo {
+		checkCommand := exec.Command("sudo", "sh", "-lc", fmt.Sprintf("command -v %s", binary))
+		if err := checkCommand.Run(); err != nil {
+			logger.Debug("%s binary not found", binary)
+			return false
+		}
+	} else {
+		if _, err := exec.LookPath(binary); err != nil {
+			logger.Debug("%s binary not found", binary)
+			return false
+		}
+	}
+	logger.Debug("%s binary found", binary)
+	return true
 }
 
 // removeDirectory removes provided directory.
