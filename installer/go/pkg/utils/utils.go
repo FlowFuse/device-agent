@@ -199,20 +199,20 @@ func CheckPermissions() error {
 }
 
 // checkUnixPermissions validates that sudo can be used by the current user and, if necessary,
-// interactively prompts once to cache credentials.
+// interactively prompts for password to cache credentials for further installer execution.
 //
 // Behavior:
 //  1. Inform the user about upcoming sudo usage and potential prompts.
 //  2. Ensure sudo is installed; return error if missing.
 //  3. Try non-interactive sudo timestamp validation: `sudo -n -v`.
 //     - If it succeeds, return.
-//  4. Detect passwordless sudo by attempting a non-interactive no-op (`sudo -n /bin/true` or `sudo -n true`).
+//  4. Detect passwordless sudo by attempting a non-interactive command (`sudo -n /bin/true` or `sudo -n true`).
 //     - If it succeeds, return without prompting.
-//  5. Fall back to interactive `sudo -v` to cache credentials now.
+//  5. Fallback to interactive `sudo -v` to cache credentials now.
 //     - If this fails (user cancels or denied), return an error because sudo is required.
 //
 // Returns:
-//   - nil when sudo is usable now (passwordless or credentials cached)
+//   - nil when sudo is usable (passwordless or credentials cached)
 //   - error if sudo is missing or interactive authentication fails
 func checkUnixPermissions() error {
 	logger.Info("This installer will perform operations that require sudo.")
