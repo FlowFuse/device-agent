@@ -9,7 +9,7 @@ $InstallDir = (Get-Location).Path
 # GitHub repository information
 $REPO_OWNER = "FlowFuse"
 $REPO_NAME = "device-agent"
-$RELEASE = "1.2.1"
+$RELEASE = "1.3.0"
 $RELEASE_TAG = "installer-v$RELEASE"
 $BINARY_PREFIX = "flowfuse-device-installer"
 
