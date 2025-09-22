@@ -404,11 +404,28 @@ func CreateServiceUser(username string) (string, error) {
 			logger.Debug("Service user %s already exists", username)
 		} else {
 			logger.Info("Creating service user %s...", username)
+			checkGroupCmd := exec.Command("getent", "group", username)
+			groupExists := checkGroupCmd.Run() == nil
+
 			var createUserCmd *exec.Cmd
 			if checkBinaryExists("useradd", true) {
-				createUserCmd = exec.Command("sudo", "useradd", "--system", "--create-home", "--home-dir", fmt.Sprintf("/home/%s", username), "--shell", "/sbin/nologin", username)
+				args := []string{"sudo", "useradd", "--system", "--create-home", "--home-dir", fmt.Sprintf("/home/%s", username), "--shell", "/sbin/nologin"}
+				if groupExists {
+					logger.Debug("Group %s already exists, adding user to existing group", username)
+					args = append(args, "-g", username)
+				}
+				args = append(args, username)
+				createUserCmd = exec.Command(args[0], args[1:]...)
+				logger.Debug("Command used to create user: %s", strings.Join(args, " "))
 			} else {
-				createUserCmd = exec.Command("sudo", "adduser", "--system", "--shell", "/sbin/nologin", "--home", fmt.Sprintf("/home/%s", username), username)
+				args := []string{"sudo", "adduser", "--system", "--shell", "/sbin/nologin", "--home", fmt.Sprintf("/home/%s", username)}
+				if groupExists {
+					logger.Debug("Group %s already exists, adding user to existing group", username)
+					args = append(args, "--ingroup", username)
+				}
+				args = append(args, username)
+				createUserCmd = exec.Command(args[0], args[1:]...)
+				logger.Debug("Command used to create user: %s", strings.Join(args, " "))
 			}
 			if output, err := createUserCmd.CombinedOutput(); err != nil {
 				return "", fmt.Errorf("failed to create user: %w\nOutput: %s", err, output)
@@ -443,6 +460,7 @@ func CreateServiceUser(username string) (string, error) {
 
 // RemoveServiceUser deletes the specified service user account from the system.
 // On Linux, it executes "userdel -r" with sudo to remove the user and their home directory.
+// It also checks for and removes the associated group if it exists.
 // On macOS, it uses "sysadminctl -deleteUser" to remove the user.
 // On Windows, we do not create a service user.
 //
@@ -464,6 +482,16 @@ func RemoveServiceUser(username string) error {
 			}
 		} else {
 			logger.Debug("Service user %s does not exist, nothing to remove", username)
+		}
+		// Although userdel -r should remove the group if it was created with the same name,
+		// we check and remove it explicitly to ensure no orphaned groups remain.
+		checkGroupCmd := exec.Command("getent", "group", username)
+		if checkGroupCmd.Run() == nil {
+			logger.Debug("Removing group %s...", username)
+			removeGroupCmd := exec.Command("sudo", "groupdel", username)
+			if output, err := removeGroupCmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("failed to remove group %s: %w\nOutput: %s", username, err, output)
+			}
 		}
 		return nil
 
