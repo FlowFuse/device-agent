@@ -76,12 +76,12 @@ func InstallDeviceAgent(version, baseDir string, update bool) error {
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
 
-	logger.Info(startMsg)
+	logger.Info("%s", startMsg)
 	logger.Debug("Install/update command: %s", installCmd.String())
 	if output, err := installCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to install/update device agent: %w\nOutput: %s", err, output)
 	}
-	logger.Info(completeMsg)
+	logger.Info("%s", completeMsg)
 
 	return nil
 }

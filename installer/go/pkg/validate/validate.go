@@ -13,14 +13,16 @@ import (
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
 )
 
+// Minimum free space required for installation
+const minFreeDiskBytes uint64 = 500 * 1024 * 1024 // 500 MB
+
 // PreInstall performs validation steps before installation:
 // 1. Checks if the working directory exists and attempts to remove it if it does
 // 2. Verifies if user has the necessary permissions to run the installer
 //
 // Parameters:
 //   - customWorkDir: Optional custom working directory path. If empty, uses default path.
-//	 - port: The TCP port to validate for availability.
-//   - serviceName: The name of the service to stop before removing the directory
+//   - port: The TCP port to validate for availability.
 //
 // Returns:
 //   - nil if all checks pass
@@ -30,6 +32,12 @@ func PreInstall(customWorkDir string, port int) error {
 		logger.Error("Permission check failed: %v", err)
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("permission check failed: %w", err)
+	}
+
+	if err := checkFreeDiskSpace(customWorkDir, minFreeDiskBytes); err != nil {
+		logger.Error("Disk space check failed: %v", err)
+		logger.LogFunctionExit("PreInstall", nil, err)
+		return fmt.Errorf("disk space check failed: %w", err)
 	}
 
 	if err := checkUnusedPort(port); err != nil {
@@ -78,10 +86,10 @@ func checkConfigFileExists(customWorkDir string) error {
 	installerConfPath := filepath.Join(workDir, "installer.conf")
 	_, deviceAgentConfigErr := os.Stat(deviceAgentConfig)
 	_, installerConfErr := os.Stat(installerConfPath)
-	logger.Debug(fmt.Sprintf("DeviceAgentConfigErr: %s", deviceAgentConfigErr))
-	logger.Debug(fmt.Sprintf("installerConfErr: %s", installerConfErr))
-	logger.Debug(fmt.Sprintf("devAgentExists: %t", os.IsNotExist(deviceAgentConfigErr)))
-	logger.Debug(fmt.Sprintf("installerConfExists: %t", os.IsNotExist(installerConfErr)))
+	logger.Debug("DeviceAgentConfigErr: %v", deviceAgentConfigErr)
+	logger.Debug("installerConfErr: %v", installerConfErr)
+	logger.Debug("devAgentExists: %t", os.IsNotExist(deviceAgentConfigErr))
+	logger.Debug("installerConfExists: %t", os.IsNotExist(installerConfErr))
 
 	if deviceAgentConfigErr == nil || installerConfErr == nil {
 		logger.Info("The working directory %s exists and contains Device Agent configuration file", workDir)
@@ -239,5 +247,56 @@ func checkUnusedPort(port int) error {
 	}
 	defer listener.Close()
 	logger.LogFunctionExit("checkUnusedPort", "success", nil)
+	return nil
+}
+
+// checkFreeDiskSpace validates free disk space for the install directory and OS temp directory.
+// It requires at least requiredBytes free in each distinct location.
+// /
+// Parameters:
+//   - customWorkDir: Install directory path. If empty, uses default path.
+//   - requiredBytes: Minimum required free space in bytes.
+//
+// Returns:
+//   - error: nil if both locations have sufficient free space, otherwise an error indicating insufficient space
+func checkFreeDiskSpace(customWorkDir string, requiredBytes uint64) error {
+	logger.LogFunctionEntry("checkFreeDiskSpace", map[string]interface{}{
+		"customWorkDir": customWorkDir,
+		"requiredBytes": requiredBytes,
+	})
+
+	workDir, err := utils.GetWorkingDirectory(customWorkDir)
+	if err != nil {
+		logger.LogFunctionExit("checkFreeDiskSpace", nil, err)
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	tempDir := os.TempDir()
+
+	type target struct {
+		path  string
+		label string
+	}
+	targets := []target{{workDir, "install directory"}}
+	if filepath.Clean(tempDir) != filepath.Clean(workDir) {
+		targets = append(targets, target{tempDir, "temporary directory"})
+	}
+
+	for _, t := range targets {
+		ok, free, err := utils.HasEnoughDiskSpace(t.path, requiredBytes)
+		if err != nil {
+			logger.LogFunctionExit("checkFreeDiskSpace", nil, err)
+			return fmt.Errorf("failed to check disk space for %s (%s): %w", t.label, t.path, err)
+		}
+		if !ok {
+			requiredMB := float64(requiredBytes) / (1024 * 1024)
+			freeMB := float64(free) / (1024 * 1024)
+			err := fmt.Errorf("insufficient disk space in %s (%s): need at least %.1f MB, available %.1f MB", t.label, t.path, requiredMB, freeMB)
+			logger.LogFunctionExit("checkFreeDiskSpace", nil, err)
+			return err
+		}
+	}
+
+	logger.LogFunctionExit("checkFreeDiskSpace", "success", nil)
 	return nil
 }
