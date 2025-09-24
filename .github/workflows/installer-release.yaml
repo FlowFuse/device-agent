@@ -106,6 +106,7 @@ jobs:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
         VERSION: ${{ needs.calculate-version.outputs.version }}
+        CGO_ENABLED: 0
       run: |
         echo "Building ${{ matrix.output }} for ${{ matrix.goos }}/${{ matrix.goarch }}..."
         echo "Using version: ${VERSION:-${{ github.sha }}}"
