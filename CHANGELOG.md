@@ -1,3 +1,8 @@
+#### 3.7.0 Release
+
+ - Bump JS-DevTools/npm-publish from 4.0.0 to 4.0.1 (#505)
+ - chore: update installer scripts to version 1.3.0
+
 #### 3.6.1 Release
 
  - Don't install dev dependencies in docker (#479)
