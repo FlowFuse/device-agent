@@ -1,3 +1,25 @@
+#### 3.7.0 Release
+
+ - Bump JS-DevTools/npm-publish from 4.0.0 to 4.0.1 (#505)
+ - chore: update installer scripts to version 1.3.0
+ - chore: update installer scripts to version 1.2.1
+ - Bump JS-DevTools/npm-publish from 3.1.1 to 4.0.0 (#499)
+ - ci: Remove `skip ci` tag from installer scripts commit message (#496)
+ - chore: update installer scripts to version 1.2.0 [skip ci]
+ - refactor(installer): Improve installation summary message (#495)
+ - refactor(installer): Adjust config selection prompt when OTC not provided (#492)
+ - fix(installer): Ask for confirmation on system account removal (#491)
+ - Bump actions/setup-node from 4.4.0 to 5.0.0 (#489)
+ - Bump actions/setup-go from 5.5.0 to 6.0.0 (#490)
+ - feat(installer): Add possibility to customize device agent listen port (#484)
+ - Bump cycjimmy/semantic-release-action from 4.2.2 to 5.0.0 (#485)
+ - feat(installer): Add possibility to install in custom directory (#476)
+ - ci: Bump go version in `Installer Release` workflow (#504) @ppawlowski
+ - fix(installer): Properly handle service account group existence and removal (#503) @ppawlowski
+ - feat(installer): validate disk space before installation (#497) @ppawlowski
+ - fix(installer): fix linux/unix binary lookup (#501) @ppawlowski
+ - Assistant settings pass though (#487) @Steve-Mcl
+
 #### 3.6.1 Release
 
  - Don't install dev dependencies in docker (#479)
