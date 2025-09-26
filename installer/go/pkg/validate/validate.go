@@ -293,8 +293,8 @@ func checkFreeDiskSpace(customWorkDir string, requiredBytes uint64) error {
 			freeMB := float64(free) / (1024 * 1024)
 			// err := fmt.Errorf("insufficient disk space in %s (%s): need at least %.1f MB, available %.1f MB", t.label, t.path, requiredMB, freeMB)
 			err := fmt.Errorf("insufficient disk space in %s (%s): need at least %.1f MB, available %.1f MB\n" +
-				"For information on how to handle this error, visit: http://flowfuse.com/docs/device-agent/install/device-agent-installer/#error%3A-disk-space-check-failed",
-    		t.label, t.path, requiredMB, freeMB)
+				"For information on how to handle this error, visit: http://flowfuse.com/docs/device-agent/install/device-agent-installer/#error%%3A-disk-space-check-failed",
+				t.label, t.path, requiredMB, freeMB)
 			logger.LogFunctionExit("checkFreeDiskSpace", nil, err)
 			return err
 		}
