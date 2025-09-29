@@ -131,6 +131,7 @@ jobs:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
         VERSION: 'ci-${{ github.run_id }}'
+        CGO_ENABLED: 0
       run: |
         echo "Building for $GOOS/$GOARCH..."
         BINARY_NAME="flowfuse-device-installer-${{ matrix.goos }}-${{ matrix.goarch }}"
