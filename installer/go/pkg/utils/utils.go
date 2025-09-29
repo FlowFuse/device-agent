@@ -1141,6 +1141,9 @@ func ShowInstallSummary(installMode, url, workDir string) {
 	}
 
 	logger.Info("")
-	logger.Info("For more details on managing the FlowFuse Device Agent, including commands for starting, stopping, and updating the service, visit:")
-	logger.Info("https://flowfuse.com/docs/device-agent/install/overview")
+	logger.Info("Further reading:")
+	logger.Info("  - To learn how to check the service status, visit https://flowfuse.com/docs/device-agent/install/device-agent-installer/#check-the-device-agent-service-status")
+	logger.Info("  - To learn how to manage the service (start, stop, restart), visit https://flowfuse.com/docs/device-agent/install/device-agent-installer/#managing-the-device-agent-service")
+	logger.Info("  - To learn how to view logs, visit https://flowfuse.com/docs/device-agent/install/device-agent-installer/#viewing-device-agent-log-files")
+	logger.Info("")
 }
