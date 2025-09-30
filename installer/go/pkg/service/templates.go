@@ -149,7 +149,8 @@ const OpenRCServiceTemplate = `#!/sbin/openrc-run
 name="FlowFuse Device Agent"
 description="FlowFuse Device Agent"
 supervisor="supervise-daemon"
-command="{{.NodeBinDir}}/flowfuse-device-agent --dir {{.WorkDir}} --port {{.Port}}"
+command="{{.NodeBinDir}}/flowfuse-device-agent"
+command_args="--dir {{.WorkDir}} --port {{.Port}}"
 supervise_daemon_args=" -d {{.WorkDir}} --stdout {{.LogFile}} --stderr {{.ErrorLogFile}} -e "PATH=\"{{.NodeBinDir}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"\""
 command_user="{{.User}}"
 
