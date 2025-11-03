@@ -216,6 +216,7 @@ Required options    | Description
 `provisioningTeam`  | The team this device will be registered to
 `provisioningToken` | Provisioning Token to connect to the FF platform
 `forgeURL`          | The base url of the FlowFuse platform
+`deviceName`        | Device Name (optional)
 
 The following options can be added:
 
