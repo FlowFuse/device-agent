@@ -1,3 +1,27 @@
+#### 3.7.1 Release
+
+ - Bump actions/checkout from 5.0.0 to 5.0.1 (#529)
+ - Bump cycjimmy/semantic-release-action from 5.0.2 to 6.0.0 (#530)
+ - Bump docker/metadata-action from 5.8.0 to 5.9.0 (#526)
+ - Bump docker/setup-qemu-action from 3.6.0 to 3.7.0 (#527)
+ - Bump actions/download-artifact from 5.0.0 to 6.0.0 (#521)
+ - Bump actions/upload-artifact from 4.6.2 to 5.0.0 (#522)
+ - Bump cycjimmy/semantic-release-action from 5.0.0 to 5.0.2 (#518)
+ - Bump peter-evans/dockerhub-description from 4.0.2 to 5.0.0 (#517)
+ - chore: update installer scripts to version 1.3.1
+ - Bump JS-DevTools/npm-publish from 4.0.1 to 4.1.1 (#516)
+ - Bump docker/login-action from 3.5.0 to 3.6.0 (#515)
+ - fix(installer): build statically linked binary (#506)
+ - Ensure correct NR version reported with module_cache (#531) @hardillb
+ - Bump js-yaml from 4.1.0 to 4.1.1 (#528) @app/dependabot
+ - Allow Provisioned devices to be named (#524) @hardillb
+ - Bump actions/setup-node from 5.0.0 to 6.0.0 (#520) @app/dependabot
+ - Add comment about log rotatoin (#519) @hardillb
+ - fix(installer): Add documentation links in the installation summary (#514) @ppawlowski
+ - fix(installer): fix OpenRC service template to properly handle command arguments (#507) @ppawlowski
+ - fix(installer): Link to the docs on disk error message (#513) @ppawlowski
+ - Clarify version output by prefixing with FlowFuse Device Agent (#510) @ZJvandeWeg
+
 #### 3.7.0 Release
 
  - Bump JS-DevTools/npm-publish from 4.0.0 to 4.0.1 (#505)
