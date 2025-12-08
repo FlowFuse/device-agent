@@ -56,55 +56,55 @@ jobs:
           username: flowfuse
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
           readme-filepath: ./docker/README.md
-  publish_legacy:
-    needs: [publish]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
-        with:
-          node-version: 16
-      - name: "Install jq"
-        run: sudo apt-get install -y jq
-      - name: "Patch module name"
-        run: |
-          cat package.json | jq '.name = "@flowforge/flowforge-device-agent"' > package.json-patched
-          mv package.json-patched package.json
-      - run: npm install
-      - uses: JS-DevTools/npm-publish@7f8fe47b3bea1be0c3aec2b717c5ec1f3e03410b # v4.1.1
-        with:
-          token: ${{ secrets.NPM_PUBLISH_TOKEN_FLOWFORGE }}
-      - name: Docker Meta Data
-        id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
-        with:
-          tags: |
-            type=semver,event=tag,pattern={{version}}
-          flavor: |
-            latest=true
-          images: |
-            flowforge/device-agent
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
-      - name: Setup Docker buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
-      - name: docker login
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-        with:
-          username: flowforge
-          password: ${{ secrets.DOCKER_HUB_PASSWORD_FLOWFORGE }}
-      - name: Build and push FlowFuse Device Agent container
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-        with:
-          context: docker
-          file: docker/Dockerfile_flowforge
-          tags: ${{ steps.meta.outputs.tags }}
-          push: true
-          platforms: linux/amd64, linux/arm64, linux/arm/v7
-      - name: Publish README.md to Docker hub
-        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
-        with:
-          repository: flowforge/device-agent
-          username: flowforge
-          password: ${{ secrets.DOCKER_HUB_PASSWORD_FLOWFORGE }}
-          readme-filepath: ./docker/README.md
+  # publish_legacy:
+  #   needs: [publish]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+  #     - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+  #       with:
+  #         node-version: 16
+  #     - name: "Install jq"
+  #       run: sudo apt-get install -y jq
+  #     - name: "Patch module name"
+  #       run: |
+  #         cat package.json | jq '.name = "@flowforge/flowforge-device-agent"' > package.json-patched
+  #         mv package.json-patched package.json
+  #     - run: npm install
+  #     - uses: JS-DevTools/npm-publish@7f8fe47b3bea1be0c3aec2b717c5ec1f3e03410b # v4.1.1
+  #       with:
+  #         token: ${{ secrets.NPM_PUBLISH_TOKEN_FLOWFORGE }}
+  #     - name: Docker Meta Data
+  #       id: meta
+  #       uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+  #       with:
+  #         tags: |
+  #           type=semver,event=tag,pattern={{version}}
+  #         flavor: |
+  #           latest=true
+  #         images: |
+  #           flowforge/device-agent
+  #     - name: Setup QEMU
+  #       uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+  #     - name: Setup Docker buildx
+  #       uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+  #     - name: docker login
+  #       uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+  #       with:
+  #         username: flowforge
+  #         password: ${{ secrets.DOCKER_HUB_PASSWORD_FLOWFORGE }}
+  #     - name: Build and push FlowFuse Device Agent container
+  #       uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+  #       with:
+  #         context: docker
+  #         file: docker/Dockerfile_flowforge
+  #         tags: ${{ steps.meta.outputs.tags }}
+  #         push: true
+  #         platforms: linux/amd64, linux/arm64, linux/arm/v7
+  #     - name: Publish README.md to Docker hub
+  #       uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
+  #       with:
+  #         repository: flowforge/device-agent
+  #         username: flowforge
+  #         password: ${{ secrets.DOCKER_HUB_PASSWORD_FLOWFORGE }}
+  #         readme-filepath: ./docker/README.md
