@@ -412,7 +412,6 @@ describe('MQTT Comms', function () {
     it('MQTT command requestPackages', async function () {
         mqttClient.start()
         const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
-        const responseTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/response`
         const payload = {
             command: 'reportPackages'
         }
@@ -420,7 +419,12 @@ describe('MQTT Comms', function () {
         mqttClient.should.not.have.property('reportPackages')
         const payloadStr = JSON.stringify(payload)
         await new Promise(resolve => setTimeout(resolve, 500))
-        mqttClient.client.publish(commandTopic, payloadStr, function (err) { })
+        mqttClient.client.publish(commandTopic, payloadStr, function (err) {
+            if (err) {
+                console.debug(err)
+                should.fail()
+            }
+        })
         await new Promise(resolve => setTimeout(resolve, 500))
 
         mqttClient.should.have.property('reportPackages', true)
