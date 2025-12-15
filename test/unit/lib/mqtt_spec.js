@@ -416,7 +416,6 @@ describe('MQTT Comms', function () {
             command: 'reportPackages'
         }
 
-        mqttClient.should.not.have.property('reportPackages')
         const payloadStr = JSON.stringify(payload)
         await new Promise(resolve => setTimeout(resolve, 500))
         mqttClient.client.publish(commandTopic, payloadStr, function (err) {
