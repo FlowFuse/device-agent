@@ -606,10 +606,10 @@ describe('Agent', function () {
             agent.launcher = Launcher.newLauncher()
             agent.launcher.reportPackages = true
             await agent.start()
-            await agent.suspendNR()
-            // const state = agent.getState()
+            const state = agent.getState()
             // readPackage requires running launcher, but that requires installing packages
             // to read versions from
+            state.should.have.property('mode')
         })
     })
 
