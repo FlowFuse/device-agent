@@ -151,7 +151,7 @@ describe('Agent', function () {
         sinon.stub(console, 'log').callsFake((..._args) => {})
         sinon.stub(console, 'info').callsFake((..._args) => {})
         sinon.stub(console, 'warn').callsFake((..._args) => {})
-        // sinon.stub(console, 'debug').callsFake((..._args) => {})
+        sinon.stub(console, 'debug').callsFake((..._args) => {})
         sinon.stub(console, 'error').callsFake((..._args) => {})
 
         configDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ff-launcher-'))
@@ -607,7 +607,7 @@ describe('Agent', function () {
             agent.launcher.reportPackages = true
             await agent.start()
             await agent.suspendNR()
-            const state = agent.getState()
+            // const state = agent.getState()
             // readPackage requires running launcher, but that requires installing packages
             // to read versions from
         })
