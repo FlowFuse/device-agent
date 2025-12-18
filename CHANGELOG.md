@@ -1,3 +1,13 @@
+#### 3.7.2 Release
+- Bump actions/download-artifact from 6.0.0 to 7.0.0 (#543)
+- Bump actions/upload-artifact from 5.0.0 to 6.0.0 (#542)
+- Disable @flowforge build and publish (#537)
+- Bump docker/metadata-action from 5.9.0 to 5.10.0 (#536)
+- Bump actions/checkout from 6.0.0 to 6.0.1 (#539) @app/dependabot
+- Bump actions/setup-node from 6.0.0 to 6.1.0 (#538) @app/dependabot
+- Bump actions/setup-go from 6.0.0 to 6.1.0 (#534) @app/dependabot
+- Bump actions/checkout from 5.0.1 to 6.0.0 (#533) @app/dependabot
+
 #### 3.7.1 Release
 
  - Bump actions/checkout from 5.0.0 to 5.0.1 (#529)
