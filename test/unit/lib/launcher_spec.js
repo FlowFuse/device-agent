@@ -5,6 +5,7 @@ const childProcess = require('child_process')
 const { newLauncher } = require('../../../lib/launcher')
 const setup = require('../setup')
 const fs = require('fs/promises')
+const fsSync = require('fs')
 const path = require('path')
 const os = require('os')
 
@@ -603,6 +604,53 @@ describe('Launcher', function () {
             arg2.env.should.have.property('no_proxy', 'no_proxy')
             arg2.env.should.have.property('all_proxy', 'all_proxy')
             await launcher.stop()
+        })
+    })
+    describe('reportPackages', function () {
+        it('Scans packages and reads versions', async function () {
+            const launcher = newLauncher({ config, checkIn: () => {} }, null, 'projectId', setup.snapshot)
+            should(launcher).be.an.Object()
+            await launcher.writeFlow()
+            await launcher.writeCredentials()
+            // stub installDependencies so we don't actually install anything when starting
+            sinon.stub(launcher, 'installDependencies').resolves()
+            // stub fsSync.readFileSync to return a package.json with known packages
+            sinon.replace(fsSync, 'readFileSync', sinon.fake((filePath) => {
+                const posixPath = filePath
+                    .replace(/^([a-zA-Z]):/, '/$1') // Turn 'C:' into '/C'
+                    .replace(/\\/g, '/') // Swap slashes
+                // fake the main project package.json
+                if (posixPath.endsWith('project/package.json')) {
+                    return JSON.stringify({
+                        name: 'TEST_PROJECT',
+                        version: '0.0.0-aaaabbbbcccc',
+                        description: 'A FlowForge managed Node-RED project',
+                        dependencies: {
+                            'node-red-node-random': '0.4.0'
+                        }
+                    })
+                }
+                // fake the node-red-node-random package.json
+                // should end with project/node_modules/node-red-node-random/package.json'
+                if (posixPath.endsWith('/node-red-node-random/package.json')) {
+                    return JSON.stringify({
+                        name: 'node-red-node-random',
+                        version: '1.0.0',
+                        description: 'node-red-node-random node',
+                        dependencies: {
+                            'random-dep': '0.4.0'
+                        }
+                    })
+                }
+                // default to original method for other files
+                return fsSync.readFileSync.wrappedMethod.apply(this, arguments)
+            }))
+
+            const report = launcher.reportPackages()
+            report.should.be.an.Object()
+            report.should.have.property('packageList')
+            report.packageList.should.be.an.Object()
+            report.packageList.should.have.property('node-red-node-random', '1.0.0')
         })
     })
 })
