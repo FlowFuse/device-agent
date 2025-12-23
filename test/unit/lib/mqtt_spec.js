@@ -409,6 +409,25 @@ describe('MQTT Comms', function () {
     it.skip('MQTT command upload gets a response with a snapshot', async function () {
         // TODO
     })
+    it('MQTT command requestPackages', async function () {
+        mqttClient.start()
+        const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`
+        const payload = {
+            command: 'reportPackages'
+        }
+
+        const payloadStr = JSON.stringify(payload)
+        await new Promise(resolve => setTimeout(resolve, 500))
+        mqttClient.client.publish(commandTopic, payloadStr, function (err) {
+            if (err) {
+                console.debug(err)
+                should.fail()
+            }
+        })
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        mqttClient.should.have.property('reportPackages', true)
+    })
     it('suspend action calls agent.suspendNR and checks in', async function () {
         mqttClient.start()
         const commandTopic = `ff/v1/${mqttClient.teamId}/d/${mqttClient.deviceId}/command`

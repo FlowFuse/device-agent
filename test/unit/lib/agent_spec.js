@@ -601,6 +601,16 @@ describe('Agent', function () {
             const state = agent.getState()
             ;(state === null).should.be.true()
         })
+        it.skip('return packageList', async function () {
+            const agent = createMQTTAgent()
+            agent.launcher = Launcher.newLauncher()
+            agent.launcher.reportPackages = true
+            await agent.start()
+            const state = agent.getState()
+            // readPackage requires running launcher, but that requires installing packages
+            // to read versions from
+            state.should.have.property('mode')
+        })
     })
 
     describe('setState', function () {
