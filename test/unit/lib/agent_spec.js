@@ -614,16 +614,16 @@ describe('Agent', function () {
             agent.launcher.reportPackages = sinon.stub().returns({})
 
             // call getState and validate results
-            const stateWithPackages = agent.getState()
-            stateWithPackages.should.have.property('nodeRedVersion', '5.0.0')
+            const state = agent.getState()
+            state.should.have.property('nodeRedVersion', '5.0.0')
 
             // since reportPackages is not set, packageList and moduleCache should not be included
             // and reportPackages should not be called
-            stateWithPackages.should.not.have.property('packageList')
-            stateWithPackages.should.not.have.property('moduleCache')
+            state.should.not.have.property('packageList')
+            state.should.not.have.property('moduleCache')
             agent.launcher.reportPackages.callCount.should.equal(0)
         })
-        it('Includes packageList and moduleCache when reportPackages is set', async function () {
+        it('includes packageList and moduleCache when reportPackages is set', async function () {
             const agent = createMQTTAgent()
             agent.launcher = Launcher.newLauncher()
             agent.launcher.readPackage = sinon.stub().returns({
