@@ -601,15 +601,62 @@ describe('Agent', function () {
             const state = agent.getState()
             ;(state === null).should.be.true()
         })
-        it.skip('return packageList', async function () {
+        it('includes nodeRedVersion regardless of reportPackages being set', async function () {
             const agent = createMQTTAgent()
             agent.launcher = Launcher.newLauncher()
-            agent.launcher.reportPackages = true
             await agent.start()
+            // stub launcher readPackage (readPackage is a sync function) to return some packages
+            agent.launcher.readPackage = sinon.stub().returns({
+                modules: {
+                    'node-red': '5.0.0'
+                }
+            })
+            agent.launcher.reportPackages = sinon.stub().returns({})
+
+            // call getState and validate results
+            const stateWithPackages = agent.getState()
+            stateWithPackages.should.have.property('nodeRedVersion', '5.0.0')
+
+            // since reportPackages is not set, packageList and moduleCache should not be included
+            // and reportPackages should not be called
+            stateWithPackages.should.not.have.property('packageList')
+            stateWithPackages.should.not.have.property('moduleCache')
+            agent.launcher.reportPackages.callCount.should.equal(0)
+        })
+        it('Includes packageList and moduleCache when reportPackages is set', async function () {
+            const agent = createMQTTAgent()
+            agent.launcher = Launcher.newLauncher()
+            agent.launcher.readPackage = sinon.stub().returns({
+                modules: {
+                    'node-red': '5.0.0'
+                }
+            })
+            agent.launcher.reportPackages = sinon.stub().returns({
+                packageList: {
+                    'node-red-node-random': '1.0.0',
+                    'node-red-contrib-other': '1.2.3'
+                },
+                moduleCache: 'xyz'
+            })
+            await agent.start()
+
+            // set reportPackages to true to request package info to flag that we want package info
+            agent.mqttClient.reportPackages = true
+
+            // Call getState and validate results
             const state = agent.getState()
-            // readPackage requires running launcher, but that requires installing packages
-            // to read versions from
-            state.should.have.property('mode')
+            state.should.have.property('nodeRedVersion', '5.0.0')
+
+            // since reportPackages was set, packageList and moduleCache should be included
+            // and reportPackages should be called
+            agent.launcher.reportPackages.callCount.should.equal(1)
+            state.should.have.property('packageList').should.be.an.Object()
+            state.packageList.should.have.property('node-red-node-random', '1.0.0')
+            state.packageList.should.have.property('node-red-contrib-other', '1.2.3')
+            state.should.have.property('moduleCache', 'xyz')
+
+            // now that state has been retrieved, reportPackages should be reset to false
+            agent.mqttClient.reportPackages.should.be.false()
         })
     })
 
