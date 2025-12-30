@@ -102,7 +102,6 @@ func configureService(nssmPath, serviceName, workDir string, port int) error {
 
 	// Configure environment variables
 	nodeOptions := "NODE_OPTIONS=--max_old_space_size=512"
-	// extaCACerts := fmt.Sprintf("NODE_EXTRA_CA_CERTS=%s/chain.pem", workDir)
 	// The AppEnvironmentExtra parameter needs multiple values, which requires a direct command
 	envCmd := exec.Command(nssmPath, "set", serviceName, "AppEnvironmentExtra", nodeOptions, os.Getenv("PATH"))
 	logger.Debug("Set environment command: %s", envCmd.String())

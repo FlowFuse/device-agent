@@ -15,7 +15,6 @@ WorkingDirectory={{.WorkDir}}
 
 Environment="NODE_OPTIONS=--max_old_space_size=512"
 Environment="PATH={{.NodeBinDir}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-# Environment="NODE_EXTRA_CA_CERTS={{.WorkDir}}/chain.pem"
 ExecStart=/usr/bin/env -S flowfuse-device-agent --dir {{.WorkDir}} --port {{.Port}}
 # Use SIGINT to stop
 KillSignal=SIGINT
@@ -60,7 +59,6 @@ WORKING_DIR={{.WorkDir}}
 do_start() {
     log_daemon_msg "Starting $DESC" "$NAME"
     export NODE_OPTIONS="--max_old_space_size=512"
-    # export NODE_EXTRA_CA_CERTS="{{.WorkDir}}/chain.pem"
     start-stop-daemon --start --quiet --background --user $USER --chdir $WORKING_DIR \
         --make-pidfile --pidfile $PIDFILE --startas /bin/bash \
         -- -c "exec $DAEMON $DAEMON_ARGS > $LOGFILE 2>&1"
@@ -137,10 +135,6 @@ const launchdTemplate = `<?xml version="1.0" encoding="UTF-8"?>
         <string>--max_old_space_size=512</string>
         <key>PATH</key>
         <string>{{.NodeBinDir}}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-        <!--
-        <key>NODE_EXTRA_CA_CERTS</key>
-        <string>{{.WorkDir}}/chain.pem</string>
-        -->
     </dict>
 </dict>
 </plist>`
