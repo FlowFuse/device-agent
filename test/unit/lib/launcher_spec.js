@@ -73,7 +73,7 @@ describe('Launcher', function () {
         await launcher.start() // childProcess.spawn is faked in beforeEach
 
         // check it spawns with the required settings
-        console.log(launcher.proc.spawnargs)
+        console.debug(launcher.proc.spawnargs)
         should(childProcess.spawn.args).be.an.Array().and.have.lengthOf(1)
         should(childProcess.spawn.args[0]).be.an.Array().and.have.lengthOf(3)
         const arg0 = childProcess.spawn.args[0][0]
@@ -306,7 +306,7 @@ describe('Launcher', function () {
         const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
         const settings = JSON.parse(setFile)
         settings.flowforge.should.have.property('tables')
-        console.log(settings.flowforge)
+        console.debug(settings.flowforge)
         // settings.flowforge.tables.should.have.property('token') // no tokens in the test setup
     })
     it('Write Settings - Tables Nodes - with feature flag `tables` false', async function () {
@@ -593,7 +593,7 @@ describe('Launcher', function () {
             await launcher.start() // childProcess.spawn is faked in beforeEach
 
             // check it spawns with the required settings
-            console.log(launcher.proc.spawnargs)
+            console.debug(launcher.proc.spawnargs)
             should(childProcess.spawn.args).be.an.Array().and.have.lengthOf(1)
             should(childProcess.spawn.args[0]).be.an.Array().and.have.lengthOf(3)
             const arg2 = childProcess.spawn.args[0][2]

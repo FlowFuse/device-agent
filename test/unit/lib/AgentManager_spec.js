@@ -1,5 +1,5 @@
 const mocha = require('mocha') // eslint-disable-line
-const should = require('should') // eslint-disable-line
+const should = require('should')
 const sinon = require('sinon')
 const agent = require('../../../lib/agent')
 // const httpClient = require('../../../lib/http')
@@ -24,7 +24,7 @@ describe('Test the AgentManager', function () {
                 }
             })
         } catch (error) {
-            console.log(error)
+            console.error(error)
         }
         agent.newAgent().dummy()
     })
@@ -194,7 +194,7 @@ my_data:
 
             deviceConfig.should.not.match(/cliSetup: true/)
         } catch (error) {
-            console.log(error)
+            console.error(error)
             throw error
         } finally {
             // cleanup
@@ -272,7 +272,7 @@ my_data:
             deviceConfig.should.match(/cliSetup: true/)
             deviceConfig.should.not.match(/autoProvisioned: true/)
         } catch (error) {
-            console.log(error)
+            console.error(error)
             throw error
         } finally {
             // cleanup

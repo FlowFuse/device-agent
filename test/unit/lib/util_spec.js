@@ -1,4 +1,4 @@
-const should = require('should') // eslint-disable-line
+const should = require('should')
 const utils = require('../../../lib/utils.js')
 const sinon = require('sinon') // Add sinon for stubbing
 

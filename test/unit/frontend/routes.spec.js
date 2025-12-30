@@ -1,7 +1,7 @@
 // set NODE_ENV to test so that the main app doesn't start automatically
 process.env.NODE_ENV = 'test'
-const should = require('should') // eslint-disable-line
-const sinon = require('sinon') // eslint-disable-line
+const should = require('should')
+const sinon = require('sinon')
 const { default: Got } = require('got/dist/source')
 const path = require('path')
 const fs = require('fs/promises')
