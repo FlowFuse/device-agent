@@ -43,7 +43,7 @@ function main (testOptions) {
         options = commandLineArgs(require('./lib/cli/args'), { camelCase: true })
         options = options._all
     } catch (err) {
-        console.error(err.toString())
+        console.error(err)
         console.error('Run with -h for help')
         quit()
     }
