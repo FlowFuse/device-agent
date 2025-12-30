@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const semver = require('semver')
 if (semver.lt(process.version, '14.0.0')) {
+    // eslint-disable-next-line no-console
     console.log('FlowFuse Device Agent requires at least NodeJS v14.x')
     process.exit(1)
 }
@@ -25,6 +26,7 @@ const chalk = require('yoctocolors-cjs') // switch to the lighter yoctocolors-cj
 function main (testOptions) {
     const pkg = require('./package.json')
     if (pkg.name === '@flowforge/flowforge-device-agent') {
+        // eslint-disable-next-line no-console
         console.log(`
 **************************************************************************
 * The FlowFuse Device Agent is moving to '@flowfuse/device-agent' on npm *
@@ -41,16 +43,16 @@ function main (testOptions) {
         options = commandLineArgs(require('./lib/cli/args'), { camelCase: true })
         options = options._all
     } catch (err) {
-        console.log(err.toString())
-        console.log('Run with -h for help')
+        console.error(err.toString())
+        console.error('Run with -h for help')
         quit()
     }
     if (options.version) {
-        console.log(pkg.version)
+        console.error(pkg.version)
         quit()
     }
     if (options.help) {
-        console.log(require('./lib/cli/usage').usage())
+        console.error(require('./lib/cli/usage').usage())
         quit()
     }
 
@@ -318,7 +320,7 @@ Please ensure the parent directory is writable, or set a different path with -d`
     }
 
     function quit (msg, errCode = 0) {
-        if (msg) { console.log(msg) }
+        if (msg) { console.error(msg) }
         if (TESTING) {
             // don't exit if we are testing. Instead, call the onExit callback stub
             if (testOptions?.onExit) {

@@ -134,7 +134,7 @@ describe('Device Agent Web Server', () => {
         const called1 = http.createServer.called
         http.createServer.reset()
         const called2 = http.createServer.called
-        console.log(called1, called2)
+        console.debug(called1, called2)
 
         app.options.ui.should.be.true()
         WebServer.prototype.initialize.called.should.be.true()

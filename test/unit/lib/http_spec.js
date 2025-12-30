@@ -1,5 +1,5 @@
 const mocha = require('mocha') // eslint-disable-line
-const should = require('should') // eslint-disable-line
+const should = require('should')
 const sinon = require('sinon')
 const { HTTPClient } = require('../../../lib/http')
 let currentId = 0 // incrementing id for each agent

@@ -1,5 +1,5 @@
 const mocha = require('mocha') // eslint-disable-line
-const should = require('should') // eslint-disable-line
+const should = require('should')
 const sinon = require('sinon')
 const path = require('path')
 const fs = require('fs/promises')
@@ -196,7 +196,7 @@ describe('MQTT Comms', function () {
                 }
             })
         } catch (error) {
-            console.log(error)
+            console.error(error)
         }
         EditorTunnel.create().dummy() // ensure the sandbox is used once
     })
@@ -228,7 +228,7 @@ describe('MQTT Comms', function () {
         await fs.rm(configDir, { recursive: true, force: true })
         mqttClient.stop()
         mqttClient = null
-        console.log.restore()
+        console.log.restore() // eslint-disable-line no-console
         console.info.restore()
         if (process.env.restore) {
             process.env.restore()
@@ -342,7 +342,7 @@ describe('MQTT Comms', function () {
     it('does not crash when agent.setState() throws', function (done) {
         // spy on warn()
         // unstub the hushed console.log
-        console.log.restore()
+        console.log.restore() // eslint-disable-line no-console
         sinon.spy(console, 'log')
         // mute multiple calls to done() because if we do have an unhandledRejection,
         // we probably had, or will have a timeout and a done() call too
@@ -381,7 +381,7 @@ describe('MQTT Comms', function () {
                 setTimeout(() => {
                     if (mqttClient.agent.setState.calledOnce) {
                         // find the console.log call made by the agent.setState() error handler
-                        const consoleLogCalls = console.log.getCalls()
+                        const consoleLogCalls = console.log.getCalls() // eslint-disable-line no-console
                         const consoleLogCall = consoleLogCalls.find(call => call.args[0].includes('Error: setState() threw'))
                         doneOnce(consoleLogCall ? null : new Error('error not thrown'))
                     } else {

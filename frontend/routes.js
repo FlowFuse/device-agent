@@ -302,14 +302,14 @@ function isAuthorized (req) {
  */
 function encodingForContentType (contentType) {
     switch (contentType) {
-    case 'text/plain':
-    case 'text/html':
-    case 'text/css':
-    case 'application/json':
-    case 'application/x-yaml':
-        return 'utf8'
-    default:
-        return 'binary'
+        case 'text/plain':
+        case 'text/html':
+        case 'text/css':
+        case 'application/json':
+        case 'application/x-yaml':
+            return 'utf8'
+        default:
+            return 'binary'
     }
 }
 
@@ -321,31 +321,31 @@ function encodingForContentType (contentType) {
  */
 function contentTypeForExtension (ext) {
     switch (ext) {
-    case '.txt':
-    case '.log':
-        return 'text/plain'
-    case '.json':
-        return 'application/json'
-    case '.yaml':
-    case '.yml':
-        return 'application/x-yaml'
-    case '.pdf':
-        return 'application/pdf'
-    case '.css':
-        return 'text/css'
-    case '.html':
-        return 'text/html'
-    case '.png':
-        return 'image/png'
-    case '.jpg':
-    case '.jpeg':
-        return 'image/jpeg'
-    case '.gif':
-        return 'image/gif'
-    case '.svg':
-        return 'image/svg+xml'
-    case '.ico':
-        return 'image/x-icon'
+        case '.txt':
+        case '.log':
+            return 'text/plain'
+        case '.json':
+            return 'application/json'
+        case '.yaml':
+        case '.yml':
+            return 'application/x-yaml'
+        case '.pdf':
+            return 'application/pdf'
+        case '.css':
+            return 'text/css'
+        case '.html':
+            return 'text/html'
+        case '.png':
+            return 'image/png'
+        case '.jpg':
+        case '.jpeg':
+            return 'image/jpeg'
+        case '.gif':
+            return 'image/gif'
+        case '.svg':
+            return 'image/svg+xml'
+        case '.ico':
+            return 'image/x-icon'
     }
     return null
 }

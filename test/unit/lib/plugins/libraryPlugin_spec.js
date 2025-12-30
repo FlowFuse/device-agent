@@ -1,6 +1,6 @@
 const mocha = require('mocha') // eslint-disable-line
-const should = require('should') // eslint-disable-line
-const sinon = require('sinon') // eslint-disable-line
+const should = require('should')
+// const sinon = require('sinon') // eslint-disable-line
 const HttpProxyAgent = require('http-proxy-agent').HttpProxyAgent
 const HttpsProxyAgent = require('https-proxy-agent').HttpsProxyAgent
 const pluginModule = require('../../../../lib/plugins/node_modules/@flowfuse/flowfuse-library-plugin/libraryPlugin.js')
