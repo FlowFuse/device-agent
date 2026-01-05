@@ -38,8 +38,10 @@ export default [
         },
         rules: {
             // built-in
+            eqeqeq: 'error',
             'object-shorthand': ['error'],
             'no-console': ['error', { allow: ['debug', 'info', 'warn', 'error'] }],
+            quotes: ['off', 'error', 'single', { avoidEscape: true }],
 
             // plugin:stylistic
             '@stylistic/indent': ['warn', 4], // https://eslint.style/rules/indent#options
