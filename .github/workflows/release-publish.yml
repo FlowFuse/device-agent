@@ -19,6 +19,9 @@ jobs:
   build_container:
     needs: [publish]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18, 20]
     steps:
       - name: checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -28,8 +31,10 @@ jobs:
         with:
           tags: |
             type=semver,event=tag,pattern={{version}}
+            type=raw,value=latest,enable=${{ matrix.node == 18}}
           flavor: |
-            latest=true
+            latest=auto
+            suffix=-{{matrix.node}},onlatest=true
           images: |
             flowfuse/device-agent
       - name: Setup QEMU
@@ -49,6 +54,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           push: true
           platforms: linux/amd64, linux/arm64, linux/arm/v7
+          build-args: |
+            NODE_VERSION=${{ matrix.node }}
       - name: Publish README.md to Docker hub
         uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
         with:
