@@ -3,7 +3,6 @@ on:
   push:
     tags:
       - "v*.*.*"
-  workflow_dispatch:
 
 jobs:
   publish:
@@ -21,8 +20,6 @@ jobs:
   build_container:
     needs: [publish]
     runs-on: ubuntu-latest
-    env:
-      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
     strategy:
       matrix:
         node: [18, 20]
@@ -32,11 +29,6 @@ jobs:
       - name: Docker Meta Data
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
-        env:
-          GITHUB_EVENT_NAME: ${{ github.event_name == 'workflow_dispatch' && 'push' || github.event_name }}
-          GITHUB_REF: ${{ github.event_name == 'workflow_dispatch' && 'refs/tags/v1.2.3' || github.ref }}
-          GITHUB_REF_NAME: ${{ github.event_name == 'workflow_dispatch' && 'v1.2.3' || github.ref_name }}
-          GITHUB_REF_TYPE: ${{ github.event_name == 'workflow_dispatch' && 'tag' || github.ref_type }}
         with:
           tags: |
             type=semver,event=tag,pattern=v{{version}},enable=${{ matrix.node == 18}}
@@ -46,24 +38,16 @@ jobs:
             latest=false
           images: |
             flowfuse/device-agent
-      - name: Show computed image tags
-        run: |
-          echo "Building for Node.js version: ${{ matrix.node }}"
-          echo "${{ steps.meta.outputs.tags }}"
       - name: Setup QEMU
-        if: ${{ env.ACT != 'true' && env.DRY_RUN != 'true' }}
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
       - name: Setup Docker buildx
-        if: ${{ env.ACT != 'true' && env.DRY_RUN != 'true' }}
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       - name: docker login
-        if: ${{ env.ACT != 'true' && env.DRY_RUN != 'true' }}
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           username: flowfuse
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
       - name: Build and push FlowFuse Device Agent container
-        if: ${{ env.ACT != 'true' && env.DRY_RUN != 'true' }}
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: docker
@@ -74,7 +58,6 @@ jobs:
           build-args: |
             NODE_VERSION=${{ matrix.node }}
       - name: Publish README.md to Docker hub
-        if: ${{ env.ACT != 'true' && env.DRY_RUN != 'true' }}
         uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
         with:
           repository: flowfuse/device-agent
