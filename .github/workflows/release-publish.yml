@@ -35,7 +35,7 @@ jobs:
             type=semver,event=tag,pattern=v{{version}},enable=${{ matrix.node == 18}}
             type=semver,event=tag,pattern=v{{version}}-${{ matrix.node }}
             type=raw,value=latest,enable=${{ matrix.node == 18}}
-            type=raw,value=latest-{{matrix.node}}
+            type=raw,value=latest-${{matrix.node}}
           flavor: |
             latest=false
           images: |
