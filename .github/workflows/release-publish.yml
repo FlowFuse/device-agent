@@ -33,8 +33,10 @@ jobs:
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         env:
+          GITHUB_EVENT_NAME: ${{ github.event_name == 'workflow_dispatch' && 'push' || github.event_name }}
           GITHUB_REF: ${{ github.event_name == 'workflow_dispatch' && 'refs/tags/v1.2.3' || github.ref }}
           GITHUB_REF_NAME: ${{ github.event_name == 'workflow_dispatch' && 'v1.2.3' || github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.event_name == 'workflow_dispatch' && 'tag' || github.ref_type }}
         with:
           tags: |
             type=semver,event=tag,pattern=v{{version}},enable=${{ matrix.node == 18}}
