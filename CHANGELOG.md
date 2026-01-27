@@ -1,3 +1,26 @@
+#### 3.7.2 Release
+
+ - Bump JS-DevTools/npm-publish from 4.1.3 to 4.1.4 (#556)
+ - Bump actions/setup-node from 6.1.0 to 6.2.0 (#557)
+ - Bump actions/setup-go from 6.1.0 to 6.2.0 (#558)
+ - Bump JS-DevTools/npm-publish from 4.1.1 to 4.1.3 (#553)
+ - Bump actions/download-artifact from 6.0.0 to 7.0.0 (#543)
+ - Bump actions/upload-artifact from 5.0.0 to 6.0.0 (#542)
+ - Disable @flowforge build and publish (#537)
+ - Bump docker/metadata-action from 5.9.0 to 5.10.0 (#536)
+ - Add NodeJS 20 build of device-agent docker container (#559) @hardillb
+ - Bump actions/checkout from 6.0.1 to 6.0.2 (#560) @app/dependabot
+ - ci: Enable SAST (#554) @ppawlowski
+ - Fix quotes and eqeqeq (#551) @hardillb
+ - ci: Run tests against Node `22` and `24` (#550) @ppawlowski
+ - Eslint v9 (#548) @hardillb
+ - Add ability to request list of installed packages (#540) @hardillb
+ - Bump docker/setup-buildx-action from 3.11.1 to 3.12.0 (#545) @app/dependabot
+ - Bump actions/checkout from 6.0.0 to 6.0.1 (#539) @app/dependabot
+ - Bump actions/setup-node from 6.0.0 to 6.1.0 (#538) @app/dependabot
+ - Bump actions/setup-go from 6.0.0 to 6.1.0 (#534) @app/dependabot
+ - Bump actions/checkout from 5.0.1 to 6.0.0 (#533) @app/dependabot
+
 #### 3.7.1 Release
 
  - Bump actions/checkout from 5.0.0 to 5.0.1 (#529)
