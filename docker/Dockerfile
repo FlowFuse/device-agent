@@ -2,13 +2,19 @@ ARG NODE_VERSION=20
 FROM node:${NODE_VERSION}-alpine
 
 ARG VERSION=latest
+ARG FF_UID=2000
+ARG FF_GID=2000
 
 RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python3 openssl
 
-RUN mkdir -m 777 -p /opt/flowfuse-device
-RUN npm config set cache /opt/flowfuse-device/.npm --global
-RUN npm install -g @flowfuse/device-agent@${VERSION} --omit=dev
-RUN chmod -R 777 /opt/flowfuse-device/.npm
+RUN addgroup -g ${FF_GID} -S flowfuse \
+    && adduser -u ${FF_UID} -S -G flowfuse -h /opt/flowfuse-device flowfuse \
+    && mkdir -p /opt/flowfuse-device \
+    && chown -R "${FF_UID}":"${FF_GID}" /opt/flowfuse-device
+
+RUN npm config set cache /opt/flowfuse-device/.npm --global \
+    && npm install -g @flowfuse/device-agent@${VERSION} --omit=dev \
+    && chown -R ${FF_UID}:${FF_GID} /opt/flowfuse-device
 
 EXPOSE 1880
 
@@ -20,5 +26,9 @@ LABEL org.label-schema.name="FlowFuse Device Agent" \
     org.schema-label.description="Collaborative, low code integration and automation environment" \
     authors="FlowFuse Inc."
 
+
+ENV HOME=/opt/flowfuse-device
+
+USER ${FF_UID}:${FF_GID}
 
 CMD ["flowfuse-device-agent"]
