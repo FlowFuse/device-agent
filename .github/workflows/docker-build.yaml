@@ -61,14 +61,6 @@ jobs:
       #     build-args: |
       #       NODE_VERSION=${{ matrix.node }}
 
-      - name: Cache vulnerability database
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
-        with:
-          path: ~/.cache/trivy
-          key: ${{ runner.os }}-trivy-db-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-trivy-db-
-
       - name: Perform SAST scan
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
         with:
