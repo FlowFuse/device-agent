@@ -29,6 +29,6 @@ LABEL org.label-schema.name="FlowFuse Device Agent" \
 
 ENV HOME=/opt/flowfuse-device
 
-USER ${FF_UID}:${FF_GID}
+USER flowfuse
 
 CMD ["flowfuse-device-agent"]
