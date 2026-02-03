@@ -6,11 +6,15 @@ on:
     paths-ignore:
       - '.github/workflows/installer-build.yaml'
       - 'installer/**'
+      - 'docker/**'
+      - '.github/workflows/docker-build.yaml'
   pull_request:
     branches: [ main ]
     paths-ignore:
       - '.github/workflows/installer-build.yaml'
       - 'installer/**'
+      - 'docker/**'
+      - '.github/workflows/docker-build.yaml'
 
 jobs:
   build:
