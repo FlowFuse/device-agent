@@ -1003,6 +1003,33 @@ describe('Agent', function () {
             agent.launcher.writeConfiguration.called.should.be.true()
             agent.launcher.start.called.should.be.true()
         })
+
+        it('Updates snapshot when in developer mode if forceUpdate flag set', async function () {
+            const agent = createHTTPAgent()
+            agent.currentProject = 'projectId'
+            agent.currentApplication = null
+            agent.currentSnapshot = { id: 'snapshotId' }
+            agent.currentSettings = { hash: 'settingsId' }
+            agent.currentMode = 'developer'
+
+            const testLauncher = Launcher.newLauncher()
+            agent.launcher = testLauncher
+            agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
+            agent.httpClient.getSnapshot.resolves({ id: 'newSnapshotId' })
+            await agent.saveProject()
+
+            await agent.setState({
+                snapshot: 'newSnapshotId',
+                forceUpdate: true
+            })
+            await validateConfig(agent, { project: 'projectId', snapshot: 'newSnapshotId', settings: 'newSettingsId' })
+
+            should.exist(agent.launcher)
+            agent.launcher.writeConfiguration.called.should.be.true()
+            agent.launcher.start.called.should.be.true()
+            agent.httpClient.getSettings.called.should.be.true('getSettings was not called when snapshot changed') // getSettings should be called because platform will have updated settings from the new snapshot (e.g. FF_SNAPSHOT_ID will be different)
+        })
+
         it('Checks in when switching to developer mode (HTTP)', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
