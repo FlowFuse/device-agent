@@ -126,6 +126,7 @@ Node-RED options | Description
 `httpStatic`     | Enable serving of static content from a local path
 `httpNodeAuth`   | If set, any endpoints created in Node-RED flows will require this username and password to access them. Default: `false`
 `localAuth`      | When configured, local login is possible
+`heapSize`       | Allows the max_old_space_size to be set for the Node-RED process in mb. Default `512`
 
 ##### `https` configuration
 
@@ -247,6 +248,7 @@ Options
   -i, --interval secs
   -p, --port number
   -m, --moduleCache     Use local npm module cache rather than install
+  -s, --heap-size       Sets the Node-RED max_old_space_size in mb. Default 512
 
 Web UI Options
 
