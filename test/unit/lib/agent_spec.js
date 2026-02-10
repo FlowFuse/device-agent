@@ -1030,7 +1030,6 @@ describe('Agent', function () {
             agent.httpClient.getSettings.called.should.be.true('getSettings was not called when snapshot changed') // getSettings should be called because platform will have updated settings from the new snapshot (e.g. FF_SNAPSHOT_ID will be different)
         })
 
-
         it('Checks in when switching to developer mode (HTTP)', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
