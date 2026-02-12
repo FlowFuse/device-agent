@@ -248,7 +248,7 @@ Options
   -i, --interval secs
   -p, --port number
   -m, --moduleCache     Use local npm module cache rather than install
-  -s, --heap-size       Sets the Node-RED max_old_space_size in mb. Default 512
+  --heap-size           Sets the Node-RED max_old_space_size in mb. Default 512
 
 Web UI Options
 
