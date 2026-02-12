@@ -1,3 +1,11 @@
+#### 3.8.0 Release
+
+ - Support for forceUpdate flag to allow snapshot deploy whilst in dev mode (#570) @knolleary
+ - Bump JS-DevTools/npm-publish from 4.1.4 to 4.1.5 (#566)
+ - Bump flowfuse/github-actions-workflows/.github/workflows/sast_scan.yaml from 0.47.0 to 0.48.0 (#569)
+ - Bump docker/login-action from 3.6.0 to 3.7.0 (#567)
+ - Bump flowfuse/github-actions-workflows/.github/workflows/sast_scan.yaml from 0.46.0 to 0.47.0 (#561)
+
 #### 3.7.2 Release
 
  - Bump JS-DevTools/npm-publish from 4.1.3 to 4.1.4 (#556)
