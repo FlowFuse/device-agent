@@ -1,3 +1,7 @@
+#### 3.8.1 Release
+
+ - Allow NodeJS cmd line options to be passed to NodeRED process (#572) @hardillb
+
 #### 3.8.0 Release
 
  - Support for forceUpdate flag to allow snapshot deploy whilst in dev mode (#570) @knolleary
