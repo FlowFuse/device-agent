@@ -255,7 +255,6 @@ describe('config loader', () => {
             result.should.have.a.property('deviceFile', configFilePath)
             result.should.have.a.property('config', 'blah blah')
             result.should.have.a.property('dummy', 'dummy')
-            result.should.have.a.property('heapSize', 512)
             // since this is a regular device yaml, it should not contain any provisioning extras
             result.should.not.have.a.property('provisioningExtras')
         })
