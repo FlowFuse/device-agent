@@ -114,6 +114,17 @@ Extra options   | Description
 `intervalJitter`| How much, in seconds, to vary the heartbeat +/- `intervalJitter`. Default: 10s
 `moduleCache`   | If the device can not access npmjs.org then use the node modules cache in `module_cache` directory. Default `false`
 
+#### NodeJS options
+
+Used to pass options to the NodeJS process running Node-RED
+
+`nodeOptions`    | An array of NodeJS command line options. Default is single entry of `--max_old_space_size=512`
+
+```
+nodeOptions:
+  - '--max_old_space_size=256'
+  - '--use-openssl-ca'
+```
 
 #### Node-RED options
 
@@ -247,6 +258,7 @@ Options
   -i, --interval secs
   -p, --port number
   -m, --moduleCache     Use local npm module cache rather than install
+  --node-options        Adds NodeJS command line arguments, can be specified multiple times
 
 Web UI Options
 
