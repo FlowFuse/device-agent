@@ -172,7 +172,7 @@ describe('Agent', function () {
             startTunnel: sinon.stub(),
             sendCommandResponse: sinon.stub()
         })
-
+        Launcher._newLauncher = Launcher.newLauncher // preserve the original function so that we can call it if required in tests
         sinon.stub(Launcher, 'newLauncher').callsFake((agent, application, project, snapshot, settings, mode) => {
             return {
                 agent,
@@ -1075,6 +1075,27 @@ describe('Agent', function () {
             }
             // test that checkIn was called with arg 'developer'
             agent.mqttClient.checkIn.called.should.be.true('checkIn was not called following switch to developer mode')
+        })
+        it('Checks in when shutting down the launcher', async function () {
+            const agent = createMQTTAgent()
+            agent.currentProject = 'projectId'
+            agent.currentApplication = null
+            agent.currentSnapshot = { id: 'snapshotId' }
+            agent.currentSettings = { hash: 'settingsId' }
+            agent.currentMode = 'autonomous'
+
+            const testLauncher = Launcher._newLauncher(agent, agent.currentApplication, agent.currentProject)
+            agent.launcher = testLauncher
+            await agent.start()
+            await agent.stop()
+            for (let i = 0; i < 30; i++) {
+                if (agent.mqttClient.checkIn.called) {
+                    break
+                }
+                await new Promise(resolve => setTimeout(resolve, 10))
+            }
+            // test that checkIn was called with arg 'developer'
+            agent.mqttClient.checkIn.called.should.be.true('checkIn was not called following launcher shutdown')
         })
         it('Clears editorToken when switching off developer mode', async function () {
             const agent = createMQTTAgent()
