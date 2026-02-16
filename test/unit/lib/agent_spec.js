@@ -1077,6 +1077,7 @@ describe('Agent', function () {
             agent.mqttClient.checkIn.called.should.be.true('checkIn was not called following switch to developer mode')
         })
         it('Checks in when shutting down the launcher', async function () {
+            this.timeout(10000) // bump timeout above MQTT_CONNECT_DELAY_MAX (5s) + the 2s await after stop()
             const agent = createMQTTAgent()
             agent.currentProject = 'projectId'
             agent.currentApplication = null
