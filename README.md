@@ -258,7 +258,7 @@ Options
   -i, --interval secs
   -p, --port number
   -m, --moduleCache     Use local npm module cache rather than install
-  --node-options        Adds NodeJS command line arguments, can be specified multiple times
+  --node-options        Adds NodeJS command line arguments, can be specified multiple times. Must use = e.g. --node-options="--max-old-space-size=256"
 
 Web UI Options
 
