@@ -118,11 +118,11 @@ Extra options   | Description
 
 Used to pass options to the NodeJS process running Node-RED
 
-`nodeOptions`    | An array of NodeJS command line options. Default is single entry of `--max_old_space_size=512`
+`nodeOptions`    | An array of NodeJS command line options. Default is single entry of `--max-old-space-size=512`
 
 ```
 nodeOptions:
-  - '--max_old_space_size=256'
+  - '--max-old-space-size=256'
   - '--use-openssl-ca'
 ```
 
@@ -258,7 +258,7 @@ Options
   -i, --interval secs
   -p, --port number
   -m, --moduleCache     Use local npm module cache rather than install
-  --node-options        Adds NodeJS command line arguments, can be specified multiple times
+  --node-options        Adds NodeJS command line arguments, can be specified multiple times. Must use = e.g. --node-options="--max-old-space-size=256"
 
 Web UI Options
 
