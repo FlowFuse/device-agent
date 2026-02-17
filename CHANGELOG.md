@@ -1,3 +1,10 @@
+#### 3.8.2 Release
+
+ - Bump flowfuse/github-actions-workflows/.github/workflows/sast_scan.yaml from 0.48.0 to 0.49.0 (#578)
+ - Bump docker/build-push-action from 6.18.0 to 6.19.2 (#579)
+ - Fix typo of _ vs - for Node Options (#576) @hardillb
+ - Update FF state upon shutdown (#577) @Steve-Mcl
+
 #### 3.8.1 Release
 
  - Allow NodeJS cmd line options to be passed to NodeRED process (#572) @hardillb
