@@ -1,0 +1,58 @@
+name: Docker build
+
+on:
+  pull_request:
+    paths:
+      - 'docker/**'
+      - '.github/workflows/docker-build.yaml'
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        node: [18, 20]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@e43656e248c0bd0647d3f5c195d116aacf6fcaf4 #v4.7.0
+        with:
+          daemon-config: |
+            {
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Build Docker image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64, linux/arm64, linux/arm/v7
+          tags: flowfuse-device-agent-pr:${{ matrix.node }}-scan
+          push: false
+          load: true
+          build-args: |
+            NODE_VERSION=${{ matrix.node }}
+
+      - name: Perform SAST scan
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
+        with:
+          image-ref: flowfuse-device-agent-pr:${{ matrix.node }}-scan
+          trivy-config: .github/trivy.yaml
+          output: 'sast-results.sarif'
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@b20883b0cd1f46c72ae0ba6d1090936928f9fa30 # v4.32.0
+        with:
+          sarif_file: sast-results.sarif
