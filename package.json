@@ -38,6 +38,7 @@
         "@flowfuse/nr-theme": "^1.8.0",
         "@inquirer/confirm": "^5.1.9",
         "@inquirer/select": "^4.2.0",
+        "bytes": "^3.1.2",
         "command-line-args": "^6.0.1",
         "command-line-usage": "^7.0.3",
         "express-session": "^1.18.0",
