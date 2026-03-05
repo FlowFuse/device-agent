@@ -23,9 +23,9 @@ describe('template-settings', () => {
         dir: '',
         verbose: true
     }
-    async function generateSettingsFile (_config) {
+    async function generateSettingsFile (_config, _settings) {
         _config = Object.assign({}, config, _config)
-        const launcher = newLauncher({ config: _config }, null, 'PROJECTID', setup.snapshot)
+        const launcher = newLauncher({ config: _config }, null, 'PROJECTID', setup.snapshot, _settings || undefined)
         await launcher.writeSettings()
         settingsFilePath = path.join(config.dir, 'project', 'settings.js')
         return settingsFilePath
@@ -201,6 +201,21 @@ describe('template-settings', () => {
         settings.should.have.a.property('httpNodeAuth').and.be.an.Object()
         settings.httpNodeAuth.should.have.a.property('user', 'test')
         settings.httpNodeAuth.should.have.a.property('pass', '$123456789')
+    })
+
+    it('should set the apiMaxLength and ui.maxHttpBufferSize option if provided', async function () {
+        const extraConfig = {}
+        const extraSettings = {
+            editor: {
+                apiMaxLength: '1mb'
+            }
+        }
+        const settingsFile = await generateSettingsFile(extraConfig, extraSettings)
+        const settings = require(settingsFile)
+        should.exist(settings)
+        settings.should.have.a.property('apiMaxLength', 1048576)
+        settings.should.have.a.property('ui').and.be.an.Object()
+        settings.ui.should.have.a.property('maxHttpBufferSize', 1048576)
     })
 
     it('should set adminAuth.type and users array when valid localAuth options are provided and enabled', async function () {
