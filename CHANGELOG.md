@@ -1,3 +1,15 @@
+#### 3.8.3 Release
+
+ - Add kube doc (#591)
+ - Add kube docs (#582)
+ - Bump flowfuse/github-actions-workflows/.github/workflows/sast_scan.yaml from 0.49.0 to 0.52.0 (#586)
+ - Bump actions/setup-go from 6.2.0 to 6.3.0 (#587)
+ - Bump actions/download-artifact from 7.0.0 to 8.0.0 (#588)
+ - Bump actions/upload-artifact from 6.0.0 to 7.0.0 (#589)
+ - Add support for setting apiMaxLength (#592) @hardillb
+ - Bump minimatch (#585) @app/dependabot
+ - Log causes for MQTT connection failures (#581) @hardillb
+
 #### 3.8.2 Release
 
  - Bump flowfuse/github-actions-workflows/.github/workflows/sast_scan.yaml from 0.48.0 to 0.49.0 (#578)
