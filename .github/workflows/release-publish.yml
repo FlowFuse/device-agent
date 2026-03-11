@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Docker Meta Data
         id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
         with:
           tags: |
             type=semver,event=tag,pattern=v{{version}},enable=${{ matrix.node == 18}}
@@ -86,7 +86,7 @@ jobs:
   #         token: ${{ secrets.NPM_PUBLISH_TOKEN_FLOWFORGE }}
   #     - name: Docker Meta Data
   #       id: meta
-  #       uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+  #       uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
   #       with:
   #         tags: |
   #           type=semver,event=tag,pattern={{version}}
