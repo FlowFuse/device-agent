@@ -5,6 +5,8 @@ ARG VERSION=latest
 
 RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python3 openssl
 
+RUN npm install -g npm
+
 RUN mkdir -m 777 -p /opt/flowfuse-device
 RUN npm config set cache /opt/flowfuse-device/.npm --global
 RUN npm install -g @flowfuse/device-agent@${VERSION} --omit=dev
