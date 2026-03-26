@@ -50,6 +50,7 @@ jobs:
         with:
           image-ref: flowfuse-device-agent-pr:${{ matrix.node }}-scan
           trivy-config: .github/trivy.yaml
+          version: 'v0.69.2' # https://github.com/aquasecurity/trivy-action/issues/512
           output: 'sast-results.sarif'
 
       - name: Upload scan results
