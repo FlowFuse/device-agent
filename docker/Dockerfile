@@ -12,7 +12,8 @@ RUN addgroup -g ${FF_GID} -S flowfuse \
     && mkdir -p /opt/flowfuse-device \
     && chown -R "${FF_UID}":"${FF_GID}" /opt/flowfuse-device
 
-RUN npm config set cache /opt/flowfuse-device/.npm --global \
+RUN npm install -g npm 
+    && npm config set cache /opt/flowfuse-device/.npm --global \
     && npm install -g @flowfuse/device-agent@${VERSION} --omit=dev \
     && chown -R ${FF_UID}:${FF_GID} /opt/flowfuse-device
 

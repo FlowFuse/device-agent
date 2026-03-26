@@ -172,7 +172,7 @@ describe('Agent', function () {
             startTunnel: sinon.stub(),
             sendCommandResponse: sinon.stub()
         })
-
+        Launcher._newLauncher = Launcher.newLauncher // preserve the original function so that we can call it if required in tests
         sinon.stub(Launcher, 'newLauncher').callsFake((agent, application, project, snapshot, settings, mode) => {
             return {
                 agent,
@@ -1003,6 +1003,33 @@ describe('Agent', function () {
             agent.launcher.writeConfiguration.called.should.be.true()
             agent.launcher.start.called.should.be.true()
         })
+
+        it('Updates snapshot when in developer mode if forceUpdate flag set', async function () {
+            const agent = createHTTPAgent()
+            agent.currentProject = 'projectId'
+            agent.currentApplication = null
+            agent.currentSnapshot = { id: 'snapshotId' }
+            agent.currentSettings = { hash: 'settingsId' }
+            agent.currentMode = 'developer'
+
+            const testLauncher = Launcher.newLauncher()
+            agent.launcher = testLauncher
+            agent.httpClient.getSettings.resolves({ hash: 'newSettingsId' })
+            agent.httpClient.getSnapshot.resolves({ id: 'newSnapshotId' })
+            await agent.saveProject()
+
+            await agent.setState({
+                snapshot: 'newSnapshotId',
+                forceUpdate: true
+            })
+            await validateConfig(agent, { project: 'projectId', snapshot: 'newSnapshotId', settings: 'newSettingsId' })
+
+            should.exist(agent.launcher)
+            agent.launcher.writeConfiguration.called.should.be.true()
+            agent.launcher.start.called.should.be.true()
+            agent.httpClient.getSettings.called.should.be.true('getSettings was not called when snapshot changed') // getSettings should be called because platform will have updated settings from the new snapshot (e.g. FF_SNAPSHOT_ID will be different)
+        })
+
         it('Checks in when switching to developer mode (HTTP)', async function () {
             const agent = createHTTPAgent()
             agent.currentProject = 'projectId'
@@ -1048,6 +1075,28 @@ describe('Agent', function () {
             }
             // test that checkIn was called with arg 'developer'
             agent.mqttClient.checkIn.called.should.be.true('checkIn was not called following switch to developer mode')
+        })
+        it('Checks in when shutting down the launcher', async function () {
+            this.timeout(10000) // bump timeout above MQTT_CONNECT_DELAY_MAX (5s) + the 2s await after stop()
+            const agent = createMQTTAgent()
+            agent.currentProject = 'projectId'
+            agent.currentApplication = null
+            agent.currentSnapshot = { id: 'snapshotId' }
+            agent.currentSettings = { hash: 'settingsId' }
+            agent.currentMode = 'autonomous'
+
+            const testLauncher = Launcher._newLauncher(agent, agent.currentApplication, agent.currentProject)
+            agent.launcher = testLauncher
+            await agent.start()
+            await agent.stop()
+            for (let i = 0; i < 30; i++) {
+                if (agent.mqttClient.checkIn.called) {
+                    break
+                }
+                await new Promise(resolve => setTimeout(resolve, 10))
+            }
+            // test that checkIn was called with arg 'developer'
+            agent.mqttClient.checkIn.called.should.be.true('checkIn was not called following launcher shutdown')
         })
         it('Clears editorToken when switching off developer mode', async function () {
             const agent = createMQTTAgent()

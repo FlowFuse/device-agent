@@ -569,6 +569,30 @@ describe('Launcher', function () {
         await launcher.stop()
     })
 
+    it('calls logAuditEvent when stopped', async function () {
+        const launcher = newLauncher({ config, checkIn: sinon.stub() }, null, 'projectId', setup.snapshot)
+        should(launcher).be.an.Object()
+        await launcher.writeFlow()
+        await launcher.writeCredentials()
+
+        // stub the call to the audit logger function `logAuditEvent (event, body)`
+        const logAuditEventStub = sinon.stub(launcher, 'logAuditEvent').resolves()
+
+        // stub installDependencies so we don't actually install anything when starting
+        sinon.stub(launcher, 'installDependencies').resolves()
+
+        await launcher.start() // childProcess.spawn is faked in beforeEach
+        await launcher.stop(false, 'shutdown')
+        logAuditEventStub.calledOnce.should.be.true()
+        logAuditEventStub.args[0][0].should.eql('stopped')
+        logAuditEventStub.args[0][1].should.be.an.Object()
+        logAuditEventStub.args[0][1].should.have.property('info').and.be.an.Object()
+        logAuditEventStub.args[0][1].info.should.have.property('code', 'shutdown')
+
+        // Also, check agent checkIn was called!
+        launcher.agent.checkIn.called.should.be.true()
+    })
+
     describe('Proxy Support', function () {
         afterEach(async function () {
             delete process.env.http_proxy

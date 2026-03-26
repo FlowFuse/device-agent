@@ -1,3 +1,34 @@
+#### 3.8.3 Release
+
+ - Add kube doc (#591)
+ - Add kube docs (#582)
+ - Bump flowfuse/github-actions-workflows/.github/workflows/sast_scan.yaml from 0.49.0 to 0.52.0 (#586)
+ - Bump actions/setup-go from 6.2.0 to 6.3.0 (#587)
+ - Bump actions/download-artifact from 7.0.0 to 8.0.0 (#588)
+ - Bump actions/upload-artifact from 6.0.0 to 7.0.0 (#589)
+ - Add support for setting apiMaxLength (#592) @hardillb
+ - Bump minimatch (#585) @app/dependabot
+ - Log causes for MQTT connection failures (#581) @hardillb
+
+#### 3.8.2 Release
+
+ - Bump flowfuse/github-actions-workflows/.github/workflows/sast_scan.yaml from 0.48.0 to 0.49.0 (#578)
+ - Bump docker/build-push-action from 6.18.0 to 6.19.2 (#579)
+ - Fix typo of _ vs - for Node Options (#576) @hardillb
+ - Update FF state upon shutdown (#577) @Steve-Mcl
+
+#### 3.8.1 Release
+
+ - Allow NodeJS cmd line options to be passed to NodeRED process (#572) @hardillb
+
+#### 3.8.0 Release
+
+ - Support for forceUpdate flag to allow snapshot deploy whilst in dev mode (#570) @knolleary
+ - Bump JS-DevTools/npm-publish from 4.1.4 to 4.1.5 (#566)
+ - Bump flowfuse/github-actions-workflows/.github/workflows/sast_scan.yaml from 0.47.0 to 0.48.0 (#569)
+ - Bump docker/login-action from 3.6.0 to 3.7.0 (#567)
+ - Bump flowfuse/github-actions-workflows/.github/workflows/sast_scan.yaml from 0.46.0 to 0.47.0 (#561)
+
 #### 3.7.2 Release
 
  - Bump JS-DevTools/npm-publish from 4.1.3 to 4.1.4 (#556)

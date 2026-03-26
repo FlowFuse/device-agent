@@ -1,6 +1,6 @@
 {
     "name": "@flowfuse/device-agent",
-    "version": "3.7.2",
+    "version": "3.8.3",
     "description": "An Edge Agent for running Node-RED instances deployed from the FlowFuse Platform",
     "exports": {
         "./libraryPlugin": "./lib/plugins/libraryPlugin.js",
@@ -38,6 +38,7 @@
         "@flowfuse/nr-theme": "^1.8.0",
         "@inquirer/confirm": "^5.1.9",
         "@inquirer/select": "^4.2.0",
+        "bytes": "^3.1.2",
         "command-line-args": "^6.0.1",
         "command-line-usage": "^7.0.3",
         "express-session": "^1.18.0",

@@ -36,9 +36,9 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Setup Node.js
-      uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
-        node-version: '20'
+        node-version: '24'
         
     - name: Calculate next version
       id: semantic
@@ -93,7 +93,7 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
       
     - name: Set up Go
-      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
       with:
         go-version: ${{ env.GO_VERSION }}
         cache-dependency-path: "**/go.sum"
@@ -133,7 +133,7 @@ jobs:
         fi
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: ${{ matrix.output }}
         path: installer/go/artifacts/${{ matrix.output }}
@@ -156,12 +156,12 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Setup Node.js
-      uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
-        node-version: '20'
+        node-version: '24'
         
     - name: Download all artifacts
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       with:
         path: artifacts
         pattern: flowfuse-device-installer-*
@@ -224,10 +224,10 @@ jobs:
     steps:
     - name: Generate a token
       id: generate_token
-      uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
+      uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
       with:
-        app_id: ${{ secrets.GH_BOT_APP_ID }}
-        private_key: ${{ secrets.GH_BOT_APP_KEY }}
+        app-id: ${{ secrets.GH_BOT_APP_ID }}
+        private-key: ${{ secrets.GH_BOT_APP_KEY }}
       
     - name: Checkout
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
