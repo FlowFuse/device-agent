@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [18, 20]
+        node: [18, 20, 24]
     steps:
       - name: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -49,6 +49,15 @@ jobs:
         with:
           username: flowfuse
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+      - name: pick platforms
+        id: nodeVersion
+        run: |
+          if [[ "${{ matrix.node }}" -eq "24" ]]
+          then
+            echo "platforms=linux/amd64, linux/arm64" >> $GITHUB_OUTPUT
+          else
+            echo "platforms=linux/amd64, linux/arm64, linux/arm/v7" >> $GITHUB_OUTPUT
+          fi
       - name: Build and push FlowFuse Device Agent container
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
@@ -56,7 +65,7 @@ jobs:
           file: docker/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           push: true
-          platforms: linux/amd64, linux/arm64, linux/arm/v7
+          platforms: ${{ steps.nodeVersion.outputs.platforms}}
           build-args: |
             NODE_VERSION=${{ matrix.node }}
       - name: Publish README.md to Docker hub
