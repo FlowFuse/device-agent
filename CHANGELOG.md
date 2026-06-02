@@ -1,4 +1,13 @@
-# CHANGELOG
+# Changelog
+
+## [3.9.0](https://github.com/FlowFuse/device-agent/compare/v3.8.3...v3.9.0) (2026-06-02)
+
+
+### Features
+
+* **AI:** Conditionally load nr-assistant dependency based on feature flag ([#640](https://github.com/FlowFuse/device-agent/issues/640)) ([5de5652](https://github.com/FlowFuse/device-agent/commit/5de565231f82dadb6d4e227a9cde4ac8fab20ea1))
+
+## CHANGELOG
 
 #### 3.8.3 Release
 
