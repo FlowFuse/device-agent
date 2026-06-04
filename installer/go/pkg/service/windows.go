@@ -1,11 +1,16 @@
 package service
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/nodejs"
@@ -14,6 +19,24 @@ import (
 
 // NSSM version used throughout the Windows service management
 const nssmVersion = "2.24"
+
+// nssmZipSHA256 is the SHA-256 checksum of the official nssm-2.24.zip archive.
+const nssmZipSHA256 = "727d1e42275c605e0f04aba98095c38a8e1e46def453cdffce42869428aa6743"
+
+// nssmDownloadRetries is the number of attempts made against each download
+// source before moving on to the next one.
+const nssmDownloadRetries = 3
+
+// nssmDownloadURLs returns the candidate download URLs for the NSSM archive in
+// priority order. The FlowFuse-hosted mirror is tried first because its
+// availability is under our control; the official nssm.cc source is kept as a
+// fallback.
+func nssmDownloadURLs() []string {
+	return []string{
+		fmt.Sprintf("https://website-data.s3.eu-west-1.amazonaws.com/nssm-%s.zip", nssmVersion),
+		fmt.Sprintf("https://nssm.cc/release/nssm-%s.zip", nssmVersion),
+	}
+}
 
 // InstallWindows creates and configures a Windows service for the FlowFuse Device Agent.
 // It performs the following operations:
@@ -243,8 +266,6 @@ func IsInstalledWindows(serviceName string) bool {
 //   - string: The path to the NSSM executable
 //   - error: An error if the NSSM executable could not be found or downloaded
 func ensureNSSM(workDir string) (string, error) {
-	downloadUrl := fmt.Sprintf("https://nssm.cc/release/nssm-%s.zip", nssmVersion)
-
 	nssmPath, err := findNSSM(workDir)
 	if err == nil {
 		return nssmPath, nil
@@ -269,12 +290,11 @@ func ensureNSSM(workDir string) (string, error) {
 		return "", fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 
-	// Download NSSM to temporary directory
+	// Download NSSM to temporary directory, trying each known source in turn
+	// and verifying the result against the pinned checksum.
 	zipPath := filepath.Join(tempDir, "nssm.zip")
-	downloadCmd := exec.Command("powershell", "-Command",
-		fmt.Sprintf("Invoke-WebRequest -Uri '%s' -OutFile '%s'", downloadUrl, zipPath))
-	if err := downloadCmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to download NSSM: %w", err)
+	if err := downloadNSSM(zipPath); err != nil {
+		return "", err
 	}
 
 	// Extract the zip file
@@ -296,6 +316,91 @@ func ensureNSSM(workDir string) (string, error) {
 	}
 
 	return nssmPath, nil
+}
+
+// downloadNSSM downloads the NSSM archive to destPath. It tries each source
+// returned by nssmDownloadURLs in priority order, retrying transient failures
+// against each source before moving on to the next. The downloaded file is
+// verified against nssmZipSHA256, so a partially-written, corrupt or tampered
+// archive is rejected and treated as a failed attempt.
+//
+// Parameters:
+//   - destPath: The path the verified archive should be written to
+//
+// Returns:
+//   - an error describing the last failure encountered across all sources
+//   - nil if a verified archive was downloaded successfully
+func downloadNSSM(destPath string) error {
+	var lastErr error
+	for _, url := range nssmDownloadURLs() {
+		for attempt := 1; attempt <= nssmDownloadRetries; attempt++ {
+			logger.Debug("Downloading NSSM from %s (attempt %d/%d)", url, attempt, nssmDownloadRetries)
+			if err := downloadAndVerify(url, destPath); err != nil {
+				lastErr = err
+				logger.Debug("NSSM download from %s failed: %v", url, err)
+				if attempt < nssmDownloadRetries {
+					time.Sleep(time.Duration(attempt) * 2 * time.Second)
+				}
+				continue
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("failed to download NSSM from all sources: %w", lastErr)
+}
+
+// downloadAndVerify fetches url, writes the body to destPath and verifies it
+// against nssmZipSHA256. On any failure the partial file is removed so a later
+// attempt or source starts from a clean slate.
+//
+// Parameters:
+//   - url: The URL to download the NSSM archive from
+//   - destPath: The path the archive should be written to
+//
+// Returns:
+//	 - error describing any failure encountered during the download or verification process,
+//   - nil if the archive was downloaded and verified successfully
+func downloadAndVerify(url, destPath string) error {
+	logger.Debug("Requesting NSSM archive from %s", url)
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	logger.Debug("Received response from %s: status=%s content-length=%d", url, resp.Status, resp.ContentLength)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected response status: %s", resp.Status)
+	}
+
+	out, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("failed to create download file: %w", err)
+	}
+
+	hasher := sha256.New()
+	written, err := io.Copy(io.MultiWriter(out, hasher), resp.Body)
+	if err != nil {
+		_ = out.Close()
+		_ = os.Remove(destPath)
+		return fmt.Errorf("failed to write download: %w", err)
+	}
+	if err := out.Close(); err != nil {
+		_ = os.Remove(destPath)
+		return fmt.Errorf("failed to finalize download: %w", err)
+	}
+	logger.Debug("Wrote %d bytes to %s", written, destPath)
+
+	sum := hex.EncodeToString(hasher.Sum(nil))
+	logger.Debug("Verifying NSSM checksum: computed=%s expected=%s", sum, nssmZipSHA256)
+	if !strings.EqualFold(sum, nssmZipSHA256) {
+		_ = os.Remove(destPath)
+		logger.Debug("NSSM checksum mismatch for %s (%d bytes), discarded %s", url, written, destPath)
+		return fmt.Errorf("checksum mismatch: got %s, expected %s", sum, nssmZipSHA256)
+	}
+	logger.Debug("NSSM checksum verified successfully for download from %s", url)
+
+	return nil
 }
 
 // findNSSM searches for the NSSM (Non-Sucking Service Manager) executable in the workdir/nssm directory.
