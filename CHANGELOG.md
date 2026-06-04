@@ -1,4 +1,18 @@
-# CHANGELOG
+# Changelog
+
+## [3.9.0](https://github.com/FlowFuse/device-agent/compare/v3.8.3...v3.9.0) (2026-06-04)
+
+
+### Features
+
+* **AI:** Conditionally load nr-assistant dependency based on feature flag ([#640](https://github.com/FlowFuse/device-agent/issues/640)) ([5de5652](https://github.com/FlowFuse/device-agent/commit/5de565231f82dadb6d4e227a9cde4ac8fab20ea1))
+
+
+### Bug Fixes
+
+* **installer:** Add NSSM download mirror  ([#639](https://github.com/FlowFuse/device-agent/issues/639)) ([5981399](https://github.com/FlowFuse/device-agent/commit/5981399d0c36587fc8f9c0fbef19a17b925e04b0))
+
+## CHANGELOG
 
 #### 3.8.3 Release
 
