@@ -15,7 +15,13 @@ jobs:
       security-events: write
     strategy:
       matrix:
-        node: [18, 20, 24]
+        include:
+          - node: 18
+            platforms: linux/amd64,linux/arm64,linux/arm/v7
+          - node: 20
+            platforms: linux/amd64,linux/arm64,linux/arm/v7
+          - node: 24
+            platforms: linux/amd64,linux/arm64
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -38,7 +44,7 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile
-          platforms: linux/amd64, linux/arm64, linux/arm/v7
+          platforms: ${{ matrix.platforms }}
           tags: flowfuse-device-agent-pr:${{ matrix.node }}-scan
           push: false
           load: true
