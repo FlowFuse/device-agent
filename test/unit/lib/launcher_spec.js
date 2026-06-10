@@ -416,6 +416,35 @@ describe('Launcher', function () {
         pkg.name.should.eqls('TEST_PROJECT')
         pkg.version.should.eqls('0.0.0-aaaabbbbcccc')
     })
+    it('Removes nr-assistant from package.json when assistant is explicitly disabled', async function () {
+        const snapshot = JSON.parse(JSON.stringify(setup.snapshot))
+        snapshot.modules['@flowfuse/nr-assistant'] = '0.1.0'
+        const settings = { assistant: { enabled: false } }
+        const launcher = newLauncher({ config }, null, 'projectId', snapshot, settings)
+        await launcher.writePackage()
+        const pkgFile = await fs.readFile(path.join(config.dir, 'project', 'package.json'))
+        const pkg = JSON.parse(pkgFile)
+        pkg.dependencies.should.not.have.property('@flowfuse/nr-assistant')
+    })
+    it('Keeps nr-assistant in package.json when assistant is enabled', async function () {
+        const snapshot = JSON.parse(JSON.stringify(setup.snapshot))
+        snapshot.modules['@flowfuse/nr-assistant'] = '0.1.0'
+        const settings = { assistant: { enabled: true } }
+        const launcher = newLauncher({ config }, null, 'projectId', snapshot, settings)
+        await launcher.writePackage()
+        const pkgFile = await fs.readFile(path.join(config.dir, 'project', 'package.json'))
+        const pkg = JSON.parse(pkgFile)
+        pkg.dependencies.should.have.property('@flowfuse/nr-assistant', '0.1.0')
+    })
+    it('Keeps nr-assistant in package.json when assistant settings are not configured', async function () {
+        const snapshot = JSON.parse(JSON.stringify(setup.snapshot))
+        snapshot.modules['@flowfuse/nr-assistant'] = '0.1.0'
+        const launcher = newLauncher({ config }, null, 'projectId', snapshot)
+        await launcher.writePackage()
+        const pkgFile = await fs.readFile(path.join(config.dir, 'project', 'package.json'))
+        const pkg = JSON.parse(pkgFile)
+        pkg.dependencies.should.have.property('@flowfuse/nr-assistant', '0.1.0')
+    })
 
     it('Updates package.json with user defined Node-RED version', async function () {
         const newSettings = {
