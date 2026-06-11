@@ -113,6 +113,8 @@ Extra options   | Description
 `interval`      | How often, in seconds, the agent checks in with the platform. Default: 60s
 `intervalJitter`| How much, in seconds, to vary the heartbeat +/- `intervalJitter`. Default: 10s
 `moduleCache`   | If the device can not access npmjs.org then use the node modules cache in `module_cache` directory. Default `false`
+`verbose`       | Enables verbose logging
+`jsonLogging`   | Enabled JSON format logs
 
 #### NodeJS options
 
@@ -235,6 +237,8 @@ Extra options   | Description
 ----------------|---------------
 `interval`      | How often, in seconds, the agent checks in with the platform. Default: 60s
 `intervalJitter`| How much, in seconds, to vary the heartbeat +/- `intervalJitter`. Default: 10s
+`verbose`       | Enables verbose logging
+`jsonLogging`   | Enabled JSON format logs
 
 ## Running
 
@@ -278,9 +282,10 @@ Setup command
 
 Global Options
 
-  -h, --help       print out helpful usage information
-  --version        print out version information
-  -v, --verbose    turn on debugging output
+  -h, --help          print out helpful usage information
+  --version           print out version information
+  -v, --verbose       turn on debugging output
+  -j, --json-logging  print logs in JSON format
 ```
 
 ## Running with no access to npmjs.org
