@@ -125,6 +125,15 @@ describe('Launcher', function () {
         settings.flowforge.should.have.property('projectID', 'PROJECTID')
         settings.flowforge.should.not.have.property('projectLink')
     })
+    it('Write Settings - exposes flowfuse-common values for the editor scripts', async function () {
+        const launcher = newLauncher({ config: { ...configWithPlatformInfo, version: '9.9.9' } }, null, 'PROJECTID', setup.snapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('flowfuse-common')
+        settings['flowfuse-common'].should.have.property('launcherVersion', '9.9.9')
+        settings['flowfuse-common'].should.have.property('projectURL', 'https://test/device/deviceid/overview')
+    })
     it('Write Settings - without broker, application bound device', async function () {
         const launcher = newLauncher({ config }, 'APP-ID', null, setup.snapshot)
         await launcher.writeSettings()
