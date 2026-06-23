@@ -8,6 +8,7 @@ on:
 
 jobs:
   docker-build:
+    name: 'Build docker image: Node ${{ matrix.node }}'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -24,10 +25,10 @@ jobs:
             platforms: linux/amd64,linux/arm64
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Set up Docker
-        uses: docker/setup-docker-action@e43656e248c0bd0647d3f5c195d116aacf6fcaf4 #v4.7.0
+        uses: docker/setup-docker-action@0234bb73ccb40f0c430b795634f9247e2b5c2d23 #v5.2.0
         with:
           daemon-config: |
             {
@@ -37,10 +38,10 @@ jobs:
             }
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
 
       - name: Build Docker image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           context: .
           file: docker/Dockerfile
@@ -52,14 +53,13 @@ jobs:
             NODE_VERSION=${{ matrix.node }}
 
       - name: Perform SAST scan
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: flowfuse-device-agent-pr:${{ matrix.node }}-scan
           trivy-config: .github/trivy.yaml
-          version: 'v0.69.2' # https://github.com/aquasecurity/trivy-action/issues/512
           output: 'sast-results.sarif'
 
       - name: Upload scan results
-        uses: github/codeql-action/upload-sarif@b20883b0cd1f46c72ae0ba6d1090936928f9fa30 # v4.32.0
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           sarif_file: sast-results.sarif

@@ -658,6 +658,29 @@ describe('Agent', function () {
             // now that state has been retrieved, reportPackages should be reset to false
             agent.mqttClient.reportPackages.should.be.false()
         })
+        it('includes NodeJS version', async function () {
+            const agent = createMQTTAgent()
+            agent.launcher = Launcher.newLauncher()
+            agent.launcher.readPackage = sinon.stub().returns({
+                modules: {
+                    'node-red': '5.0.0'
+                }
+            })
+            agent.launcher.reportPackages = sinon.stub().returns({
+                packageList: {
+                    'node-red-node-random': '1.0.0',
+                    'node-red-contrib-other': '1.2.3'
+                },
+                moduleCache: 'xyz'
+            })
+            await agent.start()
+
+            agent.mqttClient.reportPackages = true
+
+            // Call getState and validate results
+            const state = agent.getState()
+            state.should.have.property('nodejsVersion', process.version)
+        })
     })
 
     describe('setState', function () {
