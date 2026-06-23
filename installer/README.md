@@ -38,7 +38,7 @@ powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 |------|--------|---------|-------------|
 | `--otc` | `-o` | *optional* | FlowFuse one time code for authentication (optional for interactive installation) |
 | `--url` | `-u` | `https://app.flowfuse.com` | FlowFuse URL |
-| `--nodejs-version` | `-n` | `20.19.1` | Node.js version to install (minimum) |
+| `--nodejs-version` | `-n` | `22.23.0` | Node.js version to install (minimum) |
 | `--agent-version` | `-a` | `latest` | Device agent version to install/update to |
 | `--service-user` | `-s` | `flowfuse` | Username for the service account (linux/macos)|
 | `--dir` | `-d` | `/opt/flowfuse-device` (Linux/macOS) or `C:\opt\flowfuse-device` (Windows) | Installation directory for the device agent |
@@ -57,7 +57,7 @@ powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 ./flowfuse-device-agent-installer --otc ONE_TIME_CODE
 
 # Install with custom settings
-./flowfuse-device-agent-installer --otc ONE_TIME_CODE --url https://your-flowfuse-instance.com --nodejs-version 20.19.1
+./flowfuse-device-agent-installer --otc ONE_TIME_CODE --url https://your-flowfuse-instance.com --nodejs-version 22.23.0
 
 # Install in non-default directory and port
 ./flowfuse-device-agent-installer --otc ONE_TIME_CODE --dir /custom/dir --port 1882
@@ -132,7 +132,7 @@ sc.exe query flowfuse-device-agent-<port>
 To update Node.js, you can specify the `--update-nodejs` flag with the desired version:
 
 ```bash
-./flowfuse-device-agent-installer --update-nodejs --nodejs-version 20.19.1
+./flowfuse-device-agent-installer --update-nodejs --nodejs-version 22.23.0
 ```
 
 Specifying `--update-nodejs` flag without a version will pick the default version defined in the installer.
