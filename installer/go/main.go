@@ -29,7 +29,7 @@ var (
 )
 
 func init() {
-	pflag.StringVarP(&nodeVersion, "nodejs-version", "n", "20.19.1", "Node.js version to install (minimum)")
+	pflag.StringVarP(&nodeVersion, "nodejs-version", "n", "22.23.0", "Node.js version to install (minimum)")
 	pflag.StringVarP(&agentVersion, "agent-version", "a", "latest", "Device agent version to install/update to")
 	pflag.StringVarP(&serviceUsername, "service-user", "s", "flowfuse", "Username for the service account")
 	pflag.StringVarP(&flowfuseURL, "url", "u", "https://app.flowfuse.com", "FlowFuse URL")
