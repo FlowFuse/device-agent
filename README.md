@@ -44,6 +44,38 @@ When running with the container you will need to mount the `device.yml` obtained
 docker run --mount type=bind,src=/path/to/device.yml,target=/opt/flowfuse-device/device.yml -p 1880:1880 flowfuse/device-agent:latest
 ```
 
+Alternatively, you can mount the entire configuration directory:
+
+```bash
+docker run --mount type=bind,src=/path/to/config/dir,target=/opt/flowfuse-device -p 1880:1880 flowfuse/device-agent:latest
+```
+
+> [!IMPORTANT]
+> **Breaking change in 4.0.0 — the container now runs as a non-root user.**
+>
+> From `4.0.0` the image runs as the unprivileged `flowfuse` user (`UID 2000` /
+> `GID 2000`) instead of `root`. If you bind-mount a host directory for state
+> (e.g. at `/opt/flowfuse-device` to persist `device.yml`, the `project/`
+> directory and the module cache), that directory must be **writable by UID
+> 2000**, otherwise the agent will fail to start with a permissions error.
+>
+> Before upgrading, change the ownership of the mounted directory on the host:
+>
+> ```bash
+> sudo chown -R 2000:2000 /path/to/config/dir
+> ```
+>
+> Alternatively, run the container as a UID that already owns the host
+> directory (the agent only requires the state directory to be writable by the
+> runtime user):
+>
+> ```bash
+> docker run --user $(id -u):$(id -g) ... flowfuse/device-agent:latest
+> ```
+>
+> If you build the image yourself, the user and group IDs can be customised with
+> the `FF_UID` and `FF_GID` build arguments.
+
 ## Configuration
 
 The agent configuration is provided by a `device.yml` file within its working
