@@ -3,12 +3,20 @@
 This module provides an agent that runs Node-RED instances deployed from the
 FlowFuse platform.
 
+> [!IMPORTANT]
+> The v4 release of the device agent brings some potentially breaking changes:
+>
+> - The `latest` docker tag now points at a NodeJS 22 based container
+> - The docker container runs as a non-root user. If you mount an external host directory, ensure it is accessible to the user.
+>
+> More information about these changes are available in the [docker section](#docker).
+
 ## Prerequisites
 
- - NodeJS v18 or later
+ - NodeJS v18 or later. NodeJS v22 is recommended as the minimum version to use as that is what Node-RED v5 requires.
  - A FlowFuse platform to connect to
 
- For users that require NodeJS v14 and v16 support the v2.x stream will work.
+For users that require NodeJS v14 and v16 support the v2.x stream will work.
 
 ## Supported Operating Systems
 
@@ -38,6 +46,9 @@ npm install -g @flowfuse/device-agent
 
 We publish a Docker container for the Device Agent as `flowfuse/device-agent` on DockerHub.
 
+Containers are built for a range of Node.js versions and tagged accordingly:  `latest-18`, `latest-20`, `latest-22` and `latest-24`.
+With the Device Agent v4 release, the `latest` tag points to the `latest-22` container.
+
 When running with the container you will need to mount the `device.yml` obtained when [Registering the device](#register-the-device):
 
 ```bash
@@ -51,7 +62,7 @@ docker run --mount type=bind,src=/path/to/config/dir,target=/opt/flowfuse-device
 ```
 
 > [!IMPORTANT]
-> **Breaking change in 4.0.0 — the container now runs as a non-root user.**
+> **Breaking change in Device Agent v4 — the container now runs as a non-root user.**
 >
 > From `4.0.0` the image runs as the unprivileged `flowfuse` user (`UID 2000` /
 > `GID 2000`) instead of `root`. If you bind-mount a host directory for state
