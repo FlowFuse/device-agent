@@ -3,12 +3,20 @@
 This module provides an agent that runs Node-RED instances deployed from the
 FlowFuse platform.
 
+> [!IMPORTANT]
+> The v4 release of the device agent brings some potentially breaking changes:
+>
+> - The `latest` docker tag now points at a Node.js 22 based container
+> - The docker container runs as a non-root user. If you mount an external host directory, ensure it is accessible to the user.
+>
+> More information about these changes are available in the [docker section](#docker).
+
 ## Prerequisites
 
- - NodeJS v18 or later
+ - Node.js v18 or later. Node.js v22 is recommended as the minimum version to use as that is what Node-RED v5 requires.
  - A FlowFuse platform to connect to
 
- For users that require NodeJS v14 and v16 support the v2.x stream will work.
+For users that require Node.js v14 and v16 support the v2.x stream will work.
 
 ## Supported Operating Systems
 
@@ -16,19 +24,27 @@ The Device Agent can be installed on most Linux distributions, Windows, and MacO
 
 ## Installing the Device Agent
 
+A one-line installer is available for the Device Agent. This will install a Node.js runtime and the device agent, and also set it up to run as a system service.
+
+More details available in the [FlowFuse Device Agent Installer documentation](https://flowfuse.com/docs/device-agent/install/device-agent-installer/)
+
+### Installing with npm
+
+If you already have Node.js installed, you can install the agent via npm.
+
 The Device Agent is published to the public npm repository as [@flowfuse/device-agent](https://www.npmjs.com/package/@flowfuse/device-agent).
 
 It can be installed as a global npm module. This will ensure the agent command is on the path.
 
 Note: previous versions of the agent were published as `@flowforge/flowforge-device-agent`.
 
-### Linux/MacOS
+#### Linux/MacOS
 
 ```bash
 sudo npm install -g @flowfuse/device-agent
 ```
 
-### Windows
+#### Windows
 
 ```bash
 npm install -g @flowfuse/device-agent
@@ -37,6 +53,9 @@ npm install -g @flowfuse/device-agent
 ### Docker
 
 We publish a Docker container for the Device Agent as `flowfuse/device-agent` on DockerHub.
+
+Containers are built for a range of Node.js versions and tagged accordingly:  `latest-18`, `latest-20`, `latest-22` and `latest-24`.
+With the Device Agent v4 release, the `latest` tag points to the `latest-22` container.
 
 When running with the container you will need to mount the `device.yml` obtained when [Registering the device](#register-the-device):
 
@@ -51,7 +70,7 @@ docker run --mount type=bind,src=/path/to/config/dir,target=/opt/flowfuse-device
 ```
 
 > [!IMPORTANT]
-> **Breaking change in 4.0.0 — the container now runs as a non-root user.**
+> **Breaking change in Device Agent v4 — the container now runs as a non-root user.**
 >
 > From `4.0.0` the image runs as the unprivileged `flowfuse` user (`UID 2000` /
 > `GID 2000`) instead of `root`. If you bind-mount a host directory for state
@@ -148,11 +167,11 @@ Extra options   | Description
 `verbose`       | Enables verbose logging
 `jsonLogging`   | Enabled JSON format logs
 
-#### NodeJS options
+#### Node.js options
 
-Used to pass options to the NodeJS process running Node-RED
+Used to pass options to the Node.js process running Node-RED
 
-`nodeOptions`    | An array of NodeJS command line options. Default is single entry of `--max-old-space-size=512`
+`nodeOptions`    | An array of Node.js command line options. Default is single entry of `--max-old-space-size=512`
 
 ```
 nodeOptions:
@@ -294,7 +313,7 @@ Options
   -i, --interval secs
   -p, --port number
   -m, --moduleCache     Use local npm module cache rather than install
-  --node-options        Adds NodeJS command line arguments, can be specified multiple times. Must use = e.g. --node-options="--max-old-space-size=256"
+  --node-options        Adds Node.js command line arguments, can be specified multiple times. Must use = e.g. --node-options="--max-old-space-size=256"
 
 Web UI Options
 
