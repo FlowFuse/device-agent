@@ -50,7 +50,7 @@ sudo npm install -g @flowfuse/device-agent
 npm install -g @flowfuse/device-agent
 ```
 
-#### Docker
+### Docker
 
 We publish a Docker container for the Device Agent as `flowfuse/device-agent` on DockerHub.
 
