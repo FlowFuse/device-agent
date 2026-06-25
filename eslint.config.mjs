@@ -29,6 +29,13 @@ export default [
             ...resolveIgnoresFromGitignore()
         ]
     },
+    {
+        // re-include 1st party plugin source bundled under nested node_modules because
+        // eslint's default `**/node_modules/` global ignore causes it to be skipped
+        // Note: both entries are required as eslint prunes without descending so it
+        // has to be specific enough that gitignore derived ignores don't re-add it back in.
+        ignores: ['!**/lib/plugins/node_modules', '!**/lib/plugins/node_modules/**']
+    },
     js.configs.recommended,
     ...neostandard(),
     {
