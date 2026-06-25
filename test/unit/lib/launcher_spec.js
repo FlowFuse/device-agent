@@ -520,7 +520,70 @@ describe('Launcher', function () {
         const npmrc = await fs.readFile(path.join(config.dir, 'project', '.npmrc'))
         npmrc.toString().should.eql('// test\n')
     })
-
+    it('Keeps legacy theme name', async function () {
+        const copyOfSnapshot = JSON.parse(JSON.stringify(setup.snapshot))
+        copyOfSnapshot.modules['node-red'] = '4.2.0'
+        copyOfSnapshot.editorTheme = { theme: 'forge-dark' } // old theme
+        const launcher = newLauncher({ config: { ...config, theme: 'forge-dark' } }, null, 'projectId', copyOfSnapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('editorTheme')
+        settings.editorTheme.should.have.property('theme', 'forge-dark')
+    })
+    it('Updates legacy theme name for Node-RED >= 5.0.0', async function () {
+        const copyOfSnapshot = JSON.parse(JSON.stringify(setup.snapshot))
+        copyOfSnapshot.modules['node-red'] = '5.0.0'
+        copyOfSnapshot.editorTheme = { theme: 'forge-light' } // old theme name
+        const launcher = newLauncher({ config: { ...config, theme: 'forge-light' } }, null, 'projectId', copyOfSnapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('editorTheme')
+        settings.editorTheme.should.have.property('theme', 'forge') // updated to forge
+    })
+    it('Updates legacy theme name for Node-RED "latest"', async function () {
+        const copyOfSnapshot = JSON.parse(JSON.stringify(setup.snapshot))
+        copyOfSnapshot.modules['node-red'] = 'latest'
+        copyOfSnapshot.editorTheme = { theme: 'forge-light' } // old theme name
+        const launcher = newLauncher({ config: { ...config, theme: 'forge-light' } }, null, 'projectId', copyOfSnapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('editorTheme')
+        settings.editorTheme.should.have.property('theme', 'forge') // updated to forge
+    })
+    it('Updates legacy theme name for Node-RED "next"', async function () {
+        const copyOfSnapshot = JSON.parse(JSON.stringify(setup.snapshot))
+        copyOfSnapshot.modules['node-red'] = 'next'
+        copyOfSnapshot.editorTheme = { theme: 'forge-light' } // old theme name
+        const launcher = newLauncher({ config: { ...config, theme: 'forge-light' } }, null, 'projectId', copyOfSnapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('editorTheme')
+        settings.editorTheme.should.have.property('theme', 'forge') // updated to forge
+    })
+    it('Keeps custom theme name for Node-RED < 5.0.0', async function () {
+        const copyOfSnapshot = JSON.parse(JSON.stringify(setup.snapshot))
+        copyOfSnapshot.modules['node-red'] = '4.2.0'
+        const launcher = newLauncher({ config: { ...config, theme: 'custom-theme' } }, null, 'projectId', copyOfSnapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('editorTheme')
+        settings.editorTheme.should.have.property('theme', 'custom-theme') // keeps custom theme name
+    })
+    it('Keeps custom theme name for Node-RED >= 5.0.0', async function () {
+        const copyOfSnapshot = JSON.parse(JSON.stringify(setup.snapshot))
+        copyOfSnapshot.modules['node-red'] = '5.0.0'
+        const launcher = newLauncher({ config: { ...config, theme: 'custom-theme' } }, null, 'projectId', copyOfSnapshot)
+        await launcher.writeSettings()
+        const setFile = await fs.readFile(path.join(config.dir, 'project', 'settings.json'))
+        const settings = JSON.parse(setFile)
+        settings.should.have.property('editorTheme')
+        settings.editorTheme.should.have.property('theme', 'custom-theme') // keeps custom theme name
+    })
     it('Uses custom catalogue when licensed', async function () {
         const licensedConfig = {
             ...config,
