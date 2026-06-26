@@ -1,5 +1,31 @@
 # Changelog
 
+## [4.0.0](https://github.com/FlowFuse/device-agent/compare/v3.9.0...v4.0.0) (2026-06-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* Update Node.js version to 22 in Dockerfile ([#669](https://github.com/FlowFuse/device-agent/issues/669))
+* Run Device Agent in container as unpriviledged user ([#565](https://github.com/FlowFuse/device-agent/issues/565))
+* Build Node.Js 22 based container and set it as a default one ([#660](https://github.com/FlowFuse/device-agent/issues/660))
+
+### Features
+
+* Add insights support ([#668](https://github.com/FlowFuse/device-agent/issues/668)) ([a653c29](https://github.com/FlowFuse/device-agent/commit/a653c291629b1536399f18c061433abe5e64eb7a))
+* Add JSON logging format ([#647](https://github.com/FlowFuse/device-agent/issues/647)) ([dcaab80](https://github.com/FlowFuse/device-agent/commit/dcaab8052305d6c561cc33b7b16735121db78dfb))
+* Add support for bearer tokens ([#661](https://github.com/FlowFuse/device-agent/issues/661)) ([e4c7852](https://github.com/FlowFuse/device-agent/commit/e4c78529fa40b27b987d911ee3f150d28959db84))
+* Build Node.Js 22 based container and set it as a default one ([#660](https://github.com/FlowFuse/device-agent/issues/660)) ([329e6aa](https://github.com/FlowFuse/device-agent/commit/329e6aa758c7ab7d38b7e9a24009813c19600680))
+* **installer:** Set default Node runtime to `22.23.0` ([#662](https://github.com/FlowFuse/device-agent/issues/662)) ([107d81b](https://github.com/FlowFuse/device-agent/commit/107d81b1edc0d621b2aef4cf7be2f41fbb3a13c5))
+* Report nodejs version ([#657](https://github.com/FlowFuse/device-agent/issues/657)) ([44c12a0](https://github.com/FlowFuse/device-agent/commit/44c12a0ccf47332dedbcc1cfaff30d8c02555fa4))
+* Run Device Agent in container as unpriviledged user ([#565](https://github.com/FlowFuse/device-agent/issues/565)) ([5524443](https://github.com/FlowFuse/device-agent/commit/5524443fc9c2be2d4acea538d7ae7390cf326bfb))
+* Update Node.js version to 22 in Dockerfile ([#669](https://github.com/FlowFuse/device-agent/issues/669)) ([c4d84f1](https://github.com/FlowFuse/device-agent/commit/c4d84f1ddd52a8ce14a58942c2ebbdef99fdb149))
+
+
+### Bug Fixes
+
+* Ensure correct theme name choice for nr5 and legacy versions ([#672](https://github.com/FlowFuse/device-agent/issues/672)) ([206dfef](https://github.com/FlowFuse/device-agent/commit/206dfef275eb4434749052e090149819d10cd2be))
+* load FlowFuse editor behavior regardless of theme  ([#656](https://github.com/FlowFuse/device-agent/issues/656)) ([886833b](https://github.com/FlowFuse/device-agent/commit/886833b30ae78b3c93198a82a3f812e0592bf7dd))
+
 ## [3.9.0](https://github.com/FlowFuse/device-agent/compare/v3.8.3...v3.9.0) (2026-06-04)
 
 
