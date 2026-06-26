@@ -1,3 +1,4 @@
 /node_modules/
 var/
 /installer/go/out/
+flowfuse-device-agent-*.tgz
