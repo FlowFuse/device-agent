@@ -1,0 +1,36 @@
+# Local-testing variant of docker/Dockerfile.
+# Instead of installing the published @flowfuse/device-agent from npm, it
+# installs a tarball built from the local working copy via `npm pack`.
+#
+# Build context MUST be the device-agent repo root so the .tgz is reachable:
+#   cd packages/device-agent
+#   npm pack
+#   docker build -f docker/Dockerfile.local -t flowfuse/device-agent:local .
+ARG NODE_VERSION=24
+FROM node:${NODE_VERSION}-alpine
+
+ARG FF_UID=2000
+ARG FF_GID=2000
+
+RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python3 openssl
+
+RUN addgroup -g ${FF_GID} -S flowfuse \
+    && adduser -u ${FF_UID} -S -G flowfuse -h /opt/flowfuse-device flowfuse \
+    && mkdir -p /opt/flowfuse-device \
+    && chown -R "${FF_UID}":"${FF_GID}" /opt/flowfuse-device
+
+# Copy the locally-built package tarball into the image and install it globally.
+COPY flowfuse-device-agent-*.tgz /tmp/device-agent.tgz
+RUN npm install -g npm \
+    && npm config set cache /opt/flowfuse-device/.npm --global \
+    && npm install -g /tmp/device-agent.tgz --omit=dev \
+    && rm -f /tmp/device-agent.tgz \
+    && chown -R ${FF_UID}:${FF_GID} /opt/flowfuse-device
+
+EXPOSE 1880
+
+ENV HOME=/opt/flowfuse-device
+
+USER flowfuse
+
+CMD ["flowfuse-device-agent"]
