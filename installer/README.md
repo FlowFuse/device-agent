@@ -44,7 +44,7 @@ powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 | `--dir` | `-d` | `/opt/flowfuse-device` (Linux/macOS) or `C:\opt\flowfuse-device` (Windows) | Installation directory for the device agent |
 | `--port` | `-p` | `1880` | TCP port for the device agent (1025–65535). Service name is suffixed with the port, e.g., `flowfuse-device-agent-1880`. |
 | `--uninstall` | | `false` | Uninstall the device agent |
-| `--ca-cert` | | *optional* | Path to a CA certificate bundle (PEM) the Device Agent should trust |
+| `--ca-cert` | | *optional* | Path to a CA certificate bundle (PEM) the Device Agent should trust. Applies to installation phase only. |
 | `--update-nodejs` | | `false` | Update bundled Node.js to specified version |
 | `--update-agent` | | `false` | Update the Device Agent package to specified version |
 | `--debug` | | `false` | Enable debug logging |
