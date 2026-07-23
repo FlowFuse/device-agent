@@ -9,7 +9,8 @@
   "skip-pull-request": false,
   "packages": {
     ".": {
-      "release-type": "node"
+      "release-type": "node",
+      "exclude-paths": ["installer"]
     }
   }
 }
