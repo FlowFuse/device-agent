@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.1.0](https://github.com/FlowFuse/device-agent/compare/v4.0.1...v4.1.0) (2026-07-23)
+
+
+### Features
+
+* **installer:** Add possibility to provide custom CA bundle certificate ([#702](https://github.com/FlowFuse/device-agent/issues/702)) ([8c16cc0](https://github.com/FlowFuse/device-agent/commit/8c16cc04c179551373f098a233c1e6d11e7c9ab1))
+
+
+### Bug Fixes
+
+* Show actual error when connecting to a platform ([#696](https://github.com/FlowFuse/device-agent/issues/696)) ([1cdec14](https://github.com/FlowFuse/device-agent/commit/1cdec14051e6e9aea2d07cb520371bd1b81bfae4))
+
 ## [4.0.1](https://github.com/FlowFuse/device-agent/compare/v4.0.0...v4.0.1) (2026-07-15)
 
 
