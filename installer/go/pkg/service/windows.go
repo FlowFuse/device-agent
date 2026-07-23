@@ -58,7 +58,7 @@ func nssmDownloadURLs() []string {
 //
 // Returns:
 //   - error: nil on success, otherwise an error with detailed failure information
-func InstallWindows(serviceName, workDir string, port int) error {
+func InstallWindows(serviceName, workDir string, port int, caCertPath string) error {
 	// First, download and extract NSSM if it doesn't exist
 	nssmPath, err := ensureNSSM(workDir)
 	if err != nil {
@@ -83,7 +83,7 @@ func InstallWindows(serviceName, workDir string, port int) error {
 	}
 
 	// Configure the service
-	if err := configureService(nssmPath, serviceName, workDir, port); err != nil {
+	if err := configureService(nssmPath, serviceName, workDir, port, caCertPath); err != nil {
 		return err
 	}
 
@@ -100,7 +100,7 @@ func InstallWindows(serviceName, workDir string, port int) error {
 //
 // Returns:
 //   - error: nil on success, otherwise an error indicating the failure
-func configureService(nssmPath, serviceName, workDir string, port int) error {
+func configureService(nssmPath, serviceName, workDir string, port int, caCertPath string) error {
 	serviceParams := map[string]string{
 		"AppDirectory":                 workDir,
 		"DisplayName":                  fmt.Sprintf("FlowFuse Device Agent (%d)", port),
@@ -126,7 +126,11 @@ func configureService(nssmPath, serviceName, workDir string, port int) error {
 	// Configure environment variables
 	nodeOptions := "NODE_OPTIONS=--max_old_space_size=512"
 	// The AppEnvironmentExtra parameter needs multiple values, which requires a direct command
-	envCmd := exec.Command(nssmPath, "set", serviceName, "AppEnvironmentExtra", nodeOptions, os.Getenv("PATH"))
+	envValues := []string{"set", serviceName, "AppEnvironmentExtra", nodeOptions, os.Getenv("PATH")}
+	if caCertPath != "" {
+		envValues = append(envValues, "NODE_EXTRA_CA_CERTS="+caCertPath)
+	}
+	envCmd := exec.Command(nssmPath, envValues...)
 	logger.Debug("Set environment command: %s", envCmd.String())
 	if output, err := envCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to set environment variables: %w\nOutput: %s", err, output)

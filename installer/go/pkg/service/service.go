@@ -16,15 +16,15 @@ import (
 //
 // Returns:
 //   - error: nil if successful, otherwise an error explaining what went wrong
-func Install(serviceName, workDir string, port int) error {
+func Install(serviceName, workDir string, port int, caCertPath string) error {
 	logger.Info("Installing FlowFuse Device Agent service for %s...", runtime.GOOS)
 	switch runtime.GOOS {
 	case "linux":
-		return InstallLinux(serviceName, workDir, port)
+		return InstallLinux(serviceName, workDir, port, caCertPath)
 	case "windows":
-		return InstallWindows(serviceName, workDir, port)
+		return InstallWindows(serviceName, workDir, port, caCertPath)
 	case "darwin":
-		return InstallDarwin(serviceName, workDir, port)
+		return InstallDarwin(serviceName, workDir, port, caCertPath)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}

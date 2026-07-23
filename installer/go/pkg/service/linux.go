@@ -14,13 +14,14 @@ import (
 
 // ServiceConfig holds the data for the service template
 type ServiceConfig struct {
-	User         string
-	WorkDir      string
-	NodeBinDir   string
-	ServiceName  string // Used for sysvinit scripts
-	LogFile      string // Log file path for openrc scripts
-	ErrorLogFile string // Error log file path for openrc scripts
-	Port         int
+	User             string
+	WorkDir          string
+	NodeBinDir       string
+	ServiceName      string // Used for sysvinit scripts
+	LogFile          string // Log file path for openrc scripts
+	ErrorLogFile     string // Error log file path for openrc scripts
+	Port             int
+	NodeExtraCACerts string // Optional custom CA bundle path (NODE_EXTRA_CA_CERTS)
 }
 
 // IsSystemd returns true if the system uses systemd, false otherwise
@@ -75,7 +76,7 @@ func IsOpenRC() bool {
 //
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
-func InstallLinux(serviceName, workDir string, port int) error {
+func InstallLinux(serviceName, workDir string, port int, caCertPath string) error {
 	logger.LogFunctionEntry("InstallLinux", map[string]interface{}{
 		"serviceName": serviceName,
 		"workDir":     workDir,
@@ -84,11 +85,11 @@ func InstallLinux(serviceName, workDir string, port int) error {
 	defer logger.LogFunctionExit("InstallLinux", nil, nil)
 
 	if IsSystemd() {
-		return InstallSystemd(serviceName, workDir, port)
+		return InstallSystemd(serviceName, workDir, port, caCertPath)
 	} else if IsSysVInit() {
-		return InstallSysVInit(serviceName, workDir, port)
+		return InstallSysVInit(serviceName, workDir, port, caCertPath)
 	} else if IsOpenRC() {
-		return InstallOpenRC(serviceName, workDir, port)
+		return InstallOpenRC(serviceName, workDir, port, caCertPath)
 	} else {
 		logger.Error("No supported init system found (systemd or sysvinit)")
 		return fmt.Errorf("no supported init system found (systemd or sysvinit)")
@@ -108,7 +109,7 @@ func InstallLinux(serviceName, workDir string, port int) error {
 //
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
-func InstallSystemd(serviceName, workDir string, port int) error {
+func InstallSystemd(serviceName, workDir string, port int, caCertPath string) error {
 	logger.LogFunctionEntry("InstallSystemd", map[string]interface{}{
 		"serviceName": serviceName,
 		"workDir":     workDir,
@@ -116,10 +117,11 @@ func InstallSystemd(serviceName, workDir string, port int) error {
 	defer logger.LogFunctionExit("InstallSystemd", nil, nil)
 
 	config := ServiceConfig{
-		User:       utils.ServiceUsername,
-		WorkDir:    workDir,
-		NodeBinDir: nodejs.GetNodeBinDir(),
-		Port:       port,
+		User:             utils.ServiceUsername,
+		WorkDir:          workDir,
+		NodeBinDir:       nodejs.GetNodeBinDir(),
+		Port:             port,
+		NodeExtraCACerts: caCertPath,
 	}
 
 	serviceFilePath := "/etc/systemd/system/" + serviceName + ".service"
@@ -182,7 +184,7 @@ func InstallSystemd(serviceName, workDir string, port int) error {
 //   - Copy the service script to /etc/init.d/
 //   - Set permissions on the service script
 //   - Enable the service
-func InstallSysVInit(serviceName, workDir string, port int) error {
+func InstallSysVInit(serviceName, workDir string, port int, caCertPath string) error {
 	logger.LogFunctionEntry("InstallSysVInit", map[string]interface{}{
 		"serviceName": serviceName,
 		"workDir":     workDir,
@@ -190,11 +192,12 @@ func InstallSysVInit(serviceName, workDir string, port int) error {
 	defer logger.LogFunctionExit("InstallSysVInit", nil, nil)
 
 	config := ServiceConfig{
-		User:        utils.ServiceUsername,
-		WorkDir:     workDir,
-		NodeBinDir:  nodejs.GetNodeBinDir(),
-		ServiceName: serviceName,
-		Port:        port,
+		User:             utils.ServiceUsername,
+		WorkDir:          workDir,
+		NodeBinDir:       nodejs.GetNodeBinDir(),
+		ServiceName:      serviceName,
+		Port:             port,
+		NodeExtraCACerts: caCertPath,
 	}
 
 	serviceFilePath := "/etc/init.d/" + serviceName
@@ -258,7 +261,7 @@ func InstallSysVInit(serviceName, workDir string, port int) error {
 //
 // Returns:
 //   - error: nil if successful, otherwise an error describing what went wrong
-func InstallOpenRC(serviceName, workDir string, port int) error {
+func InstallOpenRC(serviceName, workDir string, port int, caCertPath string) error {
 	logger.LogFunctionEntry("InstallOpenRC", map[string]interface{}{
 		"serviceName": serviceName,
 		"workDir":     workDir,
@@ -282,12 +285,13 @@ func InstallOpenRC(serviceName, workDir string, port int) error {
 	errorLogFilePath := filepath.Join(logDir, fmt.Sprintf("%s-error.log", serviceName))
 
 	config := ServiceConfig{
-		User:         utils.ServiceUsername,
-		WorkDir:      workDir,
-		NodeBinDir:   nodejs.GetNodeBinDir(),
-		LogFile:      logFilePath,
-		ErrorLogFile: errorLogFilePath,
-		Port:         port,
+		User:             utils.ServiceUsername,
+		WorkDir:          workDir,
+		NodeBinDir:       nodejs.GetNodeBinDir(),
+		LogFile:          logFilePath,
+		ErrorLogFile:     errorLogFilePath,
+		Port:             port,
+		NodeExtraCACerts: caCertPath,
 	}
 
 	serviceFilePath := "/etc/init.d/" + serviceName

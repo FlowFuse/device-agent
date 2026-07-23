@@ -1147,3 +1147,73 @@ func ShowInstallSummary(installMode, url, workDir string) {
 	logger.Info("  - To learn how to view logs, visit https://flowfuse.com/docs/device-agent/install/device-agent-installer/#viewing-device-agent-log-files")
 	logger.Info("")
 }
+
+// InstallCACertificate copies a CA certificate bundle into the working directory
+// and makes it readable by the service user, returning the path to the installed copy.
+//
+// The agent and the installer's npm/OTC steps run as the unprivileged service user
+// (or LocalService on Windows), which generally cannot read a path the admin exported
+// (e.g. under /root or a home directory). Copying the bundle into the working directory
+// and chowning it to the service user guarantees the CA is readable at both setup and
+// runtime. The returned path is what NODE_EXTRA_CA_CERTS should be set to.
+//
+// Parameters:
+//   - srcPath: The admin-provided CA bundle path (empty = no-op)
+//   - workDir: The working directory to copy the bundle into
+//
+// Returns:
+//   - string: The path to the installed CA bundle copy, or "" if srcPath was empty
+//   - error: An error if the source is missing/unreadable or the copy fails
+func InstallCACertificate(srcPath, workDir string) (string, error) {
+	if srcPath == "" {
+		return "", nil
+	}
+
+	info, err := os.Stat(srcPath)
+	if err != nil {
+		return "", fmt.Errorf("CA certificate %q is not accessible: %w", srcPath, err)
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("CA certificate %q is not a regular file", srcPath)
+	}
+	data, err := os.ReadFile(srcPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read CA certificate %q: %w", srcPath, err)
+	}
+
+	destPath := filepath.Join(workDir, "ca-certificates.pem")
+
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		tempFile, err := os.CreateTemp("", "flowfuse-ca-*.pem")
+		if err != nil {
+			return "", fmt.Errorf("failed to create temporary file: %w", err)
+		}
+		defer os.Remove(tempFile.Name())
+		if _, err := tempFile.Write(data); err != nil {
+			tempFile.Close()
+			return "", fmt.Errorf("failed to write temporary CA file: %w", err)
+		}
+		tempFile.Close()
+
+		if output, err := exec.Command("sudo", "cp", tempFile.Name(), destPath).CombinedOutput(); err != nil {
+			return "", fmt.Errorf("failed to copy CA certificate: %w\nOutput: %s", err, output)
+		}
+		if output, err := exec.Command("sudo", "chown", ServiceUsername, destPath).CombinedOutput(); err != nil {
+			return "", fmt.Errorf("failed to set CA certificate ownership: %w\nOutput: %s", err, output)
+		}
+		if output, err := exec.Command("sudo", "chmod", "644", destPath).CombinedOutput(); err != nil {
+			return "", fmt.Errorf("failed to set CA certificate permissions: %w\nOutput: %s", err, output)
+		}
+	case "windows":
+		// The working directory already grants LocalService Modify (see createDirWithPermissions).
+		if err := os.WriteFile(destPath, data, 0644); err != nil {
+			return "", fmt.Errorf("failed to copy CA certificate: %w", err)
+		}
+	default:
+		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
+
+	logger.Debug("Installed CA certificate to %s", destPath)
+	return destPath, nil
+}

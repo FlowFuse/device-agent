@@ -22,6 +22,7 @@ type LaunchdConfig struct {
 	User       string
 	NodeBinDir string
 	Port       int
+	NodeExtraCACerts string // Optional custom CA bundle path (NODE_EXTRA_CA_CERTS)
 }
 
 // newsyslogConfig holds the data for the newsyslog configuration
@@ -86,7 +87,7 @@ func setNewsyslogConfPath(label string) string {
 //
 // Returns:
 //   - error: nil if successful, otherwise an error explaining what went wrong
-func InstallDarwin(serviceName, workDir string, port int) error {
+func InstallDarwin(serviceName, workDir string, port int, caCertPath string) error {
 	serviceUser := utils.ServiceUsername
 	label := setLabel(serviceName)
 
@@ -106,13 +107,14 @@ func InstallDarwin(serviceName, workDir string, port int) error {
 	errorLogFilePath := filepath.Join(logDir, "flowfuse-device-agent-error.log")
 
 	config := LaunchdConfig{
-		Label:      label,
-		WorkDir:    workDir,
-		LogFile:    logFilePath,
-		ErrorFile:  errorLogFilePath,
-		User:       serviceUser,
-		NodeBinDir: nodejs.GetNodeBinDir(),
-		Port:       port,
+		Label:            label,
+		WorkDir:          workDir,
+		LogFile:          logFilePath,
+		ErrorFile:        errorLogFilePath,
+		User:             serviceUser,
+		NodeBinDir:       nodejs.GetNodeBinDir(),
+		Port:             port,
+		NodeExtraCACerts: caCertPath,
 	}
 
 	tmpl, err := template.New("launchd").Parse(launchdTemplate)
