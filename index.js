@@ -755,6 +755,7 @@ async function main (testOptions) {
                     if (client) {
                         client.removeAllListeners('connect')
                         client.removeAllListeners('error')
+                        client.removeAllListeners('timeout')
                         client.end()
                         client.destroy()
                         client.unref()
@@ -763,6 +764,14 @@ async function main (testOptions) {
                     // ignore
                 }
             }
+            // Guard against the connection hanging (e.g. a firewalled port that
+            // neither accepts nor refuses). A timeout is indeterminate, so treat
+            // the port as available rather than blocking startup on a false positive.
+            client.setTimeout(5000)
+            client.once('timeout', () => {
+                resolve(true)
+                closeClient()
+            })
             client.once('connect', () => {
                 // Managed to connect a socket; the port is in use
                 resolve(false)

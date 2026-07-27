@@ -19,6 +19,7 @@ async function isPortAvailable (port, host) {
                 if (client) {
                     client.removeAllListeners('connect')
                     client.removeAllListeners('error')
+                    client.removeAllListeners('timeout')
                     client.end()
                     client.destroy()
                     client.unref()
@@ -27,6 +28,12 @@ async function isPortAvailable (port, host) {
                 // ignore
             }
         }
+        client.setTimeout(5000)
+        client.once('timeout', () => {
+            // Connection attempt timed out; treat the port as available
+            resolve(true)
+            closeClient()
+        })
         client.once('connect', () => {
             // Managed to connect a socket; the port is in use
             resolve(false)
