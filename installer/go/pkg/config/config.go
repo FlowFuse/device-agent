@@ -19,6 +19,9 @@ type InstallerConfig struct {
 	AgentVersion    string `json:"agentVersion"`
 	NodeVersion     string `json:"nodeVersion"`
 	Port            int    `json:"port"`
+	// NodeExtraCACerts is the in-workdir path to the installed custom CA bundle,
+	// re-applied on reinstall so CA trust survives without re-passing --ca-cert.
+	NodeExtraCACerts string `json:"nodeExtraCACerts,omitempty"`
 }
 
 // GetConfigPath returns the path to the installer configuration file.
@@ -183,6 +186,8 @@ func UpdateConfigField(fieldName, value, customWorkDir string) error {
 	case "port":
 		port, _ := strconv.Atoi(value)
 		cfg.Port = port
+	case "nodeExtraCACerts":
+		cfg.NodeExtraCACerts = value
 	default:
 		logger.LogFunctionExit("UpdateConfigField", "error", fmt.Errorf("unknown field name: %s", fieldName))
 		return fmt.Errorf("unknown field name: %s", fieldName)

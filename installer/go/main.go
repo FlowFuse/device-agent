@@ -18,6 +18,7 @@ var (
 	nodeVersion         string
 	serviceUsername     string
 	installDir          string
+	caCertPath          string
 	instVersion         string
 	showVersion         bool
 	help                bool
@@ -36,6 +37,7 @@ func init() {
 	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (optional for interactive installation)")
 	pflag.StringVarP(&installDir, "dir", "d", "", "Custom installation directory (default: /opt/flowfuse-device on Unix, c:\\opt\\flowfuse-device on Windows)")
 	pflag.IntVarP(&port, "port", "p", 1880, "TCP port for the device agent (1-65535)")
+	pflag.StringVar(&caCertPath, "ca-cert", "", "Path to a CA certificate bundle (PEM) the Device Agent should trust")
 	pflag.BoolVarP(&showVersion, "version", "v", false, "Display installer version")
 	pflag.BoolVarP(&help, "help", "h", false, "Display help information")
 	pflag.BoolVar(&uninstall, "uninstall", false, "Uninstall the device agent")
@@ -54,8 +56,8 @@ func init() {
 		fmt.Print("\n")
 		fmt.Println("Usage:")
 		fmt.Println("  Installation:")
-		fmt.Printf("    %s --otc <one-time-code> [--agent-version <version>] [--nodejs-version <version>] [--dir <custom-dir>] [--port <n>]\n", exeName)
-		fmt.Printf("    %s [--agent-version <version>] [--nodejs-version <version>] [--dir <custom-dir>] [--port <n>] (interactive mode)\n", exeName)
+		fmt.Printf("    %s --otc <one-time-code> [--agent-version <version>] [--nodejs-version <version>] [--dir <custom-dir>] [--port <n>] [--ca-cert <path>]\n", exeName)
+		fmt.Printf("    %s [--agent-version <version>] [--nodejs-version <version>] [--dir <custom-dir>] [--port <n>] [--ca-cert <path>] (interactive mode)\n", exeName)
 		fmt.Println("  Update:")
 		fmt.Printf("    %s --update-agent [--agent-version <version>]\n", exeName)
 		fmt.Printf("    %s --update-nodejs [--nodejs-version <version>]\n", exeName)
@@ -94,8 +96,8 @@ func main() {
 	}
 
 	// Log startup information
-	logger.Debug("Command line arguments: node=%s, agent=%s, user=%s, url=%s, debug=%v, customInstallDir=%s, port=%d",
-		nodeVersion, agentVersion, serviceUsername, flowfuseURL, debugMode, installDir, port)
+	logger.Debug("Command line arguments: node=%s, agent=%s, user=%s, url=%s, debug=%v, customInstallDir=%s, port=%d, caCert=%s",
+		nodeVersion, agentVersion, serviceUsername, flowfuseURL, debugMode, installDir, port, caCertPath)
 	operatingSystem, architecture := utils.GetOSDetails()
 	logger.Debug("Detected system: %s, detected architecture: %s", operatingSystem, architecture)
 
@@ -130,7 +132,7 @@ func main() {
 		err = cmd.Update(agentVersion, nodeVersion, installDir, updateAgent, updateNode)
 	} else {
 		logger.Info("Installing FlowFuse Device Agent...")
-		err = cmd.Install(nodeVersion, agentVersion, flowfuseURL, flowfuseOneTimeCode, installDir, false, port)
+		err = cmd.Install(nodeVersion, agentVersion, flowfuseURL, flowfuseOneTimeCode, installDir, false, port, caCertPath)
 	}
 
 	if err != nil {

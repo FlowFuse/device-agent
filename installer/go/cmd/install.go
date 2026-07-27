@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/flowfuse/device-agent-installer/pkg/config"
@@ -40,7 +41,7 @@ import (
 //   - error: An error object if any step of the installation fails, nil otherwise
 //
 // The function logs detailed information about each step of the process.
-func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update bool, port int) error {
+func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update bool, port int, caCertPath string) error {
 	logger.LogFunctionEntry("Install", map[string]interface{}{
 		"nodeVersion":   nodeVersion,
 		"agentVersion":  agentVersion,
@@ -68,6 +69,30 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 		return fmt.Errorf("failed to create working directory: %w", err)
 	}
 	logger.Debug("Working directory created at: %s", workDir)
+
+	// Resolve and install the custom CA bundle (if any) before Node.js/npm/OTC steps,
+	// so both the setup commands and the long-running service trust it.
+	// Precedence: --ca-cert flag, then NODE_EXTRA_CA_CERTS env, then the value stored
+	// from a previous install (so a bare reinstall keeps CA trust without re-passing it).
+	caSrc := caCertPath
+	if caSrc == "" {
+		caSrc = os.Getenv("NODE_EXTRA_CA_CERTS")
+	}
+	if caSrc == "" {
+		if prev, cfgErr := config.LoadConfig(workDir); cfgErr == nil {
+			caSrc = prev.NodeExtraCACerts
+		}
+	}
+	caCertDest, err := utils.InstallCACertificate(caSrc, workDir)
+	if err != nil {
+		logger.Error("Failed to install CA certificate: %v", err)
+		logger.LogFunctionExit("Install", nil, err)
+		return fmt.Errorf("failed to install CA certificate: %w", err)
+	}
+	if caCertDest != "" {
+		os.Setenv("NODE_EXTRA_CA_CERTS", caCertDest)
+		logger.Debug("Using custom CA certificate bundle: %s", caCertDest)
+	}
 
 	// Check/install Node.js
 	logger.Info("Checking Node.js installation...")
@@ -106,7 +131,7 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 	}
 
 	logger.Info("Configuring FlowFuse Device Agent to run as system service...")
-	if err := service.Install(serviceName, workDir, port); err != nil {
+	if err := service.Install(serviceName, workDir, port, caCertDest); err != nil {
 		logger.Error("Service setup failed: %v", err)
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("service setup failed: %w", err)
@@ -133,11 +158,12 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 		}
 	}
 	cfg := &config.InstallerConfig{
-		ServiceUsername: utils.ServiceUsername,
-		ServiceName:     serviceName,
-		NodeVersion:     nodeVersion,
-		AgentVersion:    agentVersion,
-		Port:            port,
+		ServiceUsername:  utils.ServiceUsername,
+		ServiceName:      serviceName,
+		NodeVersion:      nodeVersion,
+		AgentVersion:     agentVersion,
+		Port:             port,
+		NodeExtraCACerts: caCertDest,
 	}
 	logger.Debug("Saving configuration: %+v", cfg)
 	if err := config.SaveConfig(cfg, workDir); err != nil {

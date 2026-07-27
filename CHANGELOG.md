@@ -1,5 +1,25 @@
 # Changelog
 
+## [4.1.0](https://github.com/FlowFuse/device-agent/compare/v4.0.1...v4.1.0) (2026-07-23)
+
+
+### Features
+
+* **installer:** Add possibility to provide custom CA bundle certificate ([#702](https://github.com/FlowFuse/device-agent/issues/702)) ([8c16cc0](https://github.com/FlowFuse/device-agent/commit/8c16cc04c179551373f098a233c1e6d11e7c9ab1))
+
+
+### Bug Fixes
+
+* Show actual error when connecting to a platform ([#696](https://github.com/FlowFuse/device-agent/issues/696)) ([1cdec14](https://github.com/FlowFuse/device-agent/commit/1cdec14051e6e9aea2d07cb520371bd1b81bfae4))
+
+## [4.0.1](https://github.com/FlowFuse/device-agent/compare/v4.0.0...v4.0.1) (2026-07-15)
+
+
+### Bug Fixes
+
+* Ensure MCP server-side sessions are terminated ([#689](https://github.com/FlowFuse/device-agent/issues/689)) ([b8386c7](https://github.com/FlowFuse/device-agent/commit/b8386c769b9ea35af8131fc3a81537b84670a17b))
+* Merge catalogue and npmrc for hosted insance bound devices ([#687](https://github.com/FlowFuse/device-agent/issues/687)) ([84362f7](https://github.com/FlowFuse/device-agent/commit/84362f710e82edcc38b2b05e61633eb846d0b60c))
+
 ## [4.0.0](https://github.com/FlowFuse/device-agent/compare/v3.9.0...v4.0.0) (2026-06-26)
 
 

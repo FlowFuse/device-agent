@@ -15,6 +15,11 @@ import (
 
 const packageName = "@flowfuse/device-agent"
 
+// preserveEnv is the sudo --preserve-env list used for node/npm/agent invocations.
+// NODE_EXTRA_CA_CERTS (set from --ca-cert) is forwarded so custom-CA setups work;
+// sudo silently ignores it when unset.
+const preserveEnv = "--preserve-env=PATH,NODE_EXTRA_CA_CERTS"
+
 // InstallDeviceAgent installs the FlowFuse Device Agent with the specified version
 // to the given base directory. It requires Node.js to be already installed.
 // The function will:
@@ -65,7 +70,7 @@ func InstallDeviceAgent(version, baseDir string, update bool) error {
 	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		installCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "install", "-g", "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), packageName)
+		installCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "install", "-g", "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), packageName)
 		env := os.Environ()
 		installCmd.Env = append(env, npmPrefix, newPath)
 	case "windows":
@@ -135,7 +140,7 @@ func GetLatestDeviceAgentVersion(baseDir string) (string, error) {
 
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		viewCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), "view", packageName, "version", "--no-update-notifier", "-silent")
+		viewCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), "view", packageName, "version", "--no-update-notifier", "-silent")
 		env := os.Environ()
 		viewCmd.Env = append(env, newPath)
 	case "windows":
@@ -231,7 +236,7 @@ func UninstallDeviceAgent(baseDir string) error {
 	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		uninstallCmd = exec.Command("sudo", "--preserve-env=PATH", "-u", serviceUser, npmBinPath, "uninstall", "-g", packageName)
+		uninstallCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "uninstall", "-g", packageName)
 		env := os.Environ()
 		uninstallCmd.Env = append(env, npmPrefix, newPath)
 	case "windows":
@@ -312,7 +317,7 @@ func ConfigureDeviceAgent(url, token, baseDir string, port int) (string, bool, e
 		var configureCmd *exec.Cmd
 		switch runtime.GOOS {
 		case "linux", "darwin":
-			configureCmd = exec.Command("sudo", "--preserve-env=PATH", deviceAgentPath, "-o", token, "-u", url, "--dir", baseDir, "--port", fmt.Sprintf("%d", port), "--otc-no-start", "--installer-mode")
+			configureCmd = exec.Command("sudo", preserveEnv, deviceAgentPath, "-o", token, "-u", url, "--dir", baseDir, "--port", fmt.Sprintf("%d", port), "--otc-no-start", "--installer-mode")
 			env := os.Environ()
 			configureCmd.Dir = baseDir
 			configureCmd.Env = append(env, newPath)
