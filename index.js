@@ -150,6 +150,9 @@ async function main (testOptions) {
                 portMessage = `Port ${desiredPort} is not available. Use the --port option to select a different port to use.`
             }
             quit(portMessage, 2)
+            // In production quit() calls process.exit(); return here so test mode
+            // (where quit() does not halt) also stops rather than falling through.
+            return null
         }
     } catch (err) {
         // Error checking port availability; err on the side of caution and continue
@@ -174,12 +177,12 @@ async function main (testOptions) {
         console.log()
         console.log(`Connecting to ${chalk.cyan(options.ffUrl)} with code ${chalk.cyan(options.otc)}`)
         handleOTCSetup(options)
-    } else if (!isValidDeviceConfig) {
-        // No valid config found - run the interactive setup flow
+    } else if (!isValidDeviceConfig && !options.ui && !options.noInteractive) {
+        // No valid config found, and ui option not set - run the interactive setup flow
         handleInteractiveRegistration(options)
     } else {
         // Valid config found - start the agent normally
-        start(options, configFound)
+        await start(options, configFound)
         if (TESTING) {
             return {
                 AgentManager,
@@ -520,11 +523,6 @@ async function main (testOptions) {
             // If the user has set otcNoStart, then we don't want to start the agent
             console.info()
 
-            if (!installerMode) {
-                console.log('The Device Agent can be launched at any time using the following command:')
-                console.log(`  ${chalk.bold(runCommandInfo.join(' '))}`)
-            }
-
             if (!options.otcNoStart) {
                 console.clear()
                 console.log('Starting Device Agent with new configuration')
@@ -533,6 +531,10 @@ async function main (testOptions) {
                 options.deviceFile = path.join(options.dir, 'device.yml')
                 start(options, true)
             } else {
+                if (!installerMode) {
+                    console.log('The Device Agent can be launched at any time using the following command:')
+                    console.log(`  ${chalk.bold(runCommandInfo.join(' '))}`)
+                }
                 console.info()
                 quit()
             }
@@ -641,7 +643,6 @@ async function main (testOptions) {
                     throw new Error('Registration not found')
                 }
                 // ignore errors and retry
-                console.log('poll error:', err.name, err.message, err.response?.statusCode) // DEBUG
             }
             // Wait for the interval, but wake early if the signal is aborted.
             // The throwIfAborted() at the top of the loop then handles the exit.
