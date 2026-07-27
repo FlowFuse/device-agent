@@ -93,8 +93,6 @@ describe('Device Agent Web Server', () => {
             dummy: sinon.stub().returns('for ensuring the sandbox is used once')
         })
         http.createServer().dummy() // ensure the sandbox is used once.
-
-        process.env.TESTING_NO_INTERACTIVE = 'true'
     })
     afterEach(async function () {
         await fs.rm(configDir, { recursive: true, force: true })
