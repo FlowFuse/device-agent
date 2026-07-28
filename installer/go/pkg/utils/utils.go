@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
+	"github.com/flowfuse/device-agent-installer/pkg/style"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -46,11 +48,15 @@ type DeviceConfig struct {
 func PromptYesNo(question string, defaultResponse bool) bool {
 	reader := bufio.NewReader(os.Stdin)
 
+	// Mark where the prompt begins so it (and any invalid-input retries) can be
+	// collapsed once answered.
+	style.SaveCursor()
+
 	for {
 		if defaultResponse {
-			fmt.Printf("%s (Y/n): ", question)
+			fmt.Printf("%s %s: ", style.Bold(question), style.Dim("Y/n"))
 		} else {
-			fmt.Printf("%s (y/N): ", question)
+			fmt.Printf("%s %s: ", style.Bold(question), style.Dim("y/N"))
 		}
 		var err error
 		response, err := reader.ReadString('\n')
@@ -63,16 +69,57 @@ func PromptYesNo(question string, defaultResponse bool) bool {
 
 		switch response {
 		case "":
+			style.RestoreAndClear()
 			return defaultResponse // Default to true for empty input (Yes is default)
 		case "y", "yes":
+			style.RestoreAndClear()
 			return true
 		case "n", "no":
+			style.RestoreAndClear()
 			return false
 		}
 
 		// Invalid input, prompt again
 		fmt.Printf("Invalid response, please answer yes/no.\n")
 	}
+}
+
+// PromptText prompts the user for a single line of free-text input, returning a
+// default value when the user just presses Enter. On terminals that support it,
+// the prompt is collapsed once answered.
+//
+// Parameters:
+//   - question: The prompt to display to the user
+//   - defaultValue: The value returned when the user provides no input
+//
+// Returns:
+//   - string: The trimmed user input, or defaultValue when the input is empty
+func PromptText(question, defaultValue string) string {
+	reader := bufio.NewReader(os.Stdin)
+
+	// Mark where the prompt begins so it can be collapsed once answered.
+	style.SaveCursor()
+	if defaultValue != "" {
+		fmt.Printf("%s\n (%s): ", style.Bold(question), style.Dim(defaultValue))
+	} else {
+		fmt.Printf("%s:\n ", style.Bold(question))
+	}
+
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		logger.Error("Failed to read user input: %v", err)
+		return defaultValue
+	}
+
+	// Collapse the prompt now that we have the answer. No-op on terminals that
+	// don't support cursor control.
+	style.RestoreAndClear()
+
+	response = strings.TrimSpace(response)
+	if response == "" {
+		return defaultValue
+	}
+	return response
 }
 
 // PromptMultilineInput prompts the user for multiline input until they enter an empty line
@@ -135,6 +182,10 @@ func PromptOption(question string, options []string, defaultIndex int) (int, err
 
 	reader := bufio.NewReader(os.Stdin)
 
+	// Mark where the prompt begins so it (and any invalid-input retries) can be
+	// collapsed once answered.
+	style.SaveCursor()
+
 	for {
 		fmt.Printf("%s\n", question)
 		for i, option := range options {
@@ -155,6 +206,7 @@ func PromptOption(question string, options []string, defaultIndex int) (int, err
 
 		// Handle default selection (empty input)
 		if response == "" {
+			style.RestoreAndClear()
 			return defaultIndex, nil
 		}
 
@@ -172,6 +224,7 @@ func PromptOption(question string, options []string, defaultIndex int) (int, err
 			continue
 		}
 
+		style.RestoreAndClear()
 		return selectedIndex, nil
 	}
 }
@@ -215,8 +268,10 @@ func CheckPermissions() error {
 //   - nil when sudo is usable (passwordless or credentials cached)
 //   - error if sudo is missing or interactive authentication fails
 func checkUnixPermissions() error {
-	logger.Info("This installer will perform operations that require sudo.")
-	logger.Info("You may be prompted for your password if required.")
+	logger.Info("")
+	logger.Info("The installer may require administrator privileges for some steps.")
+	logger.Info("You will be prompted for your password if required.")
+	logger.Info("")
 
 	if !checkBinaryExists("sudo", false) {
 		return fmt.Errorf("sudo is not installed or not found in PATH")

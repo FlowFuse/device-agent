@@ -9,6 +9,7 @@ import (
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/nodejs"
 	"github.com/flowfuse/device-agent-installer/pkg/service"
+	"github.com/flowfuse/device-agent-installer/pkg/style"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
 	"github.com/flowfuse/device-agent-installer/pkg/validate"
 )

@@ -14,9 +14,20 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"time"
 )
+
+// ansiEscapeRE matches ANSI SGR escape sequences (e.g. those produced by the
+// style package). They are stripped from file output so the log file stays
+// plain text while the console keeps its styling.
+var ansiEscapeRE = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+// stripANSI removes ANSI escape sequences from s.
+func stripANSI(s string) string {
+	return ansiEscapeRE.ReplaceAllString(s, "")
+}
 
 
 var (
@@ -122,12 +133,14 @@ func Debug(format string, v ...interface{}) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	message := fmt.Sprintf(format, v...)
+
 	if fileDebugLogger != nil {
-		fileDebugLogger.Output(2, fmt.Sprintf(format, v...))
+		fileDebugLogger.Output(2, stripANSI(message))
 	}
 
 	if consoleDebugLogger != nil {
-		consoleDebugLogger.Output(2, fmt.Sprintf(format, v...))
+		consoleDebugLogger.Output(2, message)
 	}
 }
 
@@ -146,7 +159,7 @@ func Info(format string, v ...interface{}) {
 	message := fmt.Sprintf(format, v...)
 
 	if fileInfoLogger != nil {
-		fileInfoLogger.Output(2, message)
+		fileInfoLogger.Output(2, stripANSI(message))
 	}
 
 	if consoleInfoLogger != nil {
@@ -172,7 +185,7 @@ func Error(format string, v ...interface{}) {
 	message := fmt.Sprintf(format, v...)
 
 	if fileErrorLogger != nil {
-		fileErrorLogger.Output(2, message)
+		fileErrorLogger.Output(2, stripANSI(message))
 	}
 
 	if consoleErrorLogger != nil {

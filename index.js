@@ -576,8 +576,10 @@ async function main (testOptions) {
      * Log the common setup start message to the console
      */
     async function logSetupStart () {
-        console.clear()
-        console.log(`${chalk.bold('Welcome to the')} ${chalk.cyan('FlowFuse Device Agent')} ${chalk.gray(`v${pkg.version}`)}`)
+        if (!installerMode) {
+            console.clear()
+            console.log(`${chalk.bold('Welcome to the')} ${chalk.cyan('FlowFuse Device Agent')} ${chalk.gray(`v${pkg.version}`)}`)
+        }
     }
 
     /**
