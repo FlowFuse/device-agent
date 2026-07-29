@@ -525,7 +525,7 @@ async function main (testOptions) {
                 // line terminator), so it can look unresponsive; a plain ENTER always satisfies it.
                 // This gate gives that one "wasted" keystroke somewhere safe to land.
                 await confirm({
-                    message: chalk.bold('Press ENTER to continue...'),
+                    message: chalk.bold('Press ENTER to continue'),
                     theme: {
                         prefix: '',
                         style: {
