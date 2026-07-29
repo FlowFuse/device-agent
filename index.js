@@ -518,6 +518,23 @@ async function main (testOptions) {
             console.log(`Successfully registered as ${chalk.cyan(deviceSettings.name)} ${chalk.gray('(' + deviceSettings.id + ')')} in Team ${chalk.cyan(deviceSettings.team.name)}`)
 
             if (!options.otcNoImport) {
+                // On some Windows terminals, a leftover console read from the previous prompt
+                // can still be pending in the background and silently absorb the first keystroke
+                // here (a known Windows/Node console quirk, not something we can fully prevent).
+                // Arrow keys on the flow-import prompt below never satisfy that leftover read (no
+                // line terminator), so it can look unresponsive; a plain ENTER always satisfies it.
+                // This gate gives that one "wasted" keystroke somewhere safe to land.
+                await confirm({
+                    message: chalk.bold('Press ENTER to continue...'),
+                    theme: {
+                        prefix: '',
+                        style: {
+                            defaultAnswer: (text, status) => { return ' ' },
+                            message: (text, status) => { return '\n' + text }
+                        }
+                    }
+                }, { clearPromptOnDone: true })
+                await clearStdinBuffer()
                 await handleFlowImport(options, deviceSettings)
             }
             // If the user has set otcNoStart, then we don't want to start the agent
@@ -732,6 +749,9 @@ async function main (testOptions) {
                 while (process.stdin.read() !== null) {
                     // Consume from stdin until there's nothing left
                 }
+                // resume() leaves the stream flowing; pause it again so the next prompt
+                // starts its own read from a clean, paused state.
+                process.stdin.pause()
                 // Pause a bit then resolve to continue
                 setTimeout(resolve, 25)
             } catch {
