@@ -6,9 +6,52 @@ const path = require('path')
 const fs = require('fs/promises')
 const os = require('os')
 const http = require('http')
+const net = require('net')
 const { AgentManager } = require('../../../lib/AgentManager')
 const { WebServer } = require('../../../frontend/server')
 const App = require('../../../index.js')
+
+async function isPortAvailable (port, host) {
+    return new Promise((resolve, reject) => {
+        const client = new net.Socket()
+        function closeClient () {
+            try {
+                if (client) {
+                    client.removeAllListeners('connect')
+                    client.removeAllListeners('error')
+                    client.removeAllListeners('timeout')
+                    client.end()
+                    client.destroy()
+                    client.unref()
+                }
+            } catch (err) {
+                // ignore
+            }
+        }
+        client.setTimeout(5000)
+        client.once('timeout', () => {
+            // Connection attempt timed out; treat the port as available
+            resolve(true)
+            closeClient()
+        })
+        client.once('connect', () => {
+            // Managed to connect a socket; the port is in use
+            resolve(false)
+            closeClient()
+        })
+        client.once('error', (err) => {
+            if (err.code === 'ECONNREFUSED') {
+                // Connection refused; the port is not in use
+                resolve(true)
+            } else {
+                // Something when wrong - reject
+                reject(err)
+            }
+            closeClient()
+        })
+        client.connect({ port, host }, () => {})
+    })
+}
 
 describe('Device Agent Web Server', () => {
     /** @type {string} the config directory for the agent */
@@ -16,7 +59,20 @@ describe('Device Agent Web Server', () => {
     /** @type {App[]} */
     const allApps = [] // used to track all apps so they can be cleaned up at the end of the test run
 
+    let NR_TEST_PORT = 1880
+
     beforeEach(async function () {
+        // The Device Agent checks if the NR port is available. By default this is 1880.
+        // If running on a dev machine with Node-RED running, the tests will fail unexpectedly as
+        // the default port is not available.
+        // So we will use a different port for the tests, and ensure that it is available before starting the app.
+        while (!await isPortAvailable(NR_TEST_PORT, '127.0.0.1')) {
+            NR_TEST_PORT++
+            if (NR_TEST_PORT > 1900) {
+                throw new Error('No available port found in range 1881-1900 for testing')
+            }
+        }
+
         // stub the console logging so that we don't get console output
         sinon.stub(console, 'log').callsFake((..._args) => {})
         sinon.stub(console, 'info').callsFake((..._args) => {})
@@ -56,12 +112,13 @@ describe('Device Agent Web Server', () => {
      * @param {Array<String[]>} args - an array of arrays, each containing a single or pair of CLI args
      * @returns App
      */
-    function startApp (args, options = {}) {
+    async function startApp (args, options = {}) {
         process.argv = process.argv.slice(0, 2)
         for (const arg of args) {
             process.argv.push(...arg)
         }
-        const app = App.main(options)
+        process.argv.push('--port', NR_TEST_PORT.toString())
+        const app = await App.main(options)
         allApps.push(app)
         return app
     }
@@ -87,9 +144,10 @@ describe('Device Agent Web Server', () => {
     }
     it('by default, Web UI is not enabled', async () => {
         http.createServer.reset()
-        const app = startApp([
+        const app = await startApp([
             ['--dir', configDir],
-            ['--config', 'device-wont-exist.yml']
+            ['--config', 'device-wont-exist.yml'],
+            ['--no-interactive']
         ])
         // check the CLI flag - should be false
         app.options.ui.should.be.false()
@@ -105,9 +163,10 @@ describe('Device Agent Web Server', () => {
         const deviceYml = 'deviceId: abc123\ntoken: toktok\ncredentialSecret: A53CF37\nforgeURL:'
         await fs.writeFile(deviceFile, deviceYml)
 
-        const app = startApp([
+        const app = await startApp([
             ['--dir', configDir],
-            ['--config', 'device.yml']
+            ['--config', 'device.yml'],
+            ['--no-interactive']
         ], { onExit })
         // check the CLI flag - should be false
         app.options.ui.should.be.false()
@@ -116,17 +175,43 @@ describe('Device Agent Web Server', () => {
     })
     it('quits if config is missing AND UI not enabled', async () => {
         const onExit = sinon.stub()
-        const app = startApp([
+        const app = await startApp([
             ['--dir', configDir],
-            ['--config', 'device-wont-exist.yml']
+            ['--config', 'device-wont-exist.yml'],
+            ['--no-interactive']
         ], { onExit })
         // check the CLI flag - should be false
         app.options.ui.should.be.false()
         // ensure the app exited with an error
         onExit.calledOnceWith(sinon.match(/No config file found.*device-wont-exist.yml/s), 2).should.be.true()
     })
+    it('quits if desired port is not available', async () => {
+        // Create a TCP listener on NR_TEST_PORT to simulate the port being in use.
+        // The port-availability check in index.js uses a real net.Socket to
+        // attempt a connection, so we need a real listener (http.createServer is
+        // stubbed, but net is not).
+        const listener = net.createServer()
+        await new Promise((resolve, reject) => {
+            listener.once('error', reject)
+            listener.listen(NR_TEST_PORT, '127.0.0.1', resolve)
+        })
+
+        try {
+            const onExit = sinon.stub()
+            await startApp([
+                ['--dir', configDir],
+                ['--config', 'device-wont-exist.yml'],
+                ['--no-interactive']
+            ], { onExit })
+            // ensure the app exited with an error
+            onExit.calledOnceWith(sinon.match(/Port \d+ is not available/s), 2).should.be.true()
+        } finally {
+            // Ensure the TCP listener is closed after the test to free up the port
+            await new Promise((resolve) => listener.close(resolve))
+        }
+    })
     it('fails to run web server if user or pass is not specified', async () => {
-        const app = startApp([
+        const app = await startApp([
             ['--ui'],
             ['--ui-user', 'admin']
         ])
@@ -151,7 +236,7 @@ describe('Device Agent Web Server', () => {
         app.webServer.listening.should.be.false()
     })
     it('starts web server if a user and pass are specified', async () => {
-        const app = startApp([
+        const app = await startApp([
             ['--ui'],
             ['--ui-user', 'admin'],
             ['--ui-pass', 'admin']
@@ -166,7 +251,7 @@ describe('Device Agent Web Server', () => {
     })
 
     it('omitted ui CLI options have correct defaults', async () => {
-        const app = startApp([])
+        const app = await startApp([['--no-interactive']])
         app.options.ui.should.be.false()
         app.options.uiPort.should.be.eql(1879)
         app.options.uiHost.should.be.eql('0.0.0.0')
@@ -175,7 +260,7 @@ describe('Device Agent Web Server', () => {
         app.options.should.not.have.a.property('uiPass')
     })
     it('ui CLI options are set correctly', async () => {
-        const app = startApp([
+        const app = await startApp([
             ['--ui'],
             ['--ui-port', '1234'],
             ['--ui-host', '127.0.0.1'],
@@ -195,7 +280,7 @@ describe('Device Agent Web Server', () => {
     })
     it('ui CLI rejects invalid ui-runtime value', async () => {
         const onExit = sinon.stub()
-        const app = startApp([
+        const app = await startApp([
             ['--ui'],
             ['--ui-user', 'admin'],
             ['--ui-pass', 'admin-pass'],
@@ -212,7 +297,7 @@ describe('Device Agent Web Server', () => {
     it('server auto closes after runtime expires', async () => {
         // spy on the class methods WebServer.stop - need to know that it was called
         const wsStopSpy = sinon.spy(WebServer.prototype, 'stop')
-        const app = startApp([
+        const app = await startApp([
             ['--ui'],
             ['--ui-user', 'admin'],
             ['--ui-pass', 'admin-pass'],

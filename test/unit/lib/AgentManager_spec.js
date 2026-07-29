@@ -280,6 +280,86 @@ my_data:
             AgentManager._provisionDevice.restore()
         }
     })
+    it('quickConnectDevice throws a helpful error when the OTC is rejected (401)', async function () {
+        const deviceFile = path.join(configDir, 'project', 'device.yml')
+        // setup a web server to mock the FlowFuse server rejecting the OTC
+        let httpserver
+        try {
+            httpserver = require('http').createServer((req, res) => {
+                if (req.url === '/api/v1/devices/') {
+                    res.writeHead(401, { 'Content-Type': 'application/json' })
+                    res.end('{"error":"unauthorized"}')
+                } else {
+                    res.writeHead(404)
+                    res.end('{}')
+                }
+            })
+            httpserver.listen(9753)
+
+            // init the AgentManager in Quick Connect mode
+            const options = {
+                ffUrl: 'http://localhost:9753',
+                otc: 'one-time-code',
+                dir: configDir,
+                deviceFile
+            }
+            AgentManager.init(options)
+            sinon.spy(AgentManager, '_provisionDevice')
+
+            // perform the Quick Connect - it should throw
+            await AgentManager.quickConnectDevice().should.be.rejectedWith(/One-Time Code is invalid or has already been used/)
+
+            // the device should not have been provisioned
+            AgentManager._provisionDevice.called.should.be.false()
+        } catch (error) {
+            console.error(error)
+            throw error
+        } finally {
+            // cleanup
+            httpserver.close()
+            AgentManager._provisionDevice.restore()
+        }
+    })
+    it('quickConnectDevice throws a provisioning error for other failures', async function () {
+        const deviceFile = path.join(configDir, 'project', 'device.yml')
+        // setup a web server to mock the FlowFuse server returning a server error
+        let httpserver
+        try {
+            httpserver = require('http').createServer((req, res) => {
+                if (req.url === '/api/v1/devices/') {
+                    res.writeHead(500, { 'Content-Type': 'application/json' })
+                    res.end('{"error":"boom"}')
+                } else {
+                    res.writeHead(404)
+                    res.end('{}')
+                }
+            })
+            httpserver.listen(9753)
+
+            // init the AgentManager in Quick Connect mode
+            const options = {
+                ffUrl: 'http://localhost:9753',
+                otc: 'one-time-code',
+                dir: configDir,
+                deviceFile
+            }
+            AgentManager.init(options)
+            sinon.spy(AgentManager, '_provisionDevice')
+
+            // perform the Quick Connect - it should throw with the generic provisioning message
+            await AgentManager.quickConnectDevice().should.be.rejectedWith(/Problem encountered during provisioning/)
+
+            // the device should not have been provisioned
+            AgentManager._provisionDevice.called.should.be.false()
+        } catch (error) {
+            console.error(error)
+            throw error
+        } finally {
+            // cleanup
+            httpserver.close()
+            AgentManager._provisionDevice.restore()
+        }
+    })
     it('Agent Manager should call agent start (regular credentials)', async function () {
         this.skip() // TODO: fix this test
         const deviceFile = path.join(configDir, 'project', 'device.yml')
