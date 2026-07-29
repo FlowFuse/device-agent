@@ -9,7 +9,6 @@ import (
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/nodejs"
 	"github.com/flowfuse/device-agent-installer/pkg/service"
-	"github.com/flowfuse/device-agent-installer/pkg/style"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
 	"github.com/flowfuse/device-agent-installer/pkg/validate"
 )
@@ -237,10 +236,10 @@ func Uninstall(customWorkDir string) error {
 		s := cfg.ServiceName
 		logger.Debug("Loaded service name from config: %s", s)
 		switch s {
-			case "":
-				serviceName = "flowfuse-device-agent"
-			default:
-				serviceName = s
+		case "":
+			serviceName = "flowfuse-device-agent"
+		default:
+			serviceName = s
 		}
 	}
 
@@ -378,10 +377,10 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 		s := cfg.ServiceName
 		logger.Debug("Loaded service name from config: %s", s)
 		switch s {
-			case "":
-				serviceName = "flowfuse-device-agent"
-			default:
-				serviceName = s
+		case "":
+			serviceName = "flowfuse-device-agent"
+		default:
+			serviceName = s
 		}
 	}
 

@@ -312,113 +312,67 @@ func ConfigureDeviceAgent(url, token, baseDir string, port int) (string, bool, e
 		deviceAgentPath = filepath.Join(nodeBinDirPath, "flowfuse-device-agent.cmd")
 	}
 
+	// Create configure command.
+	// Build the arguments shared across platforms first, adding the optional
+	// -o/-u flags only when a value is provided, then layer the OS-specific
+	// flags on top inside each case.
+	agentArgs := []string{"--otc-no-start", "--installer-mode"}
 	if token != "" {
-		// Create configure command
-		var configureCmd *exec.Cmd
-		switch runtime.GOOS {
-		case "linux", "darwin":
-			configureCmd = exec.Command("sudo", preserveEnv, deviceAgentPath, "-o", token, "-u", url, "--dir", baseDir, "--port", fmt.Sprintf("%d", port), "--otc-no-start", "--installer-mode")
-			env := os.Environ()
-			configureCmd.Dir = baseDir
-			configureCmd.Env = append(env, newPath)
-		case "windows":
-			configureCmd = exec.Command("powershell", "-Command", "&", fmt.Sprintf(`'%s'`, deviceAgentPath), "-o", token, "-u", url, "--dir", fmt.Sprintf(`'%s'`, baseDir), "--port", fmt.Sprintf(`'%d'`, port), "--otc-no-start", "--installer-mode", "-v")
-			env := os.Environ()
-			configureCmd.Dir = baseDir
-			configureCmd.Env = append(env, newPath)
-		default:
-			return "", false, fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
-		}
+		agentArgs = append(agentArgs, "-o", token)
+	}
+	if url != "" {
+		agentArgs = append(agentArgs, "-u", url)
+	}
 
-		logger.Debug("Configure command: %s", configureCmd.String())
+	var configureCmd *exec.Cmd
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		args := append([]string{preserveEnv, deviceAgentPath}, agentArgs...)
+		args = append(args, "--dir", baseDir, "--port", fmt.Sprintf("%d", port))
+		configureCmd = exec.Command("sudo", args...)
+		env := os.Environ()
+		configureCmd.Dir = baseDir
+		configureCmd.Env = append(env, newPath)
+	case "windows":
+		args := append([]string{"-Command", "&", fmt.Sprintf(`'%s'`, deviceAgentPath)}, agentArgs...)
+		args = append(args, "--dir", fmt.Sprintf(`'%s'`, baseDir), "--port", fmt.Sprintf(`'%d'`, port))
+		configureCmd = exec.Command("powershell", args...)
+		env := os.Environ()
+		configureCmd.Dir = baseDir
+		configureCmd.Env = append(env, newPath)
+	default:
+		return "", false, fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
 
-		// Connect stdin, stdout, and stderr for interactive processes
-		configureCmd.Stdin = os.Stdin
-		configureCmd.Stdout = os.Stdout
-		configureCmd.Stderr = os.Stderr
+	logger.Debug("Configure command: %s", configureCmd.String())
 
-		logger.Debug("Starting device agent configuration")
+	// Connect stdin, stdout, and stderr for interactive processes
+	configureCmd.Stdin = os.Stdin
+	configureCmd.Stdout = os.Stdout
+	configureCmd.Stderr = os.Stderr
 
-		// Run the command interactively
-		if err := configureCmd.Run(); err != nil {
-			return "", false, fmt.Errorf("failed to configure the device agent: %w", err)
-		}
+	logger.Debug("Starting device agent configuration")
 
-		var chownCmd *exec.Cmd
-		switch runtime.GOOS {
-		case "linux":
-			chownCmd = exec.Command("sudo", "chown", "-R", serviceUser+":"+serviceUser, baseDir)
-		case "darwin":
-			chownCmd = exec.Command("sudo", "chown", "-R", serviceUser, baseDir)
-		case "windows":
-			logger.Info("Configuration completed successfully!")
-			return "otc", true, nil
-		}
-		// Set permissions for the working directory
-		if output, err := chownCmd.CombinedOutput(); err != nil {
-			return "", false, fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
-		}
+	// Run the command interactively
+	if err := configureCmd.Run(); err != nil {
+		return "", false, fmt.Errorf("failed to configure the device agent: %w", err)
+	}
 
+	var chownCmd *exec.Cmd
+	switch runtime.GOOS {
+	case "linux":
+		chownCmd = exec.Command("sudo", "chown", "-R", serviceUser+":"+serviceUser, baseDir)
+	case "darwin":
+		chownCmd = exec.Command("sudo", "chown", "-R", serviceUser, baseDir)
+	case "windows":
 		logger.Info("Configuration completed successfully!")
 		return "otc", true, nil
-	} else {
-
-		logger.Info("No OTC (One-Time Code) provided. Automatic configuration is not possible.")
-		options := []string{
-			"Provide a device configuration file now",
-			"Install the device agent only (you'll need to configure it manually later)",
-		}
-		choice, err := utils.PromptOption("You can either:", options, 0)
-		if err != nil {
-			logger.Error("Failed to get user selection: %v", err)
-			return "", false, fmt.Errorf("failed to get user selection: %w", err)
-		}
-		configProvided := choice == 0
-
-		if configProvided {
-			// Manual configuration mode
-			logger.Info("Please paste your device configuration below.")
-			logger.Info("The configuration should be in YAML format with all required fields.")
-			logger.Info("Enter an empty line when done:")
-
-			configContent, err := utils.PromptMultilineInput()
-			if err != nil {
-				logger.Error("Failed to read configuration input: %v", err)
-				return "", false, fmt.Errorf("failed to read configuration input: %w", err)
-			}
-
-			// Validate configuration
-			if err := utils.ValidateDeviceConfiguration(configContent); err != nil {
-				logger.Error("Invalid device configuration: %v", err)
-				return "", false, fmt.Errorf("invalid device configuration: %w", err)
-			}
-
-			// Save configuration to device.yml
-			if err := utils.SaveDeviceConfiguration(configContent, deviceConfigPath); err != nil {
-				logger.Error("Failed to save device configuration: %v", err)
-				return "", false, fmt.Errorf("failed to save device configuration: %w", err)
-			}
-
-			var chownCmd *exec.Cmd
-			switch runtime.GOOS {
-			case "linux":
-				chownCmd = exec.Command("sudo", "chown", "-R", serviceUser+":"+serviceUser, baseDir)
-			case "darwin":
-				chownCmd = exec.Command("sudo", "chown", "-R", serviceUser, baseDir)
-			case "windows":
-				logger.Info("Configuration completed successfully!")
-				return "manual", true, nil
-			}
-			// Set permissions for the working directory
-			if output, err := chownCmd.CombinedOutput(); err != nil {
-				return "", false, fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
-			}
-
-			logger.Info("Configuration completed successfully!")
-			return "manual", true, nil
-		}
-
-		logger.Info("Configuration completed successfully!")
-		return "install-only", false, nil
 	}
+	// Set permissions for the working directory
+	if output, err := chownCmd.CombinedOutput(); err != nil {
+		return "", false, fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
+	}
+
+	logger.Info("Configuration completed successfully!")
+	return "otc", true, nil
 }

@@ -118,9 +118,6 @@ func main() {
 	logger.Debug("Detected system: %s, detected architecture: %s", operatingSystem, architecture)
 
 	logger.Info("%s %s", style.Bold("Welcome to the"), style.Cyan("FlowFuse Device Agent Installer"))
-	logger.Info("")
-	logger.Info("Let's get your connected to FlowFuse.")
-	logger.Info("")
 
 	if debugMode {
 		logger.Info("Debug mode enabled. Logs will be written to: %s", logger.GetLogFilePath())
@@ -132,6 +129,9 @@ func main() {
 	} else if updateNode || updateAgent {
 		err = cmd.Update(agentVersion, nodeVersion, installDir, updateAgent, updateNode)
 	} else {
+		logger.Info("")
+		logger.Info("Let's get your connected to FlowFuse.")
+		logger.Info("")
 		err = cmd.Install(nodeVersion, agentVersion, flowfuseURL, flowfuseOneTimeCode, installDir, false, port, caCertPath)
 	}
 
