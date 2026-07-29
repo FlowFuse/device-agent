@@ -347,7 +347,7 @@ async function main (testOptions) {
                 // 2. prompt user to open registerUrl (attempt to open ourselves)
                 const fullRegisterUrl = platformURL + registerUrl.replace(/^\//, '')
                 await confirm({
-                    message: chalk.bold('To continue with registering your new instance, press ENTER to open the the following URL in your browser:') + `\n\n ${chalk.bold(figures.triangleRightSmall)} ${chalk.cyan(fullRegisterUrl)}`,
+                    message: chalk.bold('To continue with registering your new instance, press ENTER to open your browser'),
                     theme: {
                         prefix: '',
                         style: {
