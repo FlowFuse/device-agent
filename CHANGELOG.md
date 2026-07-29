@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.2.0](https://github.com/FlowFuse/device-agent/compare/v4.1.0...v4.2.0) (2026-07-29)
+
+
+### Features
+
+* Add interactive registration mode ([#704](https://github.com/FlowFuse/device-agent/issues/704)) ([4a22716](https://github.com/FlowFuse/device-agent/commit/4a227164958b2c58c8c064b0a672c6cf9b0de634))
+
+
+### Bug Fixes
+
+* Ensure both snapshot and settings catalogues used ([#706](https://github.com/FlowFuse/device-agent/issues/706)) ([510802b](https://github.com/FlowFuse/device-agent/commit/510802bdd9195e690fdaf9034a02c496a79d72eb))
+
 ## [4.1.0](https://github.com/FlowFuse/device-agent/compare/v4.0.1...v4.1.0) (2026-07-23)
 
 
