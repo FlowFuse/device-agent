@@ -236,10 +236,10 @@ func Uninstall(customWorkDir string) error {
 		s := cfg.ServiceName
 		logger.Debug("Loaded service name from config: %s", s)
 		switch s {
-			case "":
-				serviceName = "flowfuse-device-agent"
-			default:
-				serviceName = s
+		case "":
+			serviceName = "flowfuse-device-agent"
+		default:
+			serviceName = s
 		}
 	}
 
@@ -377,10 +377,10 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 		s := cfg.ServiceName
 		logger.Debug("Loaded service name from config: %s", s)
 		switch s {
-			case "":
-				serviceName = "flowfuse-device-agent"
-			default:
-				serviceName = s
+		case "":
+			serviceName = "flowfuse-device-agent"
+		default:
+			serviceName = s
 		}
 	}
 

@@ -24,15 +24,28 @@ type ServiceConfig struct {
 	NodeExtraCACerts string // Optional custom CA bundle path (NODE_EXTRA_CA_CERTS)
 }
 
-// IsSystemd returns true if the system uses systemd, false otherwise
-// This is determined by checking if the "systemctl" command is available
+// IsSystemd returns true if the system was booted with systemd as its init
+// system, false otherwise.
+//
+// This requires both that systemd is actually running as PID 1 (detected via the
+// /run/systemd/system directory, the same check libsystemd's sd_booted() uses)
+// and that the "systemctl" command is available. Checking only for the systemctl
+// binary is insufficient: distributions such as Ubuntu ship the systemd package
+// (and therefore systemctl) even in environments where systemd is not the running
+// init - e.g. containers - causing systemctl calls to fail with "System has not
+// been booted with systemd as init system (PID 1)".
 //
 // Returns:
-//   - true if systemd is found, false otherwise
+//   - true if systemd is the running init system, false otherwise
 func IsSystemd() bool {
 	logger.LogFunctionEntry("IsSystemd", nil)
+	defer logger.LogFunctionExit("IsSystemd", nil, nil)
+
+	// systemd is only the active init system if it has populated /run/systemd/system.
+	if _, err := os.Stat("/run/systemd/system"); err != nil {
+		return false
+	}
 	_, err := exec.LookPath("systemctl")
-	logger.LogFunctionExit("IsSystemd", nil, nil)
 	return err == nil
 }
 

@@ -3,10 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/flowfuse/device-agent-installer/cmd"
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
+	"github.com/flowfuse/device-agent-installer/pkg/style"
 	"github.com/flowfuse/device-agent-installer/pkg/utils"
 	"github.com/spf13/pflag"
 )
@@ -33,7 +36,7 @@ func init() {
 	pflag.StringVarP(&nodeVersion, "nodejs-version", "n", "22.23.0", "Node.js version to install (minimum)")
 	pflag.StringVarP(&agentVersion, "agent-version", "a", "latest", "Device agent version to install/update to")
 	pflag.StringVarP(&serviceUsername, "service-user", "s", "flowfuse", "Username for the service account")
-	pflag.StringVarP(&flowfuseURL, "url", "u", "https://app.flowfuse.com", "FlowFuse URL")
+	pflag.StringVarP(&flowfuseURL, "url", "u", "", "FlowFuse URL")
 	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (optional for interactive installation)")
 	pflag.StringVarP(&installDir, "dir", "d", "", "Custom installation directory (default: /opt/flowfuse-device on Unix, c:\\opt\\flowfuse-device on Windows)")
 	pflag.IntVarP(&port, "port", "p", 1880, "TCP port for the device agent (1-65535)")
@@ -95,43 +98,40 @@ func main() {
 		defer logger.Close()
 	}
 
+	// Handle Ctrl-C (and SIGTERM) gracefully: if the user interrupts while a
+	// prompt is on screen, restore the terminal so no dangling cursor-save state
+	// is left behind (which would otherwise break cursor handling until reset).
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		style.CancelPrompt()
+		fmt.Fprintln(os.Stdout, "\nCancelled.")
+		logger.Close()
+		os.Exit(130)
+	}()
+
 	// Log startup information
 	logger.Debug("Command line arguments: node=%s, agent=%s, user=%s, url=%s, debug=%v, customInstallDir=%s, port=%d, caCert=%s",
 		nodeVersion, agentVersion, serviceUsername, flowfuseURL, debugMode, installDir, port, caCertPath)
 	operatingSystem, architecture := utils.GetOSDetails()
 	logger.Debug("Detected system: %s, detected architecture: %s", operatingSystem, architecture)
 
-	logger.Info("****************************************************************")
-	logger.Info("*            FlowFuse Device Agent Installer                   *")
-	logger.Info("*                                                              *")
-	logger.Info("* This installer will set up the FlowFuse Device Agent on your *")
-	logger.Info("* system and configure it to run as a system service.          *")
-	logger.Info("*                                                              *")
-	logger.Info("****************************************************************")
+	logger.Info("%s %s", style.Bold("Welcome to the"), style.Cyan("FlowFuse Device Agent Installer"))
 
 	if debugMode {
 		logger.Info("Debug mode enabled. Logs will be written to: %s", logger.GetLogFilePath())
 		logger.Debug("FlowFuse Device Agent Installer version: %s", instVersion)
 	}
 
-	if flowfuseOneTimeCode == "" && !uninstall && !updateNode && !updateAgent {
-		fmt.Println("One time code has not been provided. The Device Agent automatic configuration is not possible.")
-		response := utils.PromptYesNo("Do you want to continue with the installation?", false)
-		if !response {
-			fmt.Println("Installation aborted by user.")
-			os.Exit(1)
-		} else {
-			fmt.Println("Continuing with installation in interactive mode...")
-		}
-	}
-
 	if uninstall {
 		err = cmd.Uninstall(installDir)
 	} else if updateNode || updateAgent {
-		logger.Info("Updating FlowFuse Device Agent...")
 		err = cmd.Update(agentVersion, nodeVersion, installDir, updateAgent, updateNode)
 	} else {
-		logger.Info("Installing FlowFuse Device Agent...")
+		logger.Info("")
+		logger.Info("Let's get your connected to FlowFuse.")
+		logger.Info("")
 		err = cmd.Install(nodeVersion, agentVersion, flowfuseURL, flowfuseOneTimeCode, installDir, false, port, caCertPath)
 	}
 
