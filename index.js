@@ -35,7 +35,11 @@ const defaultInquirerTheme = {
     prefix: '',
     style: {
         // Give some spacing to the messages
-        message: (text, status) => { return '\n' + chalk.bold(text) + '\n' }
+        message: (text, status) => { return '\n' + chalk.bold(text) + '\n' },
+        // Avoid the '⏎' glyph - it renders as a missing-character box in some terminal fonts (displays the tofu character instead). Use <enter> instead.
+        keysHelpTip: (keys) => keys
+            .map(([key, action]) => `${chalk.bold(key === '⏎' ? '<enter>' : key)} ${chalk.dim(action)}`)
+            .join(chalk.dim(' • '))
     }
 }
 
