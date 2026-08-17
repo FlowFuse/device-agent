@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.1](https://github.com/FlowFuse/device-agent/compare/v4.2.0...v4.2.1) (2026-08-14)
+
+
+### Bug Fixes
+
+* Ensure npmrc is available before trying to merge ([#720](https://github.com/FlowFuse/device-agent/issues/720)) ([1e2e795](https://github.com/FlowFuse/device-agent/commit/1e2e7951a29fd75d5100c2de94d566ecb61c7bf0))
+
 ## [4.2.0](https://github.com/FlowFuse/device-agent/compare/v4.1.0...v4.2.0) (2026-07-29)
 
 
