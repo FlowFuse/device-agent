@@ -82,16 +82,7 @@ func checkConfigFileExists(customWorkDir string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	deviceAgentConfig := filepath.Join(workDir, "device.yml")
-	installerConfPath := filepath.Join(workDir, "installer.conf")
-	_, deviceAgentConfigErr := os.Stat(deviceAgentConfig)
-	_, installerConfErr := os.Stat(installerConfPath)
-	logger.Debug("DeviceAgentConfigErr: %v", deviceAgentConfigErr)
-	logger.Debug("installerConfErr: %v", installerConfErr)
-	logger.Debug("devAgentExists: %t", os.IsNotExist(deviceAgentConfigErr))
-	logger.Debug("installerConfExists: %t", os.IsNotExist(installerConfErr))
-
-	if deviceAgentConfigErr == nil || installerConfErr == nil {
+	if utils.IsDeviceAgentDirectory(workDir) {
 		logger.Info("The working directory %s exists and contains Device Agent configuration file", workDir)
 
 		// Derive per-port service name from installer config (fallback to default port)
@@ -216,16 +207,12 @@ func ValidateInstallationDirectory(workDir string) error {
 	}
 
 	// Check if device.yml or installer.conf exists in the directory
-	deviceYmlPath := filepath.Join(workDir, "device.yml")
-	installerConfPath := filepath.Join(workDir, "installer.conf")
-	_, deviceYmlErr := os.Stat(deviceYmlPath)
-	_, installerConfErr := os.Stat(installerConfPath)
-	if os.IsNotExist(deviceYmlErr) && os.IsNotExist(installerConfErr) {
-		logger.LogFunctionExit("ValidateInstallationDirectory", nil, fmt.Errorf("missing required files in %s: %v, %v", workDir, deviceYmlErr, installerConfErr))
+	if !utils.IsDeviceAgentDirectory(workDir) {
+		logger.LogFunctionExit("ValidateInstallationDirectory", nil, fmt.Errorf("neither device.yml nor installer.conf found in %s", workDir))
 		return fmt.Errorf("%s is not the FlowFuse Device Agent directory. If you installed it in a custom directory, please specify it using `--dir` flag", workDir)
 	}
 
-	logger.Debug("Validation passed: device.yml found in %s", workDir)
+	logger.Debug("Validation passed: device.yml or installer.conf found in %s", workDir)
 	logger.LogFunctionExit("ValidateInstallationDirectory", "success", nil)
 	return nil
 }
