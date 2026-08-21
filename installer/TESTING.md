@@ -25,8 +25,9 @@ Expect
 
 ## B. Interactive install – no OTC
 Steps
-1) Run with no flags and accept installation in interactive prompt
-2) Choose to provide config now (manual) or skip (install-only)
+1) Run with no flags, answer the installation directory question (see M)
+2) Accept installation in interactive prompt
+3) Choose to provide config now (manual) or skip (install-only)
 
 Expect
 - Manual path: prompts for YAML; saved as `<dir>/device.yml`; service installed and running
@@ -124,6 +125,44 @@ Steps
 Expect
 - `--port` shown and notes explain per-port service names
 - Installer version printed
+
+## M. Installation directory prompt
+Prereq: No installation present at the default directory
+
+Steps
+1) Run with no flags at all
+2) At `Where should the FlowFuse Device Agent be installed?`, press Enter
+3) Repeat, answering `some/relative/dir`, then `<dir>`
+4) Run: `--otc <OTC>`
+5) Run: `--dir <dir>` (no `--otc`)
+
+Expect
+- The question appears after the welcome banner and after the permission check (sudo prompt first)
+- Step 2 installs into the default directory
+- Step 3 rejects the relative path with `Path must be absolute, for example ...`, re-asks, then installs into `<dir>`
+- Steps 4 and 5 show no directory question
+
+## N. Installation directory for uninstall and update
+Prereq for 1): An installation in the default directory
+Prereq for 2): An installation in `<dir>` only, nothing at the default directory
+
+1) Default directory present
+  Steps:
+  1) Run: `--uninstall` (no `--dir`)
+  2) Answer `y` to `Found a FlowFuse Device Agent installation in <default>. Do you want to use it?`
+  3) Repeat with `--update-agent` instead of `--uninstall`
+
+  Expect
+  - The default directory is used without typing a path
+  - Answering `n` instead asks for a path
+
+2) Custom directory only
+  Steps:
+  1) Run: `--uninstall` (no `--dir`) and answer `<dir>` at the prompt
+
+  Expect
+  - No "Found a … installation" question (nothing at the default directory)
+  - `<dir>` is uninstalled, same result as `--uninstall --dir <dir>`
 
 ---
 
