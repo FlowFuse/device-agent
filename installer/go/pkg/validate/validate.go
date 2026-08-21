@@ -192,24 +192,26 @@ func checkLibstdcExists() error {
 	return nil
 }
 
-// ValidateUninstallDirectory validates that the directory contains either device.yml or installer.conf files
-// before allowing uninstall to proceed. This prevents accidental removal of directories
-// not related to the FlowFuse Device Agent.
+// ValidateInstallationDirectory validates that the directory contains either device.yml or
+// installer.conf files before allowing an operation on an existing installation to proceed.
+// For uninstall this prevents accidental removal of directories not related to the FlowFuse
+// Device Agent. For update it prevents acting on a directory that holds no installation,
+// which would otherwise stop the running service and replace the wrong Node.js directory.
 //
 // Parameters:
 //   - workDir: The directory path to validate
 //
 // Returns:
 //   - error: nil if validation passes, otherwise an error explaining why validation failed
-func ValidateUninstallDirectory(workDir string) error {
-	logger.LogFunctionEntry("ValidateUninstallDirectory", map[string]interface{}{
+func ValidateInstallationDirectory(workDir string) error {
+	logger.LogFunctionEntry("ValidateInstallationDirectory", map[string]interface{}{
 		"workDir": workDir,
 	})
 
 	// Check if directory exists
 	if _, err := os.Stat(workDir); os.IsNotExist(err) {
 		logger.Error("Directory does not exist: %s", workDir)
-		logger.LogFunctionExit("ValidateUninstallDirectory", nil, err)
+		logger.LogFunctionExit("ValidateInstallationDirectory", nil, err)
 		return fmt.Errorf("directory does not exist: %s", workDir)
 	}
 
@@ -219,12 +221,12 @@ func ValidateUninstallDirectory(workDir string) error {
 	_, deviceYmlErr := os.Stat(deviceYmlPath)
 	_, installerConfErr := os.Stat(installerConfPath)
 	if os.IsNotExist(deviceYmlErr) && os.IsNotExist(installerConfErr) {
-		logger.LogFunctionExit("ValidateUninstallDirectory", nil, fmt.Errorf("missing required files in %s: %v, %v", workDir, deviceYmlErr, installerConfErr))
+		logger.LogFunctionExit("ValidateInstallationDirectory", nil, fmt.Errorf("missing required files in %s: %v, %v", workDir, deviceYmlErr, installerConfErr))
 		return fmt.Errorf("%s is not the FlowFuse Device Agent directory. If you installed it in a custom directory, please specify it using `--dir` flag", workDir)
 	}
 
 	logger.Debug("Validation passed: device.yml found in %s", workDir)
-	logger.LogFunctionExit("ValidateUninstallDirectory", "success", nil)
+	logger.LogFunctionExit("ValidateInstallationDirectory", "success", nil)
 	return nil
 }
 
