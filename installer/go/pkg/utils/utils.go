@@ -46,6 +46,8 @@ type DeviceConfig struct {
 // Returns:
 //   - bool: true for yes responses (y, yes, Y, YES), false for no or invalid responses
 func PromptYesNo(question string, defaultResponse bool) bool {
+	style.FlushInput()
+
 	reader := bufio.NewReader(os.Stdin)
 
 	// Mark where the prompt begins so it (and any invalid-input retries) can be
@@ -95,6 +97,8 @@ func PromptYesNo(question string, defaultResponse bool) bool {
 // Returns:
 //   - string: The trimmed user input, or defaultValue when the input is empty
 func PromptText(question, defaultValue string) string {
+	style.FlushInput()
+
 	reader := bufio.NewReader(os.Stdin)
 
 	// Mark where the prompt begins so it can be collapsed once answered.
@@ -179,6 +183,8 @@ func PromptOption(question string, options []string, defaultIndex int) (int, err
 	if defaultIndex < 0 || defaultIndex >= len(options) {
 		return -1, fmt.Errorf("invalid default index: %d", defaultIndex)
 	}
+
+	style.FlushInput()
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -373,6 +379,111 @@ func GetWorkingDirectory(customPath string) (string, error) {
 		return customPath, nil
 	}
 	return getDefaultWorkingDirectory()
+}
+
+// IsDeviceAgentDirectory reports whether the given directory holds a FlowFuse
+// Device Agent installation, determined by the presence of either the agent's
+// device.yml or the installer's own installer.conf.
+//
+// Parameters:
+//   - dir: The directory to inspect
+//
+// Returns:
+//   - bool: true if the directory looks like a Device Agent installation
+func IsDeviceAgentDirectory(dir string) bool {
+	for _, name := range []string{"device.yml", "installer.conf"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// cleanAbsolutePath normalizes a filesystem path entered by a user. Only
+// absolute paths are accepted: a relative path (including "~/...", which Go does
+// not expand) would be resolved against the installer's current directory and
+// point somewhere the user did not intend.
+//
+// Parameters:
+//   - path: The raw path as typed by the user
+//
+// Returns:
+//   - string: The cleaned, absolute path
+//   - error: An error if the path is not absolute
+func cleanAbsolutePath(path string) (string, error) {
+	path = strings.TrimSpace(path)
+	if !filepath.IsAbs(path) {
+		return "", fmt.Errorf("path %q is not absolute", path)
+	}
+	return filepath.Clean(path), nil
+}
+
+// promptDirectory asks the user for a directory, offering defaultDir when the
+// user just presses Enter, and re-prompting until an absolute path is given.
+//
+// defaultDir must be absolute, which is also what stops the loop from running
+// forever on a closed stdin: PromptText falls back to the default value when
+// input cannot be read, and that value is then accepted.
+//
+// Parameters:
+//   - question: The prompt to display to the user
+//   - defaultDir: The absolute path returned when the user provides no input
+//
+// Returns:
+//   - string: The cleaned, absolute directory path
+//   - error: An error if defaultDir is not an absolute path
+func promptDirectory(question, defaultDir string) (string, error) {
+	cleanDefault, err := cleanAbsolutePath(defaultDir)
+	if err != nil {
+		return "", fmt.Errorf("default directory is unusable: %w", err)
+	}
+
+	for {
+		dir, err := cleanAbsolutePath(PromptText(question, cleanDefault))
+		if err == nil {
+			return dir, nil
+		}
+		fmt.Printf("Path must be absolute, for example %s\n", cleanDefault)
+	}
+}
+
+// PromptInstallDirectory asks the user where a new Device Agent installation
+// should be placed.
+//
+// Returns:
+//   - string: The cleaned, absolute directory path
+//   - error: An error if the default directory cannot be determined
+func PromptInstallDirectory() (string, error) {
+	defaultDir, err := GetWorkingDirectory("")
+	if err != nil {
+		return "", fmt.Errorf("failed to determine the default installation directory: %w", err)
+	}
+
+	return promptDirectory("Where should the FlowFuse Device Agent be installed?", defaultDir)
+}
+
+// ResolveExistingInstallDirectory determines the directory of an existing
+// Device Agent installation for update and uninstall operations. When the
+// OS-specific default directory already holds an installation, the user is
+// offered it; otherwise, or when they decline, they are asked for a path.
+//
+// Returns:
+//   - string: The cleaned, absolute directory path
+//   - error: An error if the default directory cannot be determined
+func ResolveExistingInstallDirectory() (string, error) {
+	defaultDir, err := GetWorkingDirectory("")
+	if err != nil {
+		return "", fmt.Errorf("failed to determine the default installation directory: %w", err)
+	}
+
+	if IsDeviceAgentDirectory(defaultDir) {
+		question := fmt.Sprintf("Found a FlowFuse Device Agent installation in %s. Do you want to use it?", defaultDir)
+		if PromptYesNo(question, true) {
+			return defaultDir, nil
+		}
+	}
+
+	return promptDirectory("Which FlowFuse Device Agent installation directory should be used?", defaultDir)
 }
 
 // createDirWithPermissions creates a directory at the specified path with the given permissions.
