@@ -17,8 +17,14 @@ import (
 const minFreeDiskBytes uint64 = 500 * 1024 * 1024 // 500 MB
 
 // PreInstall performs validation steps before installation:
-// 1. Checks if the working directory exists and attempts to remove it if it does
-// 2. Verifies if user has the necessary permissions to run the installer
+// 1. Verifies there is enough free disk space for the installation
+// 2. Verifies the requested TCP port is not already in use
+// 3. Handles an existing installation found in the working directory
+// 4. Verifies libstdc++ is present (Linux only)
+//
+// The caller is responsible for checking permissions (utils.CheckPermissions)
+// before calling this function, as the working directory it validates may
+// itself have to be resolved interactively first.
 //
 // Parameters:
 //   - customWorkDir: Optional custom working directory path. If empty, uses default path.
@@ -28,12 +34,6 @@ const minFreeDiskBytes uint64 = 500 * 1024 * 1024 // 500 MB
 //   - nil if all checks pass
 //   - error if any check fails
 func PreInstall(customWorkDir string, port int) error {
-	if err := utils.CheckPermissions(); err != nil {
-		logger.Error("Permission check failed: %v", err)
-		logger.LogFunctionExit("PreInstall", nil, err)
-		return fmt.Errorf("permission check failed: %w", err)
-	}
-
 	if err := checkFreeDiskSpace(customWorkDir, minFreeDiskBytes); err != nil {
 		logger.Error("Disk space check failed: %v", err)
 		logger.LogFunctionExit("PreInstall", nil, err)
