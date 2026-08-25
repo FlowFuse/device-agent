@@ -125,6 +125,52 @@ Expect
 - `--port` shown and notes explain per-port service names
 - Installer version printed
 
+
+## M. System service question
+Steps
+1) Run with no flags; at the end answer `y` to `Install the system service so the Device Agent starts on system boot?`
+2) Repeat a fresh install answering `n`
+3) Run: `--otc <OTC>`
+
+Expect
+- The question is asked after the installation and device registration complete, not before
+- Step 1: service created, started and enabled; summary reports start on system boot and prints the "Further reading" service links; `installer.conf` has `"serviceInstalled": true` and the per-port `serviceName`
+- Step 2: no service created (no unit file, plist or NSSM entry); summary states no service was created; the manual start command is printed with the correct `--dir` and `--port`; the service links are not printed; `installer.conf` has `"serviceInstalled": false` and an empty `serviceName`
+- Step 2: running the printed command starts the agent in the foreground and it connects to the platform
+- Step 2: Node-RED dependency installation succeeds - the agent's `npm install` uses the service account's cache (`~flowfuse/.npm`), not the invoking user's, and resolves to the bundled npm
+- Step 3: no question asked, service installed as before
+
+## N. Update and uninstall without a service
+Prereq: An installation created by answering `n` in scenario M
+
+Steps
+1) Run: `--update-agent --dir <dir>`
+2) Run: `--update-nodejs --dir <dir>`
+3) Run: `--uninstall --dir <dir>`
+
+Expect
+- Steps 1 and 2: log reports the installation has no system service; the package is updated; no service stop or start is attempted; no error about the agent not being installed
+- Step 3: uninstall completes and skips service removal
+- A legacy `installer.conf` with no `serviceInstalled` key still behaves as before: the service is checked, stopped and restarted
+
+
+## O. Uninstall with a manually started agent
+Prereq: An installation created by answering `n` in scenario M, started with the printed manual command and left running
+
+Steps
+1) Run: `--uninstall --dir <dir>` and confirm the removal
+2) At the running-agent prompt, stop the agent in another shell, then press Enter
+3) Repeat 1), and this time answer `s` at the prompt
+4) Repeat 1) with a second agent of another installation also running under the same service account
+
+Expect
+- Step 1: the agent is listed with its PID and command before anything is removed; the working directory is still intact at that point
+- Step 2: the check clears, the uninstall proceeds, and the service account prompt appears as usual
+- Step 3: the uninstall completes, the service account is kept, and the reason is reported; exit status is 0 and no `userdel`/`sysadminctl` error appears
+- Step 4: only processes running from `<dir>` are listed; the other installation's agent is not
+- No process is ever stopped by the installer itself
+- Processes that merely mention `<dir>` (an editor, `tail -f` on a log, the installer's own `--dir` argument) are not reported as a running agent
+
 ---
 
 ## OS-specific verification
