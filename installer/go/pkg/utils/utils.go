@@ -1354,7 +1354,7 @@ func ShowInstallSummary(installMode, url, workDir string, serviceInstalled bool)
 //   - port: the TCP port the agent should listen on
 func ShowManualStartInstructions(nodeBinDir, workDir, caCertPath string, port int) {
 	logger.Info("")
-	logger.Info("To start the FlowFuse Device Agent manually, run in the command line:")
+	logger.Info("To start the FlowFuse Device Agent manually, run the command in a new terminal:")
 	logger.Info("")
 
 	switch runtime.GOOS {
