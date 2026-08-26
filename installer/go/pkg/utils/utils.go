@@ -1359,12 +1359,20 @@ func ShowManualStartInstructions(nodeBinDir, workDir, caCertPath string, port in
 
 	switch runtime.GOOS {
 	case "windows":
+		agentCmd := filepath.Join(nodeBinDir, "flowfuse-device-agent.cmd")
+		logger.Info("  Command Prompt (cmd):")
 		if caCertPath != "" {
-			logger.Info(`  set NODE_EXTRA_CA_CERTS=%s`, caCertPath)
+			logger.Info(`    set NODE_EXTRA_CA_CERTS=%s`, caCertPath)
 		}
-		logger.Info(`  set PATH=%s;%%PATH%%`, nodeBinDir)
-		logger.Info(`  %s --dir "%s" --port %d`,
-			filepath.Join(nodeBinDir, "flowfuse-device-agent.cmd"), workDir, port)
+		logger.Info(`    set PATH=%s;%%PATH%%`, nodeBinDir)
+		logger.Info(`    %s --dir "%s" --port %d`, agentCmd, workDir, port)
+		logger.Info("")
+		logger.Info("  PowerShell:")
+		if caCertPath != "" {
+			logger.Info(`    $env:NODE_EXTRA_CA_CERTS = "%s"`, caCertPath)
+		}
+		logger.Info(`    $env:Path = "%s;" + $env:Path`, nodeBinDir)
+		logger.Info(`    & "%s" --dir "%s" --port %d`, agentCmd, workDir, port)
 	default:
 		caCertEnv := ""
 		if caCertPath != "" {
