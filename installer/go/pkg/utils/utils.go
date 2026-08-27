@@ -16,6 +16,7 @@ import (
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
 	"github.com/flowfuse/device-agent-installer/pkg/style"
 
+	"github.com/shirou/gopsutil/v4/process"
 	"gopkg.in/yaml.v3"
 )
 
@@ -373,6 +374,135 @@ func GetWorkingDirectory(customPath string) (string, error) {
 		return customPath, nil
 	}
 	return getDefaultWorkingDirectory()
+}
+
+// AgentProcess describes a running process that belongs to a Device Agent
+// installation.
+type AgentProcess struct {
+	PID int32
+	Command string
+}
+
+// pathInDirectory reports whether the executable path lies inside dir.
+//
+// Parameters:
+//   - path: The executable path to test, possibly quoted
+//   - dir: The directory the path must lie inside of
+//   - ignoreCase: Whether to compare without regard to case
+//
+// Returns:
+//   - bool: true if path lies inside dir
+func pathInDirectory(path, dir string, ignoreCase bool) bool {
+	path = strings.Trim(strings.TrimSpace(path), `"`)
+	dir = strings.TrimRight(strings.TrimSpace(dir), `/\`)
+	if path == "" || dir == "" {
+		return false
+	}
+
+	if ignoreCase {
+		// Windows accepts both separators and treats names case-insensitively,
+		// so normalize both before comparing.
+		path = strings.ReplaceAll(strings.ToLower(path), `\`, "/")
+		dir = strings.ReplaceAll(strings.ToLower(dir), `\`, "/")
+	}
+
+	if !strings.HasPrefix(path, dir) {
+		return false
+	}
+
+	// A separator must follow the directory, so that /opt/flowfuse-device-old is
+	// not taken for something inside /opt/flowfuse-device.
+	rest := path[len(dir):]
+	return rest != "" && (rest[0] == '/' || rest[0] == '\\')
+}
+
+// FindAgentProcesses returns the running processes that belong to the
+// installation in workDir. A process matches when the executable it runs lives
+// inside that directory: the Device Agent and the Node-RED process it starts
+// both run the bundled Node.js from there.
+//
+// Parameters:
+//   - workDir: The installation directory whose processes should be found
+//
+// Returns:
+//   - []AgentProcess: The matching processes, empty when none are running
+//   - error: An error if the list of running processes cannot be read
+func FindAgentProcesses(workDir string) ([]AgentProcess, error) {
+	if workDir == "" {
+		return nil, fmt.Errorf("workDir cannot be empty")
+	}
+
+	processes, err := process.Processes()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list running processes: %w", err)
+	}
+
+	self := int32(os.Getpid())
+	ignoreCase := runtime.GOOS == "windows"
+
+	var found []AgentProcess
+	for _, p := range processes {
+		if p.Pid == self {
+			continue
+		}
+
+		// Errors are expected here: processes owned by another user hide part of
+		// their details, and a process may exit while the list is walked.
+		exe, _ := p.Exe()
+		if exe == "" {
+			if args, argsErr := p.CmdlineSlice(); argsErr == nil && len(args) > 0 {
+				exe = args[0]
+			}
+		}
+		if !pathInDirectory(exe, workDir, ignoreCase) {
+			continue
+		}
+
+		command, _ := p.Cmdline()
+		if command == "" {
+			command = exe
+		}
+		found = append(found, AgentProcess{PID: p.Pid, Command: command})
+	}
+
+	logger.Debug("Found %d process(es) running from %s", len(found), workDir)
+	return found, nil
+}
+
+// WaitForAgentProcesses reports whether the installation in workDir has stopped
+// running. While processes are still running it lists them and waits for the
+// user to stop them, re-checking on request.
+//
+// Parameters:
+//   - workDir: The installation directory whose processes must have stopped
+//
+// Returns:
+//   - bool: true when no processes remain, false when the user chose to skip
+func WaitForAgentProcesses(workDir string) bool {
+	for {
+		running, err := FindAgentProcesses(workDir)
+		if err != nil {
+			logger.Error("Could not check for running Device Agent processes: %v", err)
+			return true
+		}
+		if len(running) == 0 {
+			return true
+		}
+
+		logger.Info("")
+		logger.Info("The FlowFuse Device Agent is still running from %s:", workDir)
+		for _, p := range running {
+			logger.Info("  PID %d  %s", p.PID, p.Command)
+		}
+		logger.Info("")
+		logger.Info("Stop listed processes before continuing with the uninstall.")
+
+		answer := PromptText("Press Enter to check again, or type 's' to skip and keep the service account", "")
+		if strings.EqualFold(answer, "s") {
+			logger.Debug("User skipped waiting for Device Agent processes")
+			return false
+		}
+	}
 }
 
 // createDirWithPermissions creates a directory at the specified path with the given permissions.
@@ -1171,9 +1301,20 @@ func nearestExistingPath(path string) (string, error) {
 //   - installMode: one of "otc", "manual", "install-only", or "none"
 //   - url: the FlowFuse platform URL to direct the user back to
 //   - workDir: the working directory where device.yml would reside (for manual mode)
-func ShowInstallSummary(installMode, url, workDir string) {
+//   - serviceInstalled: whether a system service was created for this installation.
+func ShowInstallSummary(installMode, url, workDir string, serviceInstalled bool) {
 	logger.Info("")
 	logger.Info("FlowFuse Device Agent installation completed successfully!")
+
+	if !serviceInstalled {
+		logger.Info("The FlowFuse Device Agent is installed and configured, but no system service was created.")
+		logger.Info("It will not start automatically on system boot.")
+		if url != "" {
+			logger.Info("Once started, you can return to the FlowFuse platform and start creating Node-RED flows on your device:")
+			logger.Info("%s", url)
+		}
+		return
+	}
 
 	switch installMode {
 	case "otc", "manual":
@@ -1200,6 +1341,55 @@ func ShowInstallSummary(installMode, url, workDir string) {
 	logger.Info("  - To learn how to check the service status, visit https://flowfuse.com/docs/device-agent/install/device-agent-installer/#check-the-device-agent-service-status")
 	logger.Info("  - To learn how to manage the service (start, stop, restart), visit https://flowfuse.com/docs/device-agent/install/device-agent-installer/#managing-the-device-agent-service")
 	logger.Info("  - To learn how to view logs, visit https://flowfuse.com/docs/device-agent/install/device-agent-installer/#viewing-device-agent-log-files")
+	logger.Info("")
+}
+
+// ShowManualStartInstructions prints the command that starts the Device Agent in
+// the foreground, for installations where no system service was created.
+//
+// Parameters:
+//   - nodeBinDir: the directory holding the bundled node and agent executables
+//   - workDir: the installation directory, passed to the agent as --dir
+//   - caCertPath: the installed CA bundle, or "" when none was provided
+//   - port: the TCP port the agent should listen on
+func ShowManualStartInstructions(nodeBinDir, workDir, caCertPath string, port int) {
+	logger.Info("")
+	logger.Info("To start the FlowFuse Device Agent manually, run the command in a new terminal:")
+	logger.Info("")
+
+	switch runtime.GOOS {
+	case "windows":
+		agentCmd := filepath.Join(nodeBinDir, "flowfuse-device-agent.cmd")
+		logger.Info("  Command Prompt (cmd):")
+		if caCertPath != "" {
+			logger.Info(`    set NODE_EXTRA_CA_CERTS=%s`, caCertPath)
+		}
+		logger.Info(`    set PATH=%s;%%PATH%%`, nodeBinDir)
+		logger.Info(`    %s --dir "%s" --port %d`, agentCmd, workDir, port)
+		logger.Info("")
+		logger.Info("  PowerShell:")
+		if caCertPath != "" {
+			logger.Info(`    $env:NODE_EXTRA_CA_CERTS = "%s"`, caCertPath)
+		}
+		logger.Info(`    $env:Path = "%s;" + $env:Path`, nodeBinDir)
+		logger.Info(`    & "%s" --dir "%s" --port %d`, agentCmd, workDir, port)
+	default:
+		caCertEnv := ""
+		if caCertPath != "" {
+			caCertEnv = fmt.Sprintf(" NODE_EXTRA_CA_CERTS=%s", caCertPath)
+		}
+		logger.Info("  sudo -u %s -H env \\", ServiceUsername)
+		logger.Info("    PATH=%s:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin%s \\",
+			nodeBinDir, caCertEnv)
+		logger.Info("    %s %s \\",
+			filepath.Join(nodeBinDir, "node"),
+			filepath.Join(nodeBinDir, "flowfuse-device-agent"))
+		logger.Info("    --dir %s --port %d", workDir, port)
+	}
+
+	logger.Info("")
+	logger.Info("The agent runs in the foreground and stops when the command is interrupted.")
+	logger.Info("To have it start automatically on system boot, run the installer again and install the system service.")
 	logger.Info("")
 }
 
