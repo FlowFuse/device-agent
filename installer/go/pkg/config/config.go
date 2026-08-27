@@ -22,6 +22,9 @@ type InstallerConfig struct {
 	// NodeExtraCACerts is the in-workdir path to the installed custom CA bundle,
 	// re-applied on reinstall so CA trust survives without re-passing --ca-cert.
 	NodeExtraCACerts string `json:"nodeExtraCACerts,omitempty"`
+	// ServiceInstalled reports whether a system service was created for this
+	// installation. It is nil if the installer was run before this field was added.
+	ServiceInstalled *bool `json:"serviceInstalled,omitempty"`
 }
 
 // GetConfigPath returns the path to the installer configuration file.
@@ -121,9 +124,11 @@ func LoadConfig(customWorkDir string) (*InstallerConfig, error) {
 
 	// If the config file doesn't exist, return default config
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		serviceInstalled := true
 		return &InstallerConfig{
-			ServiceUsername: utils.ServiceUsername,
-			Port:            utils.DefaultPort,
+			ServiceUsername:  utils.ServiceUsername,
+			Port:             utils.DefaultPort,
+			ServiceInstalled: &serviceInstalled,
 		}, nil
 	}
 
@@ -140,6 +145,13 @@ func LoadConfig(customWorkDir string) (*InstallerConfig, error) {
 	// Backward compatibility: default port if missing
 	if cfg.Port == 0 {
 		cfg.Port = utils.DefaultPort
+	}
+
+	// Backward compatibility: configurations written before the installer could
+	// skip the service always had one, so an absent field means "installed".
+	if cfg.ServiceInstalled == nil {
+		serviceInstalled := true
+		cfg.ServiceInstalled = &serviceInstalled
 	}
 
 	return &cfg, nil
