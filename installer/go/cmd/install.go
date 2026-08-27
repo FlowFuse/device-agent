@@ -17,23 +17,26 @@ import (
 //
 // The function performs the following steps:
 // 1. Checks if the process has sufficient permissions
-// 2. Creates a working directory for the installation
-// 3. Ensures Node.js is installed at the required version
-// 4. Installs the Device Agent npm package
-// 5. Handles different installation modes based on OTC availability:
+// 2. Asks for the installation directory when neither customWorkDir nor otc is set
+// 3. Runs the remaining pre-install validation
+// 4. Creates a working directory for the installation
+// 5. Ensures Node.js is installed at the required version
+// 6. Installs the Device Agent npm package
+// 7. Handles different installation modes based on OTC availability:
 //   - Traditional: With OTC, configures and starts service
 //   - Manual config: Without OTC, prompts for config and saves device.yml
 //   - Install-only: Without OTC and no config, installs but doesn't start service
 //
-// 6. Sets up the Device Agent to run as a system service
-// 7. Saves the installation configuration
+// 8. Sets up the Device Agent to run as a system service
+// 9. Saves the installation configuration
 //
 // Parameters:
 //   - nodeVersion: The version of Node.js to install or use
 //   - agentVersion: The version of the FlowFuse Device Agent to install
 //   - url: The URL of the FlowFuse instance to connect to
 //   - otc: The one-time code (OTC) used for device registration
-//   - customWorkDir: Optional custom working directory path. If empty, uses default path.
+//   - customWorkDir: Optional custom working directory path. If empty and no OTC is
+//     given, the user is asked for it; otherwise the default path is used.
 //   - update: Whether this is an update operation
 //   - port: The TCP port number the device agent will use
 //
@@ -52,6 +55,26 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 	})
 
 	serviceName := fmt.Sprintf("flowfuse-device-agent-%d", port)
+
+	logger.Debug("Running permission check...")
+	if err := utils.CheckPermissions(); err != nil {
+		logger.LogFunctionExit("CheckPermissions", nil, err)
+		return fmt.Errorf("permission check failed: %w", err)
+	}
+
+	// Ask where to install when the directory was not given on the command line.
+	// With an OTC the installation is scripted, so it stays non-interactive and
+	// uses the default directory.
+	if customWorkDir == "" && otc == "" {
+		promptedDir, err := utils.PromptInstallDirectory()
+		if err != nil {
+			logger.Error("Failed to determine the installation directory: %v", err)
+			logger.LogFunctionExit("Install", nil, err)
+			return fmt.Errorf("failed to determine the installation directory: %w", err)
+		}
+		customWorkDir = promptedDir
+		logger.Debug("Using installation directory: %s", customWorkDir)
+	}
 
 	// Run pre-install validation
 	logger.Debug("Running pre-check...")
@@ -198,11 +221,13 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 
 // Uninstall removes the FlowFuse Device Agent from the system.
 // It performs the following steps:
-// 1. Verifies if the device agent is currently installed
-// 2. Removes the device agent service (if installed and running)
-// 3. Uninstalls the device agent package
-// 4. Removes the working directory
-// 5. Removes the service account
+// 1. Checks if the process has sufficient permissions
+// 2. Locates the installation, asking the user when customWorkDir is empty
+// 3. Verifies if the device agent is currently installed
+// 4. Removes the device agent service (if installed and running)
+// 5. Uninstalls the device agent package
+// 6. Removes the working directory
+// 7. Removes the service account that was used to run the agent
 //
 // The function uses configuration settings if available, or falls back to
 // default values when the configuration cannot be loaded.
@@ -212,6 +237,24 @@ func Uninstall(customWorkDir string) error {
 	logger.LogFunctionEntry("Uninstall", map[string]interface{}{
 		"customWorkDir": customWorkDir,
 	})
+
+	logger.Debug("Running permission check...")
+	if err := utils.CheckPermissions(); err != nil {
+		logger.LogFunctionExit("Uninstall", nil, err)
+		return fmt.Errorf("permission check failed: %w", err)
+	}
+
+	// Locate the installation when the directory was not given on the command line
+	if customWorkDir == "" {
+		resolvedDir, err := utils.ResolveExistingInstallDirectory()
+		if err != nil {
+			logger.Error("Failed to determine the installation directory: %v", err)
+			logger.LogFunctionExit("Uninstall", nil, err)
+			return fmt.Errorf("failed to determine the installation directory: %w", err)
+		}
+		customWorkDir = resolvedDir
+		logger.Debug("Using installation directory: %s", customWorkDir)
+	}
 
 	// Get the working directory first to show it in the confirmation prompt
 	logger.Debug("Getting working directory...")
@@ -224,7 +267,7 @@ func Uninstall(customWorkDir string) error {
 
 	// Validate that this is actually a FlowFuse Device Agent installation
 	logger.Debug("Validating uninstall directory...")
-	if err := validate.ValidateUninstallDirectory(workDir); err != nil {
+	if err := validate.ValidateInstallationDirectory(workDir); err != nil {
 		logger.Error("Uninstall validation failed: %v", err)
 		logger.LogFunctionExit("Uninstall", nil, err)
 		return fmt.Errorf("uninstall validation failed: %w", err)
@@ -240,12 +283,6 @@ func Uninstall(customWorkDir string) error {
 		logger.Info("Uninstall cancelled by user")
 		logger.LogFunctionExit("Uninstall", "cancelled", nil)
 		return nil
-	}
-
-	logger.Debug("Running pre-check...")
-	if err := utils.CheckPermissions(); err != nil {
-		logger.LogFunctionExit("Uninstall", nil, err)
-		return fmt.Errorf("permission check failed: %w", err)
 	}
 
 	// Check if the device agent service is installed and attempt removal
@@ -375,11 +412,13 @@ func Uninstall(customWorkDir string) error {
 //
 // The function performs the following steps:
 // 1. Checks if the process has sufficient permissions
-// 2. Checks if the device agent is currently installed
-// 3. Stops the device agent service temporarily (if updating anything)
-// 4. Updates Node.js if needed and requested (checks installed version vs required version)
-// 5. Updates the Device Agent npm package if requested
-// 6. Restarts the device agent service
+// 2. Locates the installation, asking the user when customWorkDir is empty
+// 3. Verifies the directory actually holds a Device Agent installation
+// 4. Checks if the device agent is currently installed
+// 5. Stops the device agent service temporarily (if updating anything)
+// 6. Updates Node.js if needed and requested (checks installed version vs required version)
+// 7. Updates the Device Agent npm package if requested
+// 8. Restarts the device agent service
 //
 // Parameters:
 //   - options: UpdateOptions specifying what to update and to which versions
@@ -412,6 +451,38 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 		return fmt.Errorf("permission check failed: %w", err)
 	}
 
+	// Locate the installation when the directory was not given on the command line
+	if customWorkDir == "" {
+		resolvedDir, err := utils.ResolveExistingInstallDirectory()
+		if err != nil {
+			logger.Error("Failed to determine the installation directory: %v", err)
+			logger.LogFunctionExit("Update", nil, err)
+			return fmt.Errorf("failed to determine the installation directory: %w", err)
+		}
+		customWorkDir = resolvedDir
+		logger.Debug("Using installation directory: %s", customWorkDir)
+	}
+
+	// Get the working directory
+	logger.Debug("Getting working directory...")
+	workDir, err := utils.GetWorkingDirectory(customWorkDir)
+	if err != nil {
+		logger.Error("Failed to get working directory: %v", err)
+		logger.LogFunctionExit("Update", nil, err)
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+	logger.Debug("Working directory: %s", workDir)
+
+	// Validate that this is actually a FlowFuse Device Agent installation, before
+	// anything reads its configuration or touches the running service
+	logger.Debug("Validating installation directory...")
+	if err := validate.ValidateInstallationDirectory(workDir); err != nil {
+		logger.Error("Update validation failed: %v", err)
+		logger.LogFunctionExit("Update", nil, err)
+		return fmt.Errorf("update validation failed: %w", err)
+	}
+	logger.Debug("Installation directory validation passed")
+
 	// Determine service name based on config
 	var serviceName string
 	cfg, _ := config.LoadConfig(customWorkDir)
@@ -443,16 +514,6 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 	} else {
 		logger.Info("This installation has no system service, updating packages only.")
 	}
-
-	// Get the working directory
-	logger.Debug("Getting working directory...")
-	workDir, err := utils.GetWorkingDirectory(customWorkDir)
-	if err != nil {
-		logger.Error("Failed to get working directory: %v", err)
-		logger.LogFunctionExit("Update", nil, err)
-		return fmt.Errorf("failed to get working directory: %w", err)
-	}
-	logger.Debug("Working directory: %s", workDir)
 
 	// Check if updates are actually needed
 	nodeUpdateNeeded := false

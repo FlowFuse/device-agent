@@ -17,8 +17,14 @@ import (
 const minFreeDiskBytes uint64 = 500 * 1024 * 1024 // 500 MB
 
 // PreInstall performs validation steps before installation:
-// 1. Checks if the working directory exists and attempts to remove it if it does
-// 2. Verifies if user has the necessary permissions to run the installer
+// 1. Verifies there is enough free disk space for the installation
+// 2. Verifies the requested TCP port is not already in use
+// 3. Handles an existing installation found in the working directory
+// 4. Verifies libstdc++ is present (Linux only)
+//
+// The caller is responsible for checking permissions (utils.CheckPermissions)
+// before calling this function, as the working directory it validates may
+// itself have to be resolved interactively first.
 //
 // Parameters:
 //   - customWorkDir: Optional custom working directory path. If empty, uses default path.
@@ -28,12 +34,6 @@ const minFreeDiskBytes uint64 = 500 * 1024 * 1024 // 500 MB
 //   - nil if all checks pass
 //   - error if any check fails
 func PreInstall(customWorkDir string, port int) error {
-	if err := utils.CheckPermissions(); err != nil {
-		logger.Error("Permission check failed: %v", err)
-		logger.LogFunctionExit("PreInstall", nil, err)
-		return fmt.Errorf("permission check failed: %w", err)
-	}
-
 	if err := checkFreeDiskSpace(customWorkDir, minFreeDiskBytes); err != nil {
 		logger.Error("Disk space check failed: %v", err)
 		logger.LogFunctionExit("PreInstall", nil, err)
@@ -82,16 +82,7 @@ func checkConfigFileExists(customWorkDir string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	deviceAgentConfig := filepath.Join(workDir, "device.yml")
-	installerConfPath := filepath.Join(workDir, "installer.conf")
-	_, deviceAgentConfigErr := os.Stat(deviceAgentConfig)
-	_, installerConfErr := os.Stat(installerConfPath)
-	logger.Debug("DeviceAgentConfigErr: %v", deviceAgentConfigErr)
-	logger.Debug("installerConfErr: %v", installerConfErr)
-	logger.Debug("devAgentExists: %t", os.IsNotExist(deviceAgentConfigErr))
-	logger.Debug("installerConfExists: %t", os.IsNotExist(installerConfErr))
-
-	if deviceAgentConfigErr == nil || installerConfErr == nil {
+	if utils.IsDeviceAgentDirectory(workDir) {
 		logger.Info("The working directory %s exists and contains Device Agent configuration file", workDir)
 
 		// Derive per-port service name from installer config (fallback to default port)
@@ -192,39 +183,37 @@ func checkLibstdcExists() error {
 	return nil
 }
 
-// ValidateUninstallDirectory validates that the directory contains either device.yml or installer.conf files
-// before allowing uninstall to proceed. This prevents accidental removal of directories
-// not related to the FlowFuse Device Agent.
+// ValidateInstallationDirectory validates that the directory contains either device.yml or
+// installer.conf files before allowing an operation on an existing installation to proceed.
+// For uninstall this prevents accidental removal of directories not related to the FlowFuse
+// Device Agent. For update it prevents acting on a directory that holds no installation,
+// which would otherwise stop the running service and replace the wrong Node.js directory.
 //
 // Parameters:
 //   - workDir: The directory path to validate
 //
 // Returns:
 //   - error: nil if validation passes, otherwise an error explaining why validation failed
-func ValidateUninstallDirectory(workDir string) error {
-	logger.LogFunctionEntry("ValidateUninstallDirectory", map[string]interface{}{
+func ValidateInstallationDirectory(workDir string) error {
+	logger.LogFunctionEntry("ValidateInstallationDirectory", map[string]interface{}{
 		"workDir": workDir,
 	})
 
 	// Check if directory exists
 	if _, err := os.Stat(workDir); os.IsNotExist(err) {
 		logger.Error("Directory does not exist: %s", workDir)
-		logger.LogFunctionExit("ValidateUninstallDirectory", nil, err)
+		logger.LogFunctionExit("ValidateInstallationDirectory", nil, err)
 		return fmt.Errorf("directory does not exist: %s", workDir)
 	}
 
 	// Check if device.yml or installer.conf exists in the directory
-	deviceYmlPath := filepath.Join(workDir, "device.yml")
-	installerConfPath := filepath.Join(workDir, "installer.conf")
-	_, deviceYmlErr := os.Stat(deviceYmlPath)
-	_, installerConfErr := os.Stat(installerConfPath)
-	if os.IsNotExist(deviceYmlErr) && os.IsNotExist(installerConfErr) {
-		logger.LogFunctionExit("ValidateUninstallDirectory", nil, fmt.Errorf("missing required files in %s: %v, %v", workDir, deviceYmlErr, installerConfErr))
+	if !utils.IsDeviceAgentDirectory(workDir) {
+		logger.LogFunctionExit("ValidateInstallationDirectory", nil, fmt.Errorf("neither device.yml nor installer.conf found in %s", workDir))
 		return fmt.Errorf("%s is not the FlowFuse Device Agent directory. If you installed it in a custom directory, please specify it using `--dir` flag", workDir)
 	}
 
-	logger.Debug("Validation passed: device.yml found in %s", workDir)
-	logger.LogFunctionExit("ValidateUninstallDirectory", "success", nil)
+	logger.Debug("Validation passed: device.yml or installer.conf found in %s", workDir)
+	logger.LogFunctionExit("ValidateInstallationDirectory", "success", nil)
 	return nil
 }
 

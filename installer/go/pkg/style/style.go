@@ -21,7 +21,10 @@ var promptSaved atomic.Bool
 
 var (
 	// stdoutIsTerminal reports whether stdout is an interactive terminal.
-	stdoutIsTerminal = detectTerminal()
+	stdoutIsTerminal = detectTerminal(os.Stdout)
+
+	// stdinIsTerminal reports whether stdin is an interactive terminal.
+	stdinIsTerminal = detectTerminal(os.Stdin)
 
 	// termIsDumb is true for terminals that don't understand ANSI sequences.
 	termIsDumb = os.Getenv("TERM") == "dumb"
@@ -35,13 +38,23 @@ var (
 	controlEnabled = stdoutIsTerminal && !termIsDumb
 )
 
-func detectTerminal() bool {
-	fi, err := os.Stdout.Stat()
+func detectTerminal(f *os.File) bool {
+	fi, err := f.Stat()
 	if err != nil {
 		return false
 	}
 	// A character device is our proxy for "attached to a terminal".
 	return fi.Mode()&os.ModeCharDevice != 0
+}
+
+// FlushInput discards input that is already queued on the terminal before a
+// prompt is displayed, so only what the user types in response to the prompt is
+// read.
+func FlushInput() {
+	if !stdinIsTerminal {
+		return
+	}
+	flushTerminalInput(os.Stdin.Fd())
 }
 
 // SaveCursor records the current cursor position (DEC save-cursor) so a later
