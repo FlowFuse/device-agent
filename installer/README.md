@@ -230,32 +230,44 @@ make clean
 
 ### Commit Message Format
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) 
-with Angular preset for automated versioning and releases. 
-**All commits that affect the installer must use the `installer` scope** to be included in releases.
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) for automated
+versioning and releases, driven by [Release Please](https://github.com/googleapis/release-please).
+
+The installer is configured as a separate Release Please package rooted at `installer/`, so
+**changes are assigned to the installer release by the paths they touch, not by the commit scope**.
+Any commit that modifies files under `installer/` is picked up for the installer release; commits
+touching other paths are excluded from it and feed the Device Agent release instead.
 
 #### Commit Message Structure
 
 ```
-<type>(installer): <description>
+<type>[(<scope>)]: <description>
 
 [optional body]
 
 [optional footer(s)]
 ```
 
+The scope is optional and does not influence the release. Using `installer` as the scope is still
+encouraged, as it makes the changelog entries easier to read.
+
 #### Supported Types and Release Impact
 
 | Type | Description | Release Impact |
 |------|-------------|----------------|
-| `feat(installer)` | New feature | Minor version bump |
-| `fix(installer)` | Bug fix | Patch version bump |
-| `perf(installer)` | Performance improvement | Patch version bump |
-| `refactor(installer)` | Code refactoring | Patch version bump |
-| `chore(installer)` | Maintenance tasks | Patch version bump |
-| `docs(installer)` | Documentation changes | Patch version bump |
-| `style(installer)` | Code style changes | Patch version bump |
-| `test(installer)` | Test changes | Patch version bump |
+| `feat` | New feature | Minor version bump |
+| `fix` | Bug fix | Patch version bump |
+| `perf` | Performance improvement | Patch version bump |
+| `deps` | Dependency update | Patch version bump |
+| `refactor` | Code refactoring | No release |
+| `docs` | Documentation changes | No release |
+| `chore` | Maintenance tasks | No release |
+| `style` | Code style changes | No release |
+| `test` | Test changes | No release |
+
+Types marked as "No release" do not trigger a version bump on their own and are hidden from the
+changelog. They are still released along with any `feat`/`fix`/`perf` change present in the same
+release.
 
 #### Breaking Changes
 
@@ -284,20 +296,36 @@ feat(installer)!: change default service user from root to flowfuse
 BREAKING CHANGE: The default service user has changed from root to flowfuse for improved security
 ```
 
-**Important:** Commits without the `installer` scope will not trigger releases or appear in the changelog.
-
 ## Release Process
 
 > [!IMPORTANT]
-> A release of the Device Agent does not requre a release of the Device Agent Installer. 
+> A release of the Device Agent does not require a release of the Device Agent Installer.
 > 
 > The Device Agent Installer release is not coupled in any way with the Device Agent one.
 
-To release a new version of the FlowFuse Device Agent Installer, follow these steps:
-1. Ensure all changes are committed and follow the commit message format outlined above.
-2. Manually trigger the [Installer Release](https://github.com/FlowFuse/device-agent/actions/workflows/installer-release.yaml) workflow 
-3. The worflow will:
-    * Build the installer for all platforms
-    * Create a new release on GitHub with the changelog
-    * Upload the built binaries to the release assets
-    * Updates the `get.sh` and `get.ps1` scripts with the version tag
+The installer is released by [Release Please](https://github.com/googleapis/release-please), the
+same tool used for the Device Agent package. Both are declared in
+[`.github/release-please-config.json`](../.github/release-please-config.json) as separate packages
+with separate versions, changelogs and release pull requests, tracked in
+[`.github/.release-please-manifest.json`](../.github/.release-please-manifest.json).
+
+Installer releases are tagged `installer-v<version>` (e.g. `installer-v1.7.0`), while Device Agent
+releases use a plain `v<version>` tag.
+
+### Releasing a new version
+
+1. Merge changes under `installer/` into `main`, using the commit message format described above.
+2. The `Prepare release` workflow ([`release-please.yaml`](../.github/workflows/release-please.yaml))
+   runs on every push to `main` and opens (or updates) a `chore: Release Installer <version>`
+   pull request containing the version bump, the updated `installer/CHANGELOG.md` and the version
+   references in `get.sh` and `get.ps1`.
+3. Review and merge that pull request when you want to cut the release. Release Please then creates
+   the `installer-v<version>` tag and the corresponding GitHub release with the changelog.
+4. The tag triggers the `Installer Release` workflow
+   ([`release-installer.yaml`](../.github/workflows/release-installer.yaml)), which:
+    * builds the installer binaries for all supported platforms and architectures,
+    * uploads them as assets of the release created by Release Please,
+    * publishes the `get.sh` and `get.ps1` scripts to GitHub Pages.
+
+No manual workflow trigger is required. Merging the release pull request is the only step that
+starts a release.
