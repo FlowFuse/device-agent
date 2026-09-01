@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.2](https://github.com/FlowFuse/device-agent/compare/v4.2.1...v4.2.2) (2026-09-01)
+
+
+### Bug Fixes
+
+* Use text in place of default enter glyph for terminals without that glyph ([#713](https://github.com/FlowFuse/device-agent/issues/713)) ([7715853](https://github.com/FlowFuse/device-agent/commit/77158535e137a08e5203396dac024466ece4f378))
+
 ## [4.2.1](https://github.com/FlowFuse/device-agent/compare/v4.2.0...v4.2.1) (2026-08-14)
 
 
