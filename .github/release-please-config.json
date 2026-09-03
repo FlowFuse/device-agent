@@ -4,13 +4,30 @@
   "include-component-in-tag": false,
   "pull-request-title-pattern": "chore: Release ${version}",
   "always-update": true,
+  "separate-pull-requests": true,
   "skip-github-release": false,
   "skip-changelog": false,
   "skip-pull-request": false,
   "packages": {
     ".": {
       "release-type": "node",
-      "exclude-paths": ["installer"]
+      "exclude-paths": [
+        "installer"
+      ]
+    },
+    "installer": {
+      "component": "installer",
+      "release-type": "go",
+      "include-component-in-tag": true,
+      "pull-request-title-pattern": "chore: Release Installer ${version}",
+      "always-update": true,
+      "skip-github-release": false,
+      "skip-changelog": false,
+      "skip-pull-request": false,
+      "extra-files": [
+        "get.sh",
+        "get.ps1"
+      ]
     }
   }
 }
