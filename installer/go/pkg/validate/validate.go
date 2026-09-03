@@ -2,7 +2,6 @@ package validate
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,32 +17,25 @@ const minFreeDiskBytes uint64 = 500 * 1024 * 1024 // 500 MB
 
 // PreInstall performs validation steps before installation:
 // 1. Verifies there is enough free disk space for the installation
-// 2. Verifies the requested TCP port is not already in use
-// 3. Handles an existing installation found in the working directory
-// 4. Verifies libstdc++ is present (Linux only)
+// 2. Handles an existing installation found in the working directory
+// 3. Verifies libstdc++ is present (Linux only)
 //
 // The caller is responsible for checking permissions (utils.CheckPermissions)
-// before calling this function, as the working directory it validates may
-// itself have to be resolved interactively first.
+// and for settling the TCP port (utils.PromptPort or utils.CheckUnusedPort)
+// before calling this function: the working directory it validates may itself
+// have to be resolved interactively, and that needs the port first.
 //
 // Parameters:
 //   - customWorkDir: Optional custom working directory path. If empty, uses default path.
-//   - port: The TCP port to validate for availability.
 //
 // Returns:
 //   - nil if all checks pass
 //   - error if any check fails
-func PreInstall(customWorkDir string, port int) error {
+func PreInstall(customWorkDir string) error {
 	if err := checkFreeDiskSpace(customWorkDir, minFreeDiskBytes); err != nil {
 		logger.Error("Disk space check failed: %v", err)
 		logger.LogFunctionExit("PreInstall", nil, err)
 		return fmt.Errorf("disk space check failed: %w", err)
-	}
-
-	if err := checkUnusedPort(port); err != nil {
-		logger.Error("Port check failed: %v", err)
-		logger.LogFunctionExit("PreInstall", nil, err)
-		return fmt.Errorf("port check failed: %w", err)
 	}
 
 	if err := checkConfigFileExists(customWorkDir); err != nil {
@@ -214,28 +206,6 @@ func ValidateInstallationDirectory(workDir string) error {
 
 	logger.Debug("Validation passed: device.yml or installer.conf found in %s", workDir)
 	logger.LogFunctionExit("ValidateInstallationDirectory", "success", nil)
-	return nil
-}
-
-// checkUnusedPort validates if specified TCP port is not in use by any process.
-//
-// Parameters
-//   - port: The TCP port to validate for availability.
-//
-// Returns:
-//   - error: nil if the port is available, otherwise an error indicating the port is in use
-func checkUnusedPort(port int) error {
-	logger.LogFunctionEntry("checkUnusedPort", map[string]interface{}{
-		"port": port,
-	})
-	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
-	if err != nil {
-		logger.LogFunctionExit("checkUnusedPort", "error", err)
-		logger.Debug("Port %d is in use: %v", port, err)
-		return fmt.Errorf("port %d is in use. Please select another port and try again", port)
-	}
-	defer listener.Close()
-	logger.LogFunctionExit("checkUnusedPort", "success", nil)
 	return nil
 }
 
