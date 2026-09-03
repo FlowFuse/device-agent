@@ -29,7 +29,7 @@ var (
 	updateNode          bool
 	updateAgent         bool
 	debugMode           bool
-	port                int
+	port                utils.PortFlag
 )
 
 func init() {
@@ -39,7 +39,7 @@ func init() {
 	pflag.StringVarP(&flowfuseURL, "url", "u", "", "FlowFuse URL")
 	pflag.StringVarP(&flowfuseOneTimeCode, "otc", "o", "", "FlowFuse one time code for authentication (optional for interactive installation)")
 	pflag.StringVarP(&installDir, "dir", "d", "", "Custom installation directory (default: /opt/flowfuse-device on Unix, c:\\opt\\flowfuse-device on Windows)")
-	pflag.IntVarP(&port, "port", "p", 1880, "TCP port for the device agent (1-65535)")
+	pflag.VarP(&port, "port", "p", fmt.Sprintf("TCP port for the device agent (%d-%d) (default %d)", utils.MinPort, utils.MaxPort, utils.DefaultPort))
 	pflag.StringVar(&caCertPath, "ca-cert", "", "Path to a CA certificate bundle (PEM) the Device Agent should trust")
 	pflag.BoolVarP(&showVersion, "version", "v", false, "Display installer version")
 	pflag.BoolVarP(&help, "help", "h", false, "Display help information")
@@ -82,14 +82,8 @@ func init() {
 
 func main() {
 	utils.ServiceUsername = serviceUsername
-	utils.DefaultPort = port
 	var err error
 	var exitCode int
-
-	if port < 1025 || port > 65535 {
-		fmt.Println("Invalid --port value. Please specify a port in range 1025-65535.")
-		os.Exit(2)
-	}
 
 	// Initialize logger
 	if err := logger.Initialize(debugMode); err != nil {
@@ -112,8 +106,8 @@ func main() {
 	}()
 
 	// Log startup information
-	logger.Debug("Command line arguments: node=%s, agent=%s, user=%s, url=%s, debug=%v, customInstallDir=%s, port=%d, caCert=%s",
-		nodeVersion, agentVersion, serviceUsername, flowfuseURL, debugMode, installDir, port, caCertPath)
+	logger.Debug("Command line arguments: node=%s, agent=%s, user=%s, url=%s, debug=%v, customInstallDir=%s, port=%s, caCert=%s",
+		nodeVersion, agentVersion, serviceUsername, flowfuseURL, debugMode, installDir, port.String(), caCertPath)
 	operatingSystem, architecture := utils.GetOSDetails()
 	logger.Debug("Detected system: %s, detected architecture: %s", operatingSystem, architecture)
 
@@ -132,7 +126,7 @@ func main() {
 		logger.Info("")
 		logger.Info("Let's get your connected to FlowFuse.")
 		logger.Info("")
-		err = cmd.Install(nodeVersion, agentVersion, flowfuseURL, flowfuseOneTimeCode, installDir, false, port, caCertPath)
+		err = cmd.Install(nodeVersion, agentVersion, flowfuseURL, flowfuseOneTimeCode, installDir, false, port.Value, caCertPath)
 	}
 
 	if err != nil {
