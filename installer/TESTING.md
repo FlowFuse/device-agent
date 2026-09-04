@@ -131,16 +131,17 @@ Prereq: No installation present at the default directory
 
 Steps
 1) Run with no flags at all
-2) At `Where should the FlowFuse Device Agent be installed?`, press Enter
-3) Repeat, answering `some/relative/dir`, then `<dir>`
-4) Run: `--otc <OTC>`
-5) Run: `--dir <dir>` (no `--otc`)
+2) At `Which TCP port should the FlowFuse Device Agent listen on?`, press Enter
+3) At `Where should the FlowFuse Device Agent be installed?`, press Enter
+4) Repeat steps 1-2, answering `some/relative/dir`, then `<dir>`
+5) Run: `--otc <OTC>`
+6) Run: `--dir <dir>` (no `--otc`)
 
 Expect
-- The question appears after the welcome banner and after the permission check (sudo prompt first)
-- Step 2 installs into the default directory
-- Step 3 rejects the relative path with `Path must be absolute, for example ...`, re-asks, then installs into `<dir>`
-- Steps 4 and 5 show no directory question
+- The questions appear after the welcome banner and after the permission check (sudo prompt first), port first
+- Step 3 installs into the default directory
+- Step 4 rejects the relative path with `Path must be absolute, for example ...`, re-asks, then installs into `<dir>`
+- Steps 5 and 6 show no directory question
 
 ## N. Installation directory for uninstall and update
 Prereq for 1): An installation in the default directory
@@ -210,6 +211,31 @@ Expect
 - Processes that merely mention `<dir>` (an editor, `tail -f` on a log, the installer's own `--dir` argument) are not reported as a running agent
 
 ---
+
+## Q. Port prompt
+Prereq: No installation present; another process listening on `<busyPort>`
+
+A busy port must be rejected whichever address the other process listens on. Cover
+at least the wildcard and one interface-specific case, since they behave differently
+per platform:
+- `python3 -m http.server <busyPort>` (IPv4 wildcard, `0.0.0.0`)
+- `python3 -m http.server --bind :: <busyPort>` (IPv6 wildcard, dual-stack)
+- `python3 -m http.server --bind 127.0.0.1 <busyPort>` (loopback only)
+- `python3 -m http.server --bind <thisHostIP> <busyPort>` (one interface only)
+
+Steps
+1) Run with no flags at all; at the port question press Enter, then accept the directory
+2) Repeat, answering `80`, then `abc`, then `<busyPort>`, then `<port>`
+3) Run: `--port <port>` (no `--otc`)
+4) Run: `--otc <OTC>`
+
+Expect
+- Step 1 uses port 1880 and suggests the default directory
+- Step 2 rejects `80` and `abc` with `Port must be a number between 1025 and 65535.`, rejects `<busyPort>` with `port <busyPort> is in use...`, re-asks each time, then uses `<port>`
+- `<busyPort>` is rejected for every listener address above, and the installation never reaches the agent's own `Port <busyPort> is not available.` error
+- A non-default `<port>` makes the next question suggest `/opt/flowfuse-device-<port>` (`c:\opt\flowfuse-device-<port>` on Windows); the suggestion can still be overridden by typing a path
+- Steps 3 and 4 show no port question, only `The FlowFuse Device Agent will use port <port>.`
+- Step 4 installs into the plain default directory, with no port suffix
 
 ## OS-specific verification
 

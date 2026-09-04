@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/flowfuse/device-agent-installer/pkg/logger"
@@ -23,9 +24,6 @@ import (
 // Global variable to store the service username
 var ServiceUsername = "flowfuse"
 
-// DefaultPort is the default TCP port for the device agent when not specified elsewhere
-// This can be overridden at runtime by the CLI flag in main.go
-var DefaultPort = 1880
 
 // DeviceConfig represents the expected structure of the device.yml configuration file
 type DeviceConfig struct {
@@ -97,7 +95,8 @@ func PromptYesNo(question string, defaultResponse bool) bool {
 //
 // Returns:
 //   - string: The trimmed user input, or defaultValue when the input is empty
-func PromptText(question, defaultValue string) string {
+//   - error: An error if the input could not be read
+func PromptText(question, defaultValue string) (string, error) {
 	style.FlushInput()
 
 	reader := bufio.NewReader(os.Stdin)
@@ -112,8 +111,7 @@ func PromptText(question, defaultValue string) string {
 
 	response, err := reader.ReadString('\n')
 	if err != nil {
-		logger.Error("Failed to read user input: %v", err)
-		return defaultValue
+		return "", fmt.Errorf("failed to read user input: %w", err)
 	}
 
 	// Collapse the prompt now that we have the answer. No-op on terminals that
@@ -122,9 +120,9 @@ func PromptText(question, defaultValue string) string {
 
 	response = strings.TrimSpace(response)
 	if response == "" {
-		return defaultValue
+		return defaultValue, nil
 	}
-	return response
+	return response, nil
 }
 
 // PromptMultilineInput prompts the user for multiline input until they enter an empty line
@@ -342,6 +340,28 @@ func getDefaultWorkingDirectory() (string, error) {
 	}
 }
 
+// defaultInstallDirForPort returns the default working directory to suggest for
+// a new installation on the given port. A port other than the default one gets
+// the port appended, so Device Agents listening on different ports are not proposed the
+// same directory.
+//
+// Parameters:
+//   - port: The TCP port the installation will use
+//
+// Returns:
+//   - string: The default path to suggest for this port
+//   - error: nil if successful, otherwise an error describing what went wrong
+func defaultInstallDirForPort(port int) (string, error) {
+	dir, err := getDefaultWorkingDirectory()
+	if err != nil {
+		return "", err
+	}
+	if port != DefaultPort {
+		return dir + "-" + strconv.Itoa(port), nil
+	}
+	return dir, nil
+}
+
 // CreateWorkingDirectory creates and returns the working directory path for the FlowFuse device agent.
 // If customPath is provided and not empty, it uses that path; otherwise, it uses the default OS-specific path.
 // On Unix systems, the default is "/opt/flowfuse-device" with 0755 permissions.
@@ -422,9 +442,8 @@ func cleanAbsolutePath(path string) (string, error) {
 // promptDirectory asks the user for a directory, offering defaultDir when the
 // user just presses Enter, and re-prompting until an absolute path is given.
 //
-// defaultDir must be absolute, which is also what stops the loop from running
-// forever on a closed stdin: PromptText falls back to the default value when
-// input cannot be read, and that value is then accepted.
+// defaultDir must be absolute, so that simply pressing Enter always yields a
+// usable answer.
 //
 // Parameters:
 //   - question: The prompt to display to the user
@@ -440,7 +459,12 @@ func promptDirectory(question, defaultDir string) (string, error) {
 	}
 
 	for {
-		dir, err := cleanAbsolutePath(PromptText(question, cleanDefault))
+		answer, err := PromptText(question, cleanDefault)
+		if err != nil {
+			return "", err
+		}
+
+		dir, err := cleanAbsolutePath(answer)
 		if err == nil {
 			return dir, nil
 		}
@@ -449,13 +473,17 @@ func promptDirectory(question, defaultDir string) (string, error) {
 }
 
 // PromptInstallDirectory asks the user where a new Device Agent installation
-// should be placed.
+// should be placed. The directory offered by default carries the port, unless
+// the installation uses the default one.
+//
+// Parameters:
+//   - port: The TCP port the installation will use
 //
 // Returns:
 //   - string: The cleaned, absolute directory path
 //   - error: An error if the default directory cannot be determined
-func PromptInstallDirectory() (string, error) {
-	defaultDir, err := GetWorkingDirectory("")
+func PromptInstallDirectory(port int) (string, error) {
+	defaultDir, err := defaultInstallDirForPort(port)
 	if err != nil {
 		return "", fmt.Errorf("failed to determine the default installation directory: %w", err)
 	}
@@ -608,7 +636,13 @@ func WaitForAgentProcesses(workDir string) bool {
 		logger.Info("")
 		logger.Info("Stop listed processes before continuing with the uninstall.")
 
-		answer := PromptText("Press Enter to check again, or type 's' to skip and keep the service account", "")
+		answer, err := PromptText("Press Enter to check again, or type 's' to skip and keep the service account", "")
+		if err != nil {
+			// Input that cannot be read is treated as a skip: the processes are
+			// still running, so the service account they use has to stay.
+			logger.Error("Could not read the response: %v", err)
+			return false
+		}
 		if strings.EqualFold(answer, "s") {
 			logger.Debug("User skipped waiting for Device Agent processes")
 			return false

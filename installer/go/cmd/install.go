@@ -17,18 +17,19 @@ import (
 //
 // The function performs the following steps:
 // 1. Checks if the process has sufficient permissions
-// 2. Asks for the installation directory when neither customWorkDir nor otc is set
-// 3. Runs the remaining pre-install validation
-// 4. Creates a working directory for the installation
-// 5. Ensures Node.js is installed at the required version
-// 6. Installs the Device Agent npm package
-// 7. Handles different installation modes based on OTC availability:
+// 2. Asks for the TCP port when neither the --port flag nor an OTC is given
+// 3. Asks for the installation directory when neither customWorkDir nor otc is set
+// 4. Runs the remaining pre-install validation
+// 5. Creates a working directory for the installation
+// 6. Ensures Node.js is installed at the required version
+// 7. Installs the Device Agent npm package
+// 8. Handles different installation modes based on OTC availability:
 //   - Traditional: With OTC, configures and starts service
 //   - Manual config: Without OTC, prompts for config and saves device.yml
 //   - Install-only: Without OTC and no config, installs but doesn't start service
 //
-// 8. Sets up the Device Agent to run as a system service
-// 9. Saves the installation configuration
+// 9. Sets up the Device Agent to run as a system service
+// 10. Saves the installation configuration
 //
 // Parameters:
 //   - nodeVersion: The version of Node.js to install or use
@@ -38,23 +39,23 @@ import (
 //   - customWorkDir: Optional custom working directory path. If empty and no OTC is
 //     given, the user is asked for it; otherwise the default path is used.
 //   - update: Whether this is an update operation
-//   - port: The TCP port number the device agent will use
+//   - requestedPort: The TCP port the device agent should use, or nil when it was
+//     not given on the command line. If nil and no OTC is given, the user is
+//     asked for it; otherwise utils.DefaultPort is used.
+//   - caCertPath: Optional path to a CA certificate bundle the agent should trust
 //
 // Returns:
 //   - error: An error object if any step of the installation fails, nil otherwise
 //
 // The function logs detailed information about each step of the process.
-func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update bool, port int, caCertPath string) error {
+func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update bool, requestedPort *int, caCertPath string) error {
 	logger.LogFunctionEntry("Install", map[string]interface{}{
 		"nodeVersion":   nodeVersion,
 		"agentVersion":  agentVersion,
 		"url":           url,
 		"otc":           otc,
 		"customWorkDir": customWorkDir,
-		"port":          port,
 	})
-
-	serviceName := fmt.Sprintf("flowfuse-device-agent-%d", port)
 
 	logger.Debug("Running permission check...")
 	if err := utils.CheckPermissions(); err != nil {
@@ -62,23 +63,55 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 		return fmt.Errorf("permission check failed: %w", err)
 	}
 
+	// Settle the port before anything else is asked or created: the service name,
+	// the directory suggested for the installation and the pre-install checks all
+	// depend on it.
+	port := utils.DefaultPort
+	if requestedPort != nil {
+		port = *requestedPort
+	}
+
+	var err error
+	if requestedPort == nil && otc == "" {
+		port, err = utils.PromptPort(port)
+	} else {
+		err = utils.CheckUnusedPort(port)
+	}
+	if err != nil {
+		logger.Error("Failed to determine the port: %v", err)
+		logger.LogFunctionExit("Install", nil, err)
+		return fmt.Errorf("failed to determine the port: %w", err)
+	}
+
+	logger.Info("The FlowFuse Device Agent will use port %d.", port)
+
+	serviceName := fmt.Sprintf("flowfuse-device-agent-%d", port)
+
 	// Ask where to install when the directory was not given on the command line.
 	// With an OTC the installation is scripted, so it stays non-interactive and
 	// uses the default directory.
 	if customWorkDir == "" && otc == "" {
-		promptedDir, err := utils.PromptInstallDirectory()
+		promptedDir, err := utils.PromptInstallDirectory(port)
 		if err != nil {
 			logger.Error("Failed to determine the installation directory: %v", err)
 			logger.LogFunctionExit("Install", nil, err)
 			return fmt.Errorf("failed to determine the installation directory: %w", err)
 		}
 		customWorkDir = promptedDir
-		logger.Debug("Using installation directory: %s", customWorkDir)
 	}
+
+	customWorkDir, err = utils.GetWorkingDirectory(customWorkDir)
+	if err != nil {
+		logger.Error("Failed to determine the installation directory: %v", err)
+		logger.LogFunctionExit("Install", nil, err)
+		return fmt.Errorf("failed to determine the installation directory: %w", err)
+	}
+
+	logger.Info("The FlowFuse Device Agent will be installed in %s.", customWorkDir)
 
 	// Run pre-install validation
 	logger.Debug("Running pre-check...")
-	if err := validate.PreInstall(customWorkDir, port); err != nil {
+	if err := validate.PreInstall(customWorkDir); err != nil {
 		logger.LogFunctionExit("Install", nil, err)
 		return fmt.Errorf("pre-check failed: %w", err)
 	}
