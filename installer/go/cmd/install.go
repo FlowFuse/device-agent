@@ -98,8 +98,16 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 			return fmt.Errorf("failed to determine the installation directory: %w", err)
 		}
 		customWorkDir = promptedDir
-		logger.Debug("Using installation directory: %s", customWorkDir)
 	}
+
+	customWorkDir, err = utils.GetWorkingDirectory(customWorkDir)
+	if err != nil {
+		logger.Error("Failed to determine the installation directory: %v", err)
+		logger.LogFunctionExit("Install", nil, err)
+		return fmt.Errorf("failed to determine the installation directory: %w", err)
+	}
+
+	logger.Info("The FlowFuse Device Agent will be installed in %s.", customWorkDir)
 
 	// Run pre-install validation
 	logger.Debug("Running pre-check...")
