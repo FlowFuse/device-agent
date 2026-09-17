@@ -69,6 +69,11 @@ const routes = [
         method: 'GET',
         path: '/assets/*',
         handler: (req, res) => {
+            if (req.url.includes('../') || req.url.includes('..\\')) {
+                res.writeHead(404)
+                res.end()
+                return
+            }
             const assetPath = path.join(__dirname, req.url)
             if (!fs.existsSync(assetPath)) {
                 res.writeHead(404)
