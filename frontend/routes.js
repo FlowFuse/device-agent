@@ -69,8 +69,9 @@ const routes = [
         method: 'GET',
         path: '/assets/*',
         handler: (req, res) => {
+            const allowedPath = path.join(__dirname, 'assets')
             const assetPath = path.join(__dirname, req.url)
-            if (!fs.existsSync(assetPath)) {
+            if (!assetPath.startsWith(allowedPath) || !fs.existsSync(assetPath)) {
                 res.writeHead(404)
                 res.end()
                 return
