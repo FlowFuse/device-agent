@@ -557,7 +557,7 @@ describe('MQTT Comms', function () {
         /** @type {MQTT.MqttClient} MQTT Client */ let mqttProxied
 
         before(async function () {
-            aedesProxied = new Aedes()
+            aedesProxied = await Aedes.createBroker()
             httpServerProxied = createProxy(createServer(aedesProxied, { ws: true }))
             httpServerProxied.localAddress = '127.0.0.99' // REF: https://gist.github.com/ttodua/7a66e5ca28e55deebc58b0dd8e0c39a2
             httpServerProxied.listen(proxyPort, proxyHost, function () {
