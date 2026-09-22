@@ -4,7 +4,7 @@ const sinon = require('sinon')
 const path = require('path')
 const fs = require('fs/promises')
 const os = require('os')
-const Aedes = require('aedes')
+const { Aedes } = require('aedes')
 const { createProxy } = require('proxy')
 const HttpProxyAgent = require('http-proxy-agent').HttpProxyAgent
 const HttpsProxyAgent = require('https-proxy-agent').HttpsProxyAgent
@@ -161,7 +161,7 @@ describe('MQTT Comms', function () {
     const sockets = {} // Maintain a hash of all connected sockets (for closing them later)
 
     before(async function () {
-        aedes = new Aedes()
+        aedes = await Aedes.createBroker()
         httpServer = createServer(aedes, { ws: true })
         httpServer.listen(port, function () {
             // console.log('websocket server listening on port ', port)
@@ -557,7 +557,7 @@ describe('MQTT Comms', function () {
         /** @type {MQTT.MqttClient} MQTT Client */ let mqttProxied
 
         before(async function () {
-            aedesProxied = new Aedes()
+            aedesProxied = await Aedes.createBroker()
             httpServerProxied = createProxy(createServer(aedesProxied, { ws: true }))
             httpServerProxied.localAddress = '127.0.0.99' // REF: https://gist.github.com/ttodua/7a66e5ca28e55deebc58b0dd8e0c39a2
             httpServerProxied.listen(proxyPort, proxyHost, function () {
