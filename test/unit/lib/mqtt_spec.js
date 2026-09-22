@@ -161,7 +161,7 @@ describe('MQTT Comms', function () {
     const sockets = {} // Maintain a hash of all connected sockets (for closing them later)
 
     before(async function () {
-        aedes = await Aedes.createBroker(opts)
+        aedes = await Aedes.createBroker()
         httpServer = createServer(aedes, { ws: true })
         httpServer.listen(port, function () {
             // console.log('websocket server listening on port ', port)
