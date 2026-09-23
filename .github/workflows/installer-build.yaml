@@ -140,7 +140,7 @@ jobs:
         fi
         
         # Build with optimized flags
-        go build -ldflags "-X main.version=$VERSION -s -w" -o $BINARY_NAME main.go
+        go build -ldflags "-X main.version=$VERSION -s -w" -o $BINARY_NAME .
         
         # Verify the binary was created
         if [ ! -f "$BINARY_NAME" ]; then
