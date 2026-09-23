@@ -45,11 +45,41 @@ powershell -c Unblock-File -Path .\flowfuse-device-agent-installer.exe
 | `--port` | `-p` | `1880` | TCP port for the device agent (1025–65535). Service name is suffixed with the port, e.g., `flowfuse-device-agent-1880`. |
 | `--uninstall` | | `false` | Uninstall the device agent |
 | `--ca-cert` | | *optional* | Path to a CA certificate bundle (PEM) the Device Agent should trust. Applies to installation phase only. |
-| `--update-nodejs` | | `false` | Update bundled Node.js to specified version |
+| `--update-nodejs` | | `false` | Update the bundled Node.js to the specified version. Not available when the installation reuses a system-wide Node.js |
 | `--update-agent` | | `false` | Update the Device Agent package to specified version |
 | `--debug` | | `false` | Enable debug logging |
 | `--version` | `-v` | | Display the installer version |
 | `--help` | `-h` | | Display help information |
+
+### Node.js runtime
+
+By default the installer downloads its own Node.js into the installation directory, so the Device
+Agent never depends on what else is on the machine.
+
+When you run the installer **interactively** (without `--otc`), it first looks for a Node.js that is
+already installed system-wide. If it finds one that meets the required version, it offers to reuse
+it.
+
+Answering `N`, or having no suitable runtime version, installs a bundled Node.js runtime.
+
+Node binary deployed in the following locations are considered as a system-wide installation:
+
+| OS | Locations |
+|----|-----------|
+| Linux | `/usr/bin`, `/usr/local/bin` |
+| macOS | `/usr/local/bin`, `/opt/homebrew/bin` |
+| Windows | `%ProgramFiles%\nodejs`, `%ProgramFiles(x86)%\nodejs` |
+
+The installer deliberately ignores `PATH`. Runtimes managed by tools such as nvm, fnm or asdf
+live under a user's home directory and are not available to the unprivileged account the Device Agent
+service runs as. A candidate is also required to have `npm` beside it, to be executable by the service account, 
+and to be at least the version given by `--nodejs-version`.
+
+Installations started with `--otc` are scripted and stay non-interactive: they always install their
+own Node.js.
+
+The Device Agent package itself is always installed inside the installation directory,
+so several installations on different ports keep independent Device Agent versions.
 
 ### Management Commands
 
@@ -140,6 +170,10 @@ To update Node.js, you can specify the `--update-nodejs` flag with the desired v
 ```
 
 Specifying `--update-nodejs` flag without a version will pick the default version defined in the installer.
+
+This applies only to installations that use a bundled Node.js. If the installation reuses a
+system-wide runtime (see [Node.js runtime](#nodejs-runtime)), the command is refused and nothing is
+stopped or changed.
 
 #### Device Agent
 To update the Device Agent package, use the `--update-agent` flag, optionally specifying the version:
