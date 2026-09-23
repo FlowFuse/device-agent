@@ -495,6 +495,11 @@ func IsNodeUpdateRequired(nodeVersion, workDir string) (bool, error) {
 // Returns:
 //   - error: An error object if the update fails, nil otherwise
 func UpdateNodeJs(nodeVersion, workDir string) error {
+	if systemNodeDir != "" {
+		return fmt.Errorf("this installation uses the system-wide Node.js in %s, which the installer does not manage; "+
+			"update it with your operating system's package manager, or reinstall the Device Agent to use a bundled Node.js", systemNodeDir)
+	}
+
 	setNodeDirectories(workDir)
 
 	// Check if Node.js is installed in the expected location
