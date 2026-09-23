@@ -197,6 +197,71 @@ func getInstalledNodeVersion(baseDir string) (string, error) {
 	return savedNodejsVersion, nil
 }
 
+// prepareNpmPrefix creates the <workDir>/node directory and grants access to it for the service account.
+// Directory is used afterwards as the `npm --prefix` parameter  so it is needed whether or not a Node.js runtime is downloaded into it.
+//
+// Returns:
+//   - error: An error if the directory cannot be created or handed to the service account
+func prepareNpmPrefix() error {
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		logger.Debug("Creating directory %s (requires sudo)...", nodeBaseDir)
+		mkdirCmd := exec.Command("sudo", "mkdir", "-p", nodeBaseDir)
+		if output, err := mkdirCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to create Node.js installation directory: %w\nOutput: %s", err, output)
+		}
+
+		chmodCmd := exec.Command("sudo", "chmod", "755", nodeBaseDir)
+		if output, err := chmodCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to set directory permissions: %w\nOutput: %s", err, output)
+		}
+
+		chownCmd := exec.Command("sudo", "chown", utils.ServiceUsername, nodeBaseDir)
+		if output, err := chownCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
+		}
+	default:
+		if err := os.MkdirAll(nodeBaseDir, 0755); err != nil {
+			return fmt.Errorf("failed to create Node.js installation directory: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// removeBundledNodeBinaries deletes a previously downloaded Node.js from the npm
+// prefix when a system-wide runtime is used instead.
+//
+// Returns:
+//   - error: An error if an existing binary cannot be removed
+func removeBundledNodeBinaries() error {
+	names := []string{"node", "npm", "npx"}
+	if runtime.GOOS == "windows" {
+		names = []string{"node.exe", "npm.cmd", "npx.cmd"}
+	}
+
+	for _, name := range names {
+		path := filepath.Join(GetNodeBinDir(), name)
+		if _, err := os.Stat(path); err != nil {
+			continue
+		}
+
+		logger.Debug("Removing bundled %s left over at %s", name, path)
+		switch runtime.GOOS {
+		case "linux", "darwin":
+			if output, err := exec.Command("sudo", "rm", "-f", path).CombinedOutput(); err != nil {
+				return fmt.Errorf("failed to remove bundled %s: %w\nOutput: %s", name, err, output)
+			}
+		default:
+			if err := os.Remove(path); err != nil {
+				return fmt.Errorf("failed to remove bundled %s: %w", name, err)
+			}
+		}
+	}
+
+	return nil
+}
+
 // installNodeJs installs the specified version of Node.js.
 // It creates the necessary installation directory with appropriate permissions,
 // downloads the Node.js binary from the official source, and extracts it.
