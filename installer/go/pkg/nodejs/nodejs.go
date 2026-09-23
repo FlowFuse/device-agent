@@ -107,19 +107,28 @@ func setNodeDirectories(basedir string) {
 	logger.LogFunctionEntry("setNodeDirectories", map[string]interface{}{
 		"basedir": basedir,
 	})
-	
+
+	// The npm prefix always stays inside the working directory, so the agent shim
+	// keeps its place in both modes. Only the runtime binaries move when a
+	// system-wide Node.js is reused.
 	nodeBaseDir = filepath.Join(basedir, NodeDir)
+
+	binDir := systemNodeDir
+	if binDir == "" {
+		binDir = GetNodeBinDir()
+	}
 	if runtime.GOOS == "windows" {
-		nodeBinPath = filepath.Join(nodeBaseDir, "node.exe")
-		npmBinPath = filepath.Join(nodeBaseDir, "npm.cmd")
+		nodeBinPath = filepath.Join(binDir, "node.exe")
+		npmBinPath = filepath.Join(binDir, "npm.cmd")
 	} else {
-		nodeBinPath = filepath.Join(nodeBaseDir, "bin", "node")
-		npmBinPath = filepath.Join(nodeBaseDir, "bin", "npm")
+		nodeBinPath = filepath.Join(binDir, "node")
+		npmBinPath = filepath.Join(binDir, "npm")
 	}
 	logger.LogFunctionExit("setNodeDirectories", map[string]interface{}{
-		"node.js base dir": nodeBaseDir,
-		"Node.js path": nodeBinPath,
-		"NPM path": npmBinPath,
+		"node.js base dir":   nodeBaseDir,
+		"Node.js path":       nodeBinPath,
+		"NPM path":           npmBinPath,
+		"system Node.js dir": systemNodeDir,
 	}, nil)
 }
 
