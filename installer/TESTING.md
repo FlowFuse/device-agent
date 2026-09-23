@@ -237,6 +237,69 @@ Expect
 - Steps 3 and 4 show no port question, only `The FlowFuse Device Agent will use port <port>.`
 - Step 4 installs into the plain default directory, with no port suffix
 
+## R. System-wide Node.js reuse
+
+Prereq: a Node.js at an allowlisted location, at or above `<nodeVer>`. Install it with the
+platform's own tooling, not a version manager:
+- Linux: `apt install nodejs npm` / `apk add nodejs npm` (lands in `/usr/bin`)
+- macOS: `brew install node` (`/opt/homebrew/bin` on Apple Silicon, `/usr/local/bin` on Intel) or the
+  nodejs.org `.pkg`
+- Windows: the nodejs.org MSI (`%ProgramFiles%\nodejs`)
+
+Steps
+1) Run with no flags; answer `y` at `Use this Node.js for the Device Agent instead of installing a separate copy?`
+2) Repeat a fresh install into `<dir2>` answering `n`
+3) Run: `--otc <OTC> --dir <dir3>`
+4) Run: `--update-agent --dir <dir>`
+5) Run: `--update-nodejs --dir <dir>`
+6) Run: `--uninstall --dir <dir>`
+
+Expect
+- Step 1: `Found Node.js <ver> installed in <sysdir>.` names the allowlisted directory and the real
+  version reported by that binary
+- Step 1: nothing is downloaded from nodejs.org; the install is visibly faster
+- Step 1: `<dir>/node` exists, is owned by the service account, and contains the agent shim
+  (`bin/flowfuse-device-agent`) and `lib/node_modules` but **no** `bin/node` and no `bin/npm`
+- Step 1: `installer.conf` has `"systemNodeDir": "<sysdir>"` and a `nodeVersion` equal to the
+  **detected** version, not to `<nodeVer>`
+- Step 1: the service starts and the device comes online; then deploy a snapshot that pulls in an
+  extra Node-RED node — this is the check that the agent's own `npm install` resolved npm from the
+  service PATH
+- Step 2: the question is asked and declined, Node.js is downloaded, `installer.conf` has no
+  `systemNodeDir` key, and `<dir2>/node/bin/node` exists. The generated service file should be
+  identical to one produced before this feature existed
+- Step 3: no Node.js question at all; a bundled Node.js is downloaded
+- Step 4: the agent updates normally; the service is stopped and started once
+- Step 5: fails with `this installation uses the system-wide Node.js in <sysdir> …`. Check **before
+  anything else** that the service is still running and `<dir>` is untouched
+- Step 6: `<dir>` is removed and the system-wide Node.js still works (`node --version`,
+  `npm --version`)
+
+## R2. Rejected and switched Node.js runtimes
+
+Steps
+1) With Node.js available **only** through nvm/fnm/asdf (nothing at an allowlisted path), run with no flags
+2) With a system Node.js older than `<nodeVer>`, run with no flags
+3) Repeat step 2 with `--debug`
+4) On Linux: `sudo chmod 700 /usr/bin/node`, then run with no flags (restore afterwards)
+5) On a system with no `npm` beside `node` (e.g. `apt install nodejs` without `npm`), run with no flags
+6) Take the bundled installation from scenario R step 2 and re-run the installer on `<dir2>`,
+   choosing "Keep existing configuration" and then answering `y` to the Node.js question
+7) Take the system installation from scenario R step 1, re-run the installer on `<dir>` and answer `n`
+
+Expect
+- Steps 1, 2, 4 and 5: no question is asked, a bundled Node.js is installed, and nothing is printed
+  to stdout about the rejected runtime
+- Step 1 is the core regression test: `which node` resolving to a version manager must not make the
+  installer offer it
+- Step 3: the debug log names the rejected path and both versions
+- Step 4: the debug log shows the `sudo -u <serviceUser>` probe failing, and the install still succeeds
+- Step 6: `<dir2>/node/bin/node` and `bin/npm` are **gone** afterwards, and the running agent uses
+  `<sysdir>`. A leftover bundled binary would silently shadow the system one, since the prefix
+  directory comes first on the service PATH
+- Step 7: Node.js is downloaded again, `<dir>/node/bin/node` exists and the `systemNodeDir` key is
+  gone from `installer.conf` — switching back must not dead-end on the recorded version
+
 ## OS-specific verification
 
 Linux — systemd
@@ -275,6 +338,31 @@ Windows — NSSM
 ```powershell
 sc.exe query flowfuse-device-agent-<port>
 nssm get flowfuse-device-agent-<port> AppParameters
+```
+
+### With a system-wide Node.js
+
+Every generated service definition must put the Node.js directory on PATH ahead of the installation's
+own `node/bin`. The agent shim's shebang is `#!/usr/bin/env node` and the agent shells out to `npm`
+at runtime, so both directories have to resolve.
+
+Linux — systemd / SysVinit / OpenRC
+```bash
+sudo systemctl show flowfuse-device-agent-<port> -p Environment   # PATH starts with <sysdir>
+grep PATH= /etc/init.d/flowfuse-device-agent-<port>
+```
+
+macOS — launchd (the case that fails hardest if this is wrong)
+- The **first** `ProgramArguments` entry must be the system node (`/opt/homebrew/bin/node`), not
+  `<dir>/node/bin/node`, which does not exist. A wrong value here loads without error and the job
+  never runs (`launchctl list` shows status 78)
+```bash
+sudo launchctl print system/com.flowfuse.device-agent-<port> | grep -A5 'arguments\|path =>'
+```
+
+Windows — NSSM
+```powershell
+nssm get flowfuse-device-agent-<port> AppEnvironmentExtra   # PATH contains C:\Program Files\nodejs
 ```
 
 ---
