@@ -248,10 +248,12 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 
 	// Save the configuration
 	if agentVersion == "latest" {
-		var err error
-		agentVersion, err = nodejs.GetLatestDeviceAgentVersion(workDir)
+		resolvedVersion, err := nodejs.GetLatestDeviceAgentVersion(workDir)
 		if err != nil {
-			return fmt.Errorf("failed to get latest device agent version: %v", err)
+			logger.Info("Warning: could not determine the installed Device Agent version: %v", err)
+			logger.Info("Recording it as \"latest\"; the next update will resolve it.")
+		} else {
+			agentVersion = resolvedVersion
 		}
 	}
 	// Only record a service name when a service was actually created
