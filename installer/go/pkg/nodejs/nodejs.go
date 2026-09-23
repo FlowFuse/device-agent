@@ -21,6 +21,7 @@ const NodeDir = "node"
 var nodeBaseDir string
 var nodeBinPath string
 var npmBinPath string
+var systemNodeDir string
 
 // EnsureNodeJs validates and ensures that the specified Node.js version is installed.
 // It checks if the version string is in a valid semver format and whether the specified
@@ -109,17 +110,60 @@ func setNodeDirectories(basedir string) {
 	}, nil)
 }
 
+// Init points the package at the Node.js installation used by workDir. It must
+// be called before any other function here: the install flow calls it once the
+// user has chosen a runtime, the update and uninstall flows once installer.conf
+// has been read. An empty systemNodeDirectory selects the bundled copy under the
+// working directory.
+//
+// Parameters:
+//   - workDir: The installation directory
+//   - systemNodeDirectory: The directory holding the system-wide node and npm, or "" for the bundled copy
+func Init(workDir, systemNodeDirectory string) {
+	systemNodeDir = systemNodeDirectory
+	setNodeDirectories(workDir)
+}
+
+// GetNodePathPrefix returns the directories that must precede the inherited PATH
+// for node, npm and the Device Agent shim to resolve: the system-wide Node.js
+// directory when one is in use, followed by the npm prefix bin directory that
+// holds the agent shim. With the bundled Node.js both are the same directory and
+// only one entry is returned, so the value is unchanged from before this existed.
+//
+// Returns:
+//   - string: The PATH prefix, separated by the platform's list separator
+func GetNodePathPrefix() string {
+	shimDir := GetNodeBinDir()
+	if systemNodeDir == "" || systemNodeDir == shimDir {
+		return shimDir
+	}
+	return systemNodeDir + string(os.PathListSeparator) + shimDir
+}
+
+// VerifyRuntime checks whether a reused system-wide Node.js is still present in the system.
+// The Init function must be called first.
+//
+// Returns:
+//   - error: An error naming the missing runtime, nil when it is present or bundled
+func VerifyRuntime() error {
+	if systemNodeDir == "" {
+		return nil
+	}
+
+	if _, err := os.Stat(nodeBinPath); err != nil {
+		return fmt.Errorf("the system-wide Node.js this installation uses is no longer present at %s; "+
+			"reinstall it with your operating system's package manager, or run the installer again to switch to a bundled Node.js",
+			nodeBinPath)
+	}
+
+	return nil
+}
+
 // GetNodePath returns the path to the Node.js binary.
 // The path is stored in the global variable nodeBinPath, which is set during initialization.
 // This function is used to access the Node.js binary location across the application.
 func GetNodePath() string {
 	return nodeBinPath
-}
-
-// GetNpmPath returns the path to the npm binary.
-// The path is determined during initialization and stored in npmBinPath.
-func GetNpmPath() string {
-	return npmBinPath
 }
 
 // GetNodeBinDir returns the path to the Node.js binary directory.
