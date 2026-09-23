@@ -21,7 +21,7 @@ import (
 // 3. Asks for the installation directory when neither customWorkDir nor otc is set
 // 4. Runs the remaining pre-install validation
 // 5. Creates a working directory for the installation
-// 6. Ensures Node.js is installed at the required version
+// 6. Reuses a suitable system-wide Node.js, or installs one at the required version
 // 7. Installs the Device Agent npm package
 // 8. Handles different installation modes based on OTC availability:
 //   - Traditional: With OTC, configures and starts service
@@ -56,6 +56,12 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 		"otc":           otc,
 		"customWorkDir": customWorkDir,
 	})
+
+	if err := nodejs.ValidateVersion(nodeVersion); err != nil {
+		logger.Error("%v", err)
+		logger.LogFunctionExit("Install", nil, err)
+		return err
+	}
 
 	logger.Debug("Running permission check...")
 	if err := utils.CheckPermissions(); err != nil {
@@ -150,6 +156,29 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 		logger.Debug("Using custom CA certificate bundle: %s", caCertDest)
 	}
 
+	// Reuse a system-wide Node.js when one is installed and new enough, instead of
+	// downloading a private copy. Scripted installs stay non-interactive and always
+	// get a bundled runtime.
+	//
+	// This has to run after the working directory exists: the detection probe
+	// executes the candidate as the service account, and CreateWorkingDirectory is
+	// what creates that account.
+	systemNodeDir := ""
+	installedNodeVersion := nodeVersion
+	if otc == "" {
+		if detectedDir, detectedVersion := nodejs.DetectSystemNode(nodeVersion); detectedDir != "" {
+			logger.Info("")
+			logger.Info("Node.js %s system-wide runtime detected in %s.", detectedVersion, detectedDir)
+			if utils.PromptYesNo("Do you want to use this Node.js runtime for the Device Agent instead of installing a bundled version?", false) {
+				systemNodeDir = detectedDir
+				installedNodeVersion = detectedVersion
+			} else {
+				logger.Info("Installer will install a bundled Node.js %s runtime for the Device Agent.", nodeVersion)
+			}
+		}
+	}
+	nodejs.Init(workDir, systemNodeDir)
+
 	// Check/install Node.js
 	logger.Info("Checking Node.js installation...")
 	if err := nodejs.EnsureNodeJs(nodeVersion, workDir, false); err != nil {
@@ -233,11 +262,12 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 	cfg := &config.InstallerConfig{
 		ServiceUsername:  utils.ServiceUsername,
 		ServiceName:      savedServiceName,
-		NodeVersion:      nodeVersion,
+		NodeVersion:      installedNodeVersion,
 		AgentVersion:     agentVersion,
 		Port:             port,
 		NodeExtraCACerts: caCertDest,
 		ServiceInstalled: &installService,
+		SystemNodeDir:    systemNodeDir,
 	}
 	logger.Debug("Saving configuration: %+v", cfg)
 	if err := config.SaveConfig(cfg, workDir); err != nil {
@@ -334,6 +364,13 @@ func Uninstall(customWorkDir string) error {
 			serviceName = s
 		}
 	}
+
+	// Point the Node.js package at the runtime this installation uses
+	uninstallSystemNodeDir := ""
+	if cfg != nil {
+		uninstallSystemNodeDir = cfg.SystemNodeDir
+	}
+	nodejs.Init(workDir, uninstallSystemNodeDir)
 
 	// Installations that run as a service are stopped by removing the service.
 	// Without service, the agent could be started by hand and only the user who started
@@ -447,11 +484,12 @@ func Uninstall(customWorkDir string) error {
 // 1. Checks if the process has sufficient permissions
 // 2. Locates the installation, asking the user when customWorkDir is empty
 // 3. Verifies the directory actually holds a Device Agent installation
-// 4. Checks if the device agent is currently installed
-// 5. Stops the device agent service temporarily (if updating anything)
-// 6. Updates Node.js if needed and requested (checks installed version vs required version)
-// 7. Updates the Device Agent npm package if requested
-// 8. Restarts the device agent service
+// 4. Refuses a Node.js update when the installation reuses a system-wide runtime
+// 5. Checks if the device agent is currently installed
+// 6. Stops the device agent service temporarily (if updating anything)
+// 7. Updates Node.js if needed and requested (checks installed version vs required version)
+// 8. Updates the Device Agent npm package if requested
+// 9. Restarts the device agent service
 //
 // Parameters:
 //   - options: UpdateOptions specifying what to update and to which versions
@@ -475,6 +513,15 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 		logger.Error("Update validation failed: %v", err)
 		logger.LogFunctionExit("Update", nil, err)
 		return err
+	}
+
+	// Validate the Node.js version if an update is requested
+	if updateNode {
+		if err := nodejs.ValidateVersion(nodeVersion); err != nil {
+			logger.Error("%v", err)
+			logger.LogFunctionExit("Update", nil, err)
+			return err
+		}
 	}
 
 	// Run pre-update validation
@@ -534,6 +581,29 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 	// stop or start; the packages are still updated.
 	hasService := cfg == nil || cfg.ServiceInstalled == nil || *cfg.ServiceInstalled
 	logger.Debug("Installation has a system service: %v", hasService)
+
+	// Reject Node.js updates for installations using the system-wide Node.js
+	if updateNode && cfg != nil && cfg.SystemNodeDir != "" {
+		err := fmt.Errorf("this installation uses the system-wide Node.js in %s, which the installer does not manage; "+
+			"update it with your operating system's package manager, or reinstall the Device Agent to use a bundled Node.js",
+			cfg.SystemNodeDir)
+		logger.Error("Node.js update refused: %v", err)
+		logger.LogFunctionExit("Update", nil, err)
+		return err
+	}
+
+	updateSystemNodeDir := ""
+	if cfg != nil {
+		updateSystemNodeDir = cfg.SystemNodeDir
+	}
+	nodejs.Init(workDir, updateSystemNodeDir)
+
+	// Ensure that the Node.js runtime is available
+	if err := nodejs.VerifyRuntime(); err != nil {
+		logger.Error("Node.js runtime check failed: %v", err)
+		logger.LogFunctionExit("Update", nil, err)
+		return err
+	}
 
 	// Check if the device agent is installed
 	if hasService {
