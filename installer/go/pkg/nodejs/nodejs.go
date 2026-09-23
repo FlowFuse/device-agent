@@ -301,27 +301,8 @@ func installNodeJs(version string, update bool) error {
 		logger.Info("Installing Node.js %s...", version)
 	}
 
-	// Create the installation directory
-	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-		logger.Debug("Creating directory %s (requires sudo)...", nodeBaseDir)
-		mkdirCmd := exec.Command("sudo", "mkdir", "-p", nodeBaseDir)
-		if output, err := mkdirCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to create Node.js installation directory: %w\nOutput: %s", err, output)
-		}
-
-		chmodCmd := exec.Command("sudo", "chmod", "755", nodeBaseDir)
-		if output, err := chmodCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to set directory permissions: %w\nOutput: %s", err, output)
-		}
-
-		chownCmd := exec.Command("sudo", "chown", utils.ServiceUsername, nodeBaseDir)
-		if output, err := chownCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
-		}
-	} else {
-		if err := os.MkdirAll(nodeBaseDir, 0755); err != nil {
-			return fmt.Errorf("failed to create Node.js installation directory: %w", err)
-		}
+	if err := prepareNpmPrefix(); err != nil {
+		return err
 	}
 
 	downloadURL, err := getNodeDownloadURL(version)
