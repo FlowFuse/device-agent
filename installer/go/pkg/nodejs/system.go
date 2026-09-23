@@ -138,9 +138,12 @@ func normaliseVersion(version string) string {
 // Returns:
 //   - error: An error naming the offending value, nil when it is usable
 func ValidateVersion(version string) error {
-	if !semver.IsValid(normaliseVersion(version)) {
-		return fmt.Errorf("invalid Node.js version %q, expected a semantic version such as 22.23.0", version)
+	normalised := normaliseVersion(version)
+
+	if !semver.IsValid(normalised) || semver.Canonical(normalised) != normalised {
+		return fmt.Errorf("invalid Node.js version %q, expected a full version such as 22.23.0", version)
 	}
+
 	return nil
 }
 
