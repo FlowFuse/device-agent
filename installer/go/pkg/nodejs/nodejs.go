@@ -72,6 +72,13 @@ func isNodeInstalled(versionStr, baseDir string) bool {
 		"versionStr": versionStr,
 	})
 
+	// Validate that the node binary exists before attempting to get its version.
+	if _, err := os.Stat(nodeBinPath); err != nil {
+		logger.Debug("No Node.js binary at %s: %v", nodeBinPath, err)
+		logger.LogFunctionExit("isNodeInstalled", "not_installed", nil)
+		return false
+	}
+
 	if output, err := getInstalledNodeVersion(baseDir); err != nil {
 		logger.Debug("Failed to get installed Node.js version: %v", err)
 	} else {
