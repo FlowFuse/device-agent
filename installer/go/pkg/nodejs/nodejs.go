@@ -34,14 +34,20 @@ var systemNodeDir string
 // Returns:
 //   - error: nil if Node.js is already installed or successfully installed, otherwise an error
 func EnsureNodeJs(versionStr, baseDir string, update bool) error {
-	// Validate that the version string is in semver format (x.y.z)
-	parts := strings.Split(versionStr, ".")
-	if len(parts) < 1 {
-		logger.Error("Invalid Node.js version format: %s", versionStr)
-		return fmt.Errorf("invalid Node.js version format: %s, expected semver format like 20.19.0", versionStr)
+	if err := ValidateVersion(versionStr); err != nil {
+		logger.Error("%v", err)
+		return err
 	}
 
 	setNodeDirectories(baseDir)
+
+	if systemNodeDir != "" {
+		logger.Info("Using the system Node.js in %s.", systemNodeDir)
+		if err := prepareNpmPrefix(); err != nil {
+			return err
+		}
+		return removeBundledNodeBinaries()
+	}
 
 	if isNodeInstalled(versionStr, baseDir) {
 		logger.Info("Node.js version %s found.", versionStr)
