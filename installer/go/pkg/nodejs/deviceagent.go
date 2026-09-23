@@ -251,8 +251,7 @@ func UninstallDeviceAgent(baseDir string) error {
 		env := os.Environ()
 		uninstallCmd.Env = append(env, npmPrefix, newPath)
 	case "windows":
-		deviceAgentPath := filepath.Join(baseDir, "node", "node_modules", "@flowfuse", "device-agent")
-		uninstallCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", deviceAgentPath)
+		uninstallCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", globalPackageDir())
 		env := os.Environ()
 		uninstallCmd.Env = append(env, npmPrefix, newPath)
 
@@ -264,8 +263,7 @@ func UninstallDeviceAgent(baseDir string) error {
 
 	if _, err := uninstallCmd.CombinedOutput(); err != nil {
 		// try to remove the device agent directory manually
-		deviceAgentPath := filepath.Join(nodeBaseDir, "node_modules", packageName)
-		if err := os.RemoveAll(deviceAgentPath); err != nil {
+		if err := os.RemoveAll(globalPackageDir()); err != nil {
 			logger.Error("Failed to remove device agent directory: %v", err)
 			return fmt.Errorf("failed to remove device agent directory: %w", err)
 		}
