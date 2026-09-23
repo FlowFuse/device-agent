@@ -66,16 +66,13 @@ func InstallDeviceAgent(version, baseDir string, update bool) error {
 
 	// Create install command
 	var installCmd *exec.Cmd
-	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		installCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "install", "-g", "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), packageName)
-		env := os.Environ()
-		installCmd.Env = append(env, npmPrefix, newPath)
+		installCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "install", "-g", "--prefix", nodeBaseDir, "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), packageName)
+		installCmd.Env = append(os.Environ(), newPath)
 	case "windows":
-		installCmd = exec.Command("cmd", "/C", npmBinPath, "install", "-g", packageName)
-		env := os.Environ()
-		installCmd.Env = append(env, npmPrefix, newPath)
+		installCmd = exec.Command("cmd", "/C", npmBinPath, "install", "-g", "--prefix", nodeBaseDir, packageName)
+		installCmd.Env = append(os.Environ(), newPath)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -241,16 +238,13 @@ func UninstallDeviceAgent(baseDir string) error {
 
 	// Create uninstall command
 	var uninstallCmd *exec.Cmd
-	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		uninstallCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "uninstall", "-g", packageName)
-		env := os.Environ()
-		uninstallCmd.Env = append(env, npmPrefix, newPath)
+		uninstallCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "uninstall", "-g", "--prefix", nodeBaseDir, packageName)
+		uninstallCmd.Env = append(os.Environ(), newPath)
 	case "windows":
 		uninstallCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", globalPackageDir())
-		env := os.Environ()
-		uninstallCmd.Env = append(env, npmPrefix, newPath)
+		uninstallCmd.Env = append(os.Environ(), newPath)
 
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
