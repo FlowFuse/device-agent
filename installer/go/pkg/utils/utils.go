@@ -1196,29 +1196,31 @@ func checkEnvPath(currentPath, path string) bool {
 	return strings.Contains(currentPath, path)
 }
 
-// SetEnvPath modifies the system PATH environment variable to include the path
-// specified as an parameter of the function.
+// SetEnvPath prepends a directory to this process's PATH, unless it is already
+// present, and returns the result as a ready-to-use environment entry.
 //
 // Parameters:
 //   - path: The path to be added to the PATH environment variable
 //
 // Returns:
-//   - string: The updated PATH environment variable
+//   - string: The full environment entry, in the form "PATH=<list>"
 //   - error: An error if the operation fails
 func SetEnvPath(path string) (string, error) {
 	currentEnvPath := os.Getenv("PATH")
-	if !checkEnvPath(currentEnvPath, path) {
-		logger.Debug("%s is not in PATH, adding...", path)
-		newEnvPath := fmt.Sprintf("PATH=%s%c%s", path, os.PathListSeparator, currentEnvPath)
-		if err := os.Setenv("PATH", newEnvPath); err != nil {
-			logger.Debug("Failed to set PATH environment variable: %v", err)
-			return "", fmt.Errorf("failed to set PATH environment variable: %w", err)
-		}
-		return newEnvPath, nil
-	} else {
+
+	if checkEnvPath(currentEnvPath, path) {
 		logger.Debug("%s is already in PATH", path)
-		return currentEnvPath, nil
+		return fmt.Sprintf("PATH=%s", currentEnvPath), nil
 	}
+
+	logger.Debug("%s is not in PATH, adding...", path)
+	newEnvPath := fmt.Sprintf("%s%c%s", path, os.PathListSeparator, currentEnvPath)
+	if err := os.Setenv("PATH", newEnvPath); err != nil {
+		logger.Debug("Failed to set PATH environment variable: %v", err)
+		return "", fmt.Errorf("failed to set PATH environment variable: %w", err)
+	}
+
+	return fmt.Sprintf("PATH=%s", newEnvPath), nil
 }
 
 // IsAlpine checks if the current operating system is Alpine Linux.
