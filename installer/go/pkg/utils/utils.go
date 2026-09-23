@@ -1521,14 +1521,21 @@ func ShowInstallSummary(installMode, url, workDir string, serviceInstalled bool)
 // the foreground, for installations where no system service was created.
 //
 // Parameters:
-//   - nodeBinDir: the directory holding the bundled node and agent executables
+//   - nodeBinDir: the directory holding the installed agent executable
+//   - nodePath: the node binary the agent runs, which lies outside nodeBinDir when
+//     the installation reuses a system-wide Node.js
 //   - workDir: the installation directory, passed to the agent as --dir
 //   - caCertPath: the installed CA bundle, or "" when none was provided
 //   - port: the TCP port the agent should listen on
-func ShowManualStartInstructions(nodeBinDir, workDir, caCertPath string, port int) {
+func ShowManualStartInstructions(nodeBinDir, nodePath, workDir, caCertPath string, port int) {
 	logger.Info("")
 	logger.Info("To start the FlowFuse Device Agent manually, run the command in a new terminal:")
 	logger.Info("")
+
+	pathPrefix := nodeBinDir
+	if nodeDir := filepath.Dir(nodePath); nodeDir != "" && nodeDir != nodeBinDir {
+		pathPrefix = nodeDir + string(os.PathListSeparator) + nodeBinDir
+	}
 
 	switch runtime.GOOS {
 	case "windows":
@@ -1537,14 +1544,14 @@ func ShowManualStartInstructions(nodeBinDir, workDir, caCertPath string, port in
 		if caCertPath != "" {
 			logger.Info(`    set NODE_EXTRA_CA_CERTS=%s`, caCertPath)
 		}
-		logger.Info(`    set PATH=%s;%%PATH%%`, nodeBinDir)
+		logger.Info(`    set PATH=%s;%%PATH%%`, pathPrefix)
 		logger.Info(`    %s --dir "%s" --port %d`, agentCmd, workDir, port)
 		logger.Info("")
 		logger.Info("  PowerShell:")
 		if caCertPath != "" {
 			logger.Info(`    $env:NODE_EXTRA_CA_CERTS = "%s"`, caCertPath)
 		}
-		logger.Info(`    $env:Path = "%s;" + $env:Path`, nodeBinDir)
+		logger.Info(`    $env:Path = "%s;" + $env:Path`, pathPrefix)
 		logger.Info(`    & "%s" --dir "%s" --port %d`, agentCmd, workDir, port)
 	default:
 		caCertEnv := ""
@@ -1553,9 +1560,9 @@ func ShowManualStartInstructions(nodeBinDir, workDir, caCertPath string, port in
 		}
 		logger.Info("  sudo -u %s -H env \\", ServiceUsername)
 		logger.Info("    PATH=%s:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin%s \\",
-			nodeBinDir, caCertEnv)
+			pathPrefix, caCertEnv)
 		logger.Info("    %s %s \\",
-			filepath.Join(nodeBinDir, "node"),
+			nodePath,
 			filepath.Join(nodeBinDir, "flowfuse-device-agent"))
 		logger.Info("    --dir %s --port %d", workDir, port)
 	}
