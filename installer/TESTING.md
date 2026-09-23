@@ -210,8 +210,6 @@ Expect
 - No process is ever stopped by the installer itself
 - Processes that merely mention `<dir>` (an editor, `tail -f` on a log, the installer's own `--dir` argument) are not reported as a running agent
 
----
-
 ## Q. Port prompt
 Prereq: No installation present; another process listening on `<busyPort>`
 

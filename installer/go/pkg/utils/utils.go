@@ -24,6 +24,7 @@ import (
 // Global variable to store the service username
 var ServiceUsername = "flowfuse"
 
+
 // DeviceConfig represents the expected structure of the device.yml configuration file
 type DeviceConfig struct {
 	DeviceID         string `yaml:"deviceId"`
