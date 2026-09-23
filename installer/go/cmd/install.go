@@ -275,7 +275,7 @@ func Install(nodeVersion, agentVersion, url, otc, customWorkDir string, update b
 	}
 	utils.ShowInstallSummary(installMode, url, workDir, installService)
 	if !installService {
-		utils.ShowManualStartInstructions(nodejs.GetNodeBinDir(), workDir, caCertDest, port)
+		utils.ShowManualStartInstructions(nodejs.GetNodeBinDir(), nodejs.GetNodePath(), workDir, caCertDest, port)
 	}
 
 	logger.LogFunctionExit("Install", "success", nil)
@@ -755,7 +755,7 @@ func Update(agentVersion, nodeVersion, customWorkDir string, updateAgent, update
 	}
 	logger.Info("Update completed successfully!")
 	if !hasService {
-		utils.ShowManualStartInstructions(nodejs.GetNodeBinDir(), workDir, cfg.NodeExtraCACerts, cfg.Port)
+		utils.ShowManualStartInstructions(nodejs.GetNodeBinDir(), nodejs.GetNodePath(), workDir, cfg.NodeExtraCACerts, cfg.Port)
 	}
 
 	logger.LogFunctionExit("Update", "success", nil)
