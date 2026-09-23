@@ -55,6 +55,23 @@ jobs:
     - name: Download dependencies
       run: go mod download
 
+    - name: Generate Windows version resource
+      if: matrix.goos == 'windows'
+      env:
+        TAG_NAME: ${{ github.ref_name }}
+      run: |
+        VERSION="${TAG_NAME#installer-v}"
+        ARTIFACT="flowfuse-device-installer-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+        IFS=. read -r MAJOR MINOR PATCH <<< "${VERSION}"
+
+        go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0 \
+          -64 -o resource_windows_amd64.syso \
+          -ver-major "${MAJOR}" -ver-minor "${MINOR}" -ver-patch "${PATCH}" -ver-build 0 \
+          -product-ver-major "${MAJOR}" -product-ver-minor "${MINOR}" -product-ver-patch "${PATCH}" -product-ver-build 0 \
+          -file-version "${VERSION}.0" -product-version "${VERSION}" \
+          -original-name "${ARTIFACT}" \
+          versioninfo.json
+
     - name: Build binary for ${{ matrix.goos }}/${{ matrix.goarch }}
       env:
         GOOS: ${{ matrix.goos }}
@@ -68,7 +85,7 @@ jobs:
         echo "Building ${ARTIFACT}"
 
         mkdir -p artifacts
-        go build -ldflags "-X main.instVersion=${VERSION} -s -w" -o "artifacts/${ARTIFACT}" main.go
+        go build -ldflags "-X main.instVersion=${VERSION} -s -w" -o "artifacts/${ARTIFACT}" .
 
         ls -la "artifacts/${ARTIFACT}"
 
