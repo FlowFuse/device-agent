@@ -24,7 +24,6 @@ import (
 // Global variable to store the service username
 var ServiceUsername = "flowfuse"
 
-
 // DeviceConfig represents the expected structure of the device.yml configuration file
 type DeviceConfig struct {
 	DeviceID         string `yaml:"deviceId"`
@@ -555,10 +554,37 @@ func pathInDirectory(path, dir string, ignoreCase bool) bool {
 	return rest != "" && (rest[0] == '/' || rest[0] == '\\')
 }
 
-// FindAgentProcesses returns the running processes that belong to the
-// installation in workDir. A process matches when the executable it runs lives
-// inside that directory: the Device Agent and the Node-RED process it starts
-// both run the bundled Node.js from there.
+// isAgentProcess checks whether a running process belongs to the installation in workDir,
+// either because its executable lives inside that directory (a bundled runtime) 
+// or because it is a node binary from elsewhere running a script that lives inside it (a reused system-wide Node.js runtime).
+//
+// Parameters:
+//   - exe: The process executable path
+//   - args: The process command line, as separate arguments
+//   - workDir: The installation directory the process must belong to
+//   - ignoreCase: Whether to compare paths without regard to case
+//
+// Returns:
+//   - bool: true if the process belongs to the installation
+func isAgentProcess(exe string, args []string, workDir string, ignoreCase bool) bool {
+	if pathInDirectory(exe, workDir, ignoreCase) {
+		return true
+	}
+
+	if len(args) < 2 {
+		return false
+	}
+
+	base := strings.ToLower(filepath.Base(strings.Trim(strings.TrimSpace(exe), `"`)))
+	if base != "node" && base != "node.exe" {
+		return false
+	}
+
+	return pathInDirectory(args[1], workDir, ignoreCase)
+}
+
+// FindAgentProcesses walks every running process and returns those belonging to the installation in workDir, 
+// as decided by the isAgentProcess function, each with its PID and command line.
 //
 // Parameters:
 //   - workDir: The installation directory whose processes should be found
@@ -587,13 +613,13 @@ func FindAgentProcesses(workDir string) ([]AgentProcess, error) {
 
 		// Errors are expected here: processes owned by another user hide part of
 		// their details, and a process may exit while the list is walked.
+		args, _ := p.CmdlineSlice()
+
 		exe, _ := p.Exe()
-		if exe == "" {
-			if args, argsErr := p.CmdlineSlice(); argsErr == nil && len(args) > 0 {
-				exe = args[0]
-			}
+		if exe == "" && len(args) > 0 {
+			exe = args[0]
 		}
-		if !pathInDirectory(exe, workDir, ignoreCase) {
+		if !isAgentProcess(exe, args, workDir, ignoreCase) {
 			continue
 		}
 
