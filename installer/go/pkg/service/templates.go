@@ -14,7 +14,7 @@ User={{.User}}
 WorkingDirectory={{.WorkDir}}
 
 Environment="NODE_OPTIONS=--max_old_space_size=512"
-Environment="PATH={{.NodeBinDir}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PATH={{.NodePathPrefix}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 {{if .NodeExtraCACerts}}Environment="NODE_EXTRA_CA_CERTS={{.NodeExtraCACerts}}"
 {{end}}ExecStart=/usr/bin/env -S flowfuse-device-agent --dir {{.WorkDir}} --port {{.Port}}
 # Use SIGINT to stop
@@ -43,7 +43,7 @@ const SysVInitServiceTemplate = `#!/bin/sh
 # Source function library.
 . /lib/lsb/init-functions
 
-PATH={{.NodeBinDir}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH={{.NodePathPrefix}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 DAEMON="{{.NodeBinDir}}/flowfuse-device-agent"
 DAEMON_ARGS="--dir {{.WorkDir}} --port {{.Port}}"
 NAME="{{.ServiceName}}"
@@ -110,7 +110,7 @@ const launchdTemplate = `<?xml version="1.0" encoding="UTF-8"?>
     <string>{{.Label}}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>{{.NodeBinDir}}/node</string>
+        <string>{{.NodePath}}</string>
     <string>{{.NodeBinDir}}/flowfuse-device-agent</string>
         <string>--dir</string>
         <string>{{.WorkDir}}</string>
@@ -137,7 +137,7 @@ const launchdTemplate = `<?xml version="1.0" encoding="UTF-8"?>
         <key>NODE_OPTIONS</key>
         <string>--max_old_space_size=512</string>
         <key>PATH</key>
-        <string>{{.NodeBinDir}}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <string>{{.NodePathPrefix}}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
 {{if .NodeExtraCACerts}}        <key>NODE_EXTRA_CA_CERTS</key>
         <string>{{.NodeExtraCACerts}}</string>
 {{end}}    </dict>
@@ -156,7 +156,7 @@ description="FlowFuse Device Agent"
 supervisor="supervise-daemon"
 command="{{.NodeBinDir}}/flowfuse-device-agent"
 command_args="--dir {{.WorkDir}} --port {{.Port}}"
-supervise_daemon_args=" -d {{.WorkDir}} --stdout {{.LogFile}} --stderr {{.ErrorLogFile}} -e "PATH=\"{{.NodeBinDir}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"\""{{if .NodeExtraCACerts}}" -e NODE_EXTRA_CA_CERTS=\"{{.NodeExtraCACerts}}\""{{end}}
+supervise_daemon_args=" -d {{.WorkDir}} --stdout {{.LogFile}} --stderr {{.ErrorLogFile}} -e "PATH=\"{{.NodePathPrefix}}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"\""{{if .NodeExtraCACerts}}" -e NODE_EXTRA_CA_CERTS=\"{{.NodeExtraCACerts}}\""{{end}}
 command_user="{{.User}}"
 
 depend() {
