@@ -37,7 +37,6 @@ const preserveEnv = "--preserve-env=PATH,NODE_EXTRA_CA_CERTS"
 // - The installation process fails
 func InstallDeviceAgent(version, baseDir string, update bool) error {
 	setNodeDirectories(baseDir)
-	nodeBinDirPath := GetNodeBinDir()
 
 	if _, err := os.Stat(nodeBinPath); os.IsNotExist(err) {
 		return fmt.Errorf("node.js not found, please restart installator script")
@@ -59,7 +58,7 @@ func InstallDeviceAgent(version, baseDir string, update bool) error {
 		packageName += "@" + version
 	}
 
-	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	newPath, err := utils.SetEnvPath(GetNodePathPrefix())
 	if err != nil {
 		logger.Error("Failed to set PATH: %v", err)
 		return fmt.Errorf("failed to set PATH: %w", err)
@@ -131,8 +130,7 @@ func GetLatestDeviceAgentVersion(baseDir string) (string, error) {
 	serviceUser := utils.ServiceUsername
 
 	setNodeDirectories(baseDir)
-	nodeBinDirPath := GetNodeBinDir()
-	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	newPath, err := utils.SetEnvPath(GetNodePathPrefix())
 	if err != nil {
 		logger.Error("Failed to set PATH: %v", err)
 		return "", fmt.Errorf("failed to set PATH: %w", err)
@@ -232,11 +230,10 @@ func globalPackageDir() string {
 //   - error: An error if uninstallation fails or if the operating system is not supported
 func UninstallDeviceAgent(baseDir string) error {
 	setNodeDirectories(baseDir)
-	nodeBinDirPath := GetNodeBinDir()
 
 	serviceUser := utils.ServiceUsername
 
-	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	newPath, err := utils.SetEnvPath(GetNodePathPrefix())
 	if err != nil {
 		logger.Error("Failed to set PATH: %v", err)
 		return fmt.Errorf("failed to set PATH: %w", err)
@@ -308,7 +305,7 @@ func ConfigureDeviceAgent(url, token, baseDir string, port int) (string, bool, e
 		return "", false, fmt.Errorf("node.js is not installed locally")
 	}
 
-	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	newPath, err := utils.SetEnvPath(GetNodePathPrefix())
 	if err != nil {
 		logger.Error("Failed to set PATH: %v", err)
 		return "", false, fmt.Errorf("failed to set PATH: %w", err)
