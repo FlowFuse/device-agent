@@ -209,6 +209,17 @@ func IsAgentUpdateRequired(requestedAgentVersion, baseDir string) (bool, error) 
 	return true, nil
 }
 
+// globalPackageDir returns the directory where the Device Agent package is installed.
+//
+// Returns:
+//   - string: The absolute path to the installed package directory
+func globalPackageDir() string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(nodeBaseDir, "node_modules", packageName)
+	}
+	return filepath.Join(nodeBaseDir, "lib", "node_modules", packageName)
+}
+
 // UninstallDeviceAgent removes the FlowFuse Device Agent package from the system.
 // It uninstalls the package using the local npm, running the uninstall command with
 // It uninstalls the package using the local npm, running the uninstall command with
