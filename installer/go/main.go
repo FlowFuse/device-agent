@@ -124,7 +124,7 @@ func main() {
 		err = cmd.Update(agentVersion, nodeVersion, installDir, updateAgent, updateNode)
 	} else {
 		logger.Info("")
-		logger.Info("Let's get your connected to FlowFuse.")
+		logger.Info("Let's get you connected to FlowFuse.")
 		logger.Info("")
 		err = cmd.Install(nodeVersion, agentVersion, flowfuseURL, flowfuseOneTimeCode, installDir, false, port.Value, caCertPath)
 	}
