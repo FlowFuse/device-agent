@@ -203,7 +203,7 @@ func DetectSystemNode(minVersion string) (string, string) {
 		}
 
 		if semver.Compare(normaliseVersion(version), normaliseVersion(minVersion)) < 0 {
-			logger.Debug("System Node.js %s in %s is older than the required %s, ignoring",
+			logger.Info("Node.js %s runtime found in %s, but it does not meet the minimum required version %s .",
 				version, candidateDir, minVersion)
 			continue
 		}
