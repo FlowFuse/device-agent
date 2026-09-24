@@ -21,8 +21,8 @@
         "lint": "eslint -c eslint.config.mjs",
         "lint:fix": "eslint -c eslint.config.mjs --fix",
         "test": "npm run test:lib && npm run test:frontend",
-        "test:lib": "mocha 'test/unit/**/*_spec.js'",
-        "test:frontend": "mocha 'test/unit/frontend/**/*.spec.js'"
+        "test:lib": "mocha \"test/unit/**/*_spec.js\"",
+        "test:frontend": "mocha \"test/unit/frontend/**/*.spec.js\""
     },
     "bin": {
         "flowforge-device-agent": "./index.js",
@@ -37,8 +37,8 @@
     "dependencies": {
         "@flowfuse/nr-theme": "^1.11.0",
         "@inquirer/confirm": "^5.1.9",
-        "@inquirer/select": "^4.2.0",
         "@inquirer/input": "^4.2.0",
+        "@inquirer/select": "^4.2.0",
         "bytes": "^3.1.2",
         "command-line-args": "^6.0.1",
         "command-line-usage": "^7.0.3",
@@ -71,7 +71,7 @@
         "proxy": "^2.1.1",
         "rewire": "^7.0.0",
         "should": "^13.2.3",
-        "sinon": "^14.0.0"
+        "sinon": "^22.1.0"
     },
     "engines": {
         "node": ">=18.x"
