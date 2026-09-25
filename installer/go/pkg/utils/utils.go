@@ -555,10 +555,37 @@ func pathInDirectory(path, dir string, ignoreCase bool) bool {
 	return rest != "" && (rest[0] == '/' || rest[0] == '\\')
 }
 
-// FindAgentProcesses returns the running processes that belong to the
-// installation in workDir. A process matches when the executable it runs lives
-// inside that directory: the Device Agent and the Node-RED process it starts
-// both run the bundled Node.js from there.
+// isAgentProcess checks whether a running process belongs to the installation in workDir,
+// either because its executable lives inside that directory (a bundled runtime) 
+// or because it is a node binary from elsewhere running a script that lives inside it (a reused system-wide Node.js runtime).
+//
+// Parameters:
+//   - exe: The process executable path
+//   - args: The process command line, as separate arguments
+//   - workDir: The installation directory the process must belong to
+//   - ignoreCase: Whether to compare paths without regard to case
+//
+// Returns:
+//   - bool: true if the process belongs to the installation
+func isAgentProcess(exe string, args []string, workDir string, ignoreCase bool) bool {
+	if pathInDirectory(exe, workDir, ignoreCase) {
+		return true
+	}
+
+	if len(args) < 2 {
+		return false
+	}
+
+	base := strings.ToLower(filepath.Base(strings.Trim(strings.TrimSpace(exe), `"`)))
+	if base != "node" && base != "node.exe" {
+		return false
+	}
+
+	return pathInDirectory(args[1], workDir, ignoreCase)
+}
+
+// FindAgentProcesses walks every running process and returns those belonging to the installation in workDir, 
+// as decided by the isAgentProcess function, each with its PID and command line.
 //
 // Parameters:
 //   - workDir: The installation directory whose processes should be found
@@ -587,13 +614,13 @@ func FindAgentProcesses(workDir string) ([]AgentProcess, error) {
 
 		// Errors are expected here: processes owned by another user hide part of
 		// their details, and a process may exit while the list is walked.
+		args, _ := p.CmdlineSlice()
+
 		exe, _ := p.Exe()
-		if exe == "" {
-			if args, argsErr := p.CmdlineSlice(); argsErr == nil && len(args) > 0 {
-				exe = args[0]
-			}
+		if exe == "" && len(args) > 0 {
+			exe = args[0]
 		}
-		if !pathInDirectory(exe, workDir, ignoreCase) {
+		if !isAgentProcess(exe, args, workDir, ignoreCase) {
 			continue
 		}
 
@@ -1170,29 +1197,31 @@ func checkEnvPath(currentPath, path string) bool {
 	return strings.Contains(currentPath, path)
 }
 
-// SetEnvPath modifies the system PATH environment variable to include the path
-// specified as an parameter of the function.
+// SetEnvPath prepends a directory to this process's PATH, unless it is already
+// present, and returns the result as a ready-to-use environment entry.
 //
 // Parameters:
 //   - path: The path to be added to the PATH environment variable
 //
 // Returns:
-//   - string: The updated PATH environment variable
+//   - string: The full environment entry, in the form "PATH=<list>"
 //   - error: An error if the operation fails
 func SetEnvPath(path string) (string, error) {
 	currentEnvPath := os.Getenv("PATH")
-	if !checkEnvPath(currentEnvPath, path) {
-		logger.Debug("%s is not in PATH, adding...", path)
-		newEnvPath := fmt.Sprintf("PATH=%s%c%s", path, os.PathListSeparator, currentEnvPath)
-		if err := os.Setenv("PATH", newEnvPath); err != nil {
-			logger.Debug("Failed to set PATH environment variable: %v", err)
-			return "", fmt.Errorf("failed to set PATH environment variable: %w", err)
-		}
-		return newEnvPath, nil
-	} else {
+
+	if checkEnvPath(currentEnvPath, path) {
 		logger.Debug("%s is already in PATH", path)
-		return currentEnvPath, nil
+		return fmt.Sprintf("PATH=%s", currentEnvPath), nil
 	}
+
+	logger.Debug("%s is not in PATH, adding...", path)
+	newEnvPath := fmt.Sprintf("%s%c%s", path, os.PathListSeparator, currentEnvPath)
+	if err := os.Setenv("PATH", newEnvPath); err != nil {
+		logger.Debug("Failed to set PATH environment variable: %v", err)
+		return "", fmt.Errorf("failed to set PATH environment variable: %w", err)
+	}
+
+	return fmt.Sprintf("PATH=%s", newEnvPath), nil
 }
 
 // IsAlpine checks if the current operating system is Alpine Linux.
@@ -1493,14 +1522,21 @@ func ShowInstallSummary(installMode, url, workDir string, serviceInstalled bool)
 // the foreground, for installations where no system service was created.
 //
 // Parameters:
-//   - nodeBinDir: the directory holding the bundled node and agent executables
+//   - nodeBinDir: the directory holding the installed agent executable
+//   - nodePath: the node binary the agent runs, which lies outside nodeBinDir when
+//     the installation reuses a system-wide Node.js
 //   - workDir: the installation directory, passed to the agent as --dir
 //   - caCertPath: the installed CA bundle, or "" when none was provided
 //   - port: the TCP port the agent should listen on
-func ShowManualStartInstructions(nodeBinDir, workDir, caCertPath string, port int) {
+func ShowManualStartInstructions(nodeBinDir, nodePath, workDir, caCertPath string, port int) {
 	logger.Info("")
 	logger.Info("To start the FlowFuse Device Agent manually, run the command in a new terminal:")
 	logger.Info("")
+
+	pathPrefix := nodeBinDir
+	if nodeDir := filepath.Dir(nodePath); nodeDir != "" && nodeDir != nodeBinDir {
+		pathPrefix = nodeDir + string(os.PathListSeparator) + nodeBinDir
+	}
 
 	switch runtime.GOOS {
 	case "windows":
@@ -1509,14 +1545,14 @@ func ShowManualStartInstructions(nodeBinDir, workDir, caCertPath string, port in
 		if caCertPath != "" {
 			logger.Info(`    set NODE_EXTRA_CA_CERTS=%s`, caCertPath)
 		}
-		logger.Info(`    set PATH=%s;%%PATH%%`, nodeBinDir)
+		logger.Info(`    set PATH=%s;%%PATH%%`, pathPrefix)
 		logger.Info(`    %s --dir "%s" --port %d`, agentCmd, workDir, port)
 		logger.Info("")
 		logger.Info("  PowerShell:")
 		if caCertPath != "" {
 			logger.Info(`    $env:NODE_EXTRA_CA_CERTS = "%s"`, caCertPath)
 		}
-		logger.Info(`    $env:Path = "%s;" + $env:Path`, nodeBinDir)
+		logger.Info(`    $env:Path = "%s;" + $env:Path`, pathPrefix)
 		logger.Info(`    & "%s" --dir "%s" --port %d`, agentCmd, workDir, port)
 	default:
 		caCertEnv := ""
@@ -1525,9 +1561,9 @@ func ShowManualStartInstructions(nodeBinDir, workDir, caCertPath string, port in
 		}
 		logger.Info("  sudo -u %s -H env \\", ServiceUsername)
 		logger.Info("    PATH=%s:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin%s \\",
-			nodeBinDir, caCertEnv)
+			pathPrefix, caCertEnv)
 		logger.Info("    %s %s \\",
-			filepath.Join(nodeBinDir, "node"),
+			nodePath,
 			filepath.Join(nodeBinDir, "flowfuse-device-agent"))
 		logger.Info("    --dir %s --port %d", workDir, port)
 	}

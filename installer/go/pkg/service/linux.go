@@ -22,6 +22,7 @@ type ServiceConfig struct {
 	ErrorLogFile     string // Error log file path for openrc scripts
 	Port             int
 	NodeExtraCACerts string // Optional custom CA bundle path (NODE_EXTRA_CA_CERTS)
+	NodePathPrefix   string // Directories that must precede the inherited PATH
 }
 
 // IsSystemd returns true if the system was booted with systemd as its init
@@ -133,6 +134,7 @@ func InstallSystemd(serviceName, workDir string, port int, caCertPath string) er
 		User:             utils.ServiceUsername,
 		WorkDir:          workDir,
 		NodeBinDir:       nodejs.GetNodeBinDir(),
+		NodePathPrefix:   nodejs.GetNodePathPrefix(),
 		Port:             port,
 		NodeExtraCACerts: caCertPath,
 	}
@@ -208,6 +210,7 @@ func InstallSysVInit(serviceName, workDir string, port int, caCertPath string) e
 		User:             utils.ServiceUsername,
 		WorkDir:          workDir,
 		NodeBinDir:       nodejs.GetNodeBinDir(),
+		NodePathPrefix:   nodejs.GetNodePathPrefix(),
 		ServiceName:      serviceName,
 		Port:             port,
 		NodeExtraCACerts: caCertPath,
@@ -301,6 +304,7 @@ func InstallOpenRC(serviceName, workDir string, port int, caCertPath string) err
 		User:             utils.ServiceUsername,
 		WorkDir:          workDir,
 		NodeBinDir:       nodejs.GetNodeBinDir(),
+		NodePathPrefix:   nodejs.GetNodePathPrefix(),
 		LogFile:          logFilePath,
 		ErrorLogFile:     errorLogFilePath,
 		Port:             port,

@@ -67,7 +67,11 @@ func InstallWindows(serviceName, workDir string, port int, caCertPath string) er
 
 	nodeBinDirPath := nodejs.GetNodeBinDir()
 
-	if _, err := utils.SetEnvPath(nodeBinDirPath); err != nil {
+	// This PATH is what reaches the service through NSSM's AppEnvironmentExtra
+	// below. It has to carry the Node.js directory as well as the shim directory:
+	// the generated flowfuse-device-agent.cmd only uses a node.exe sitting beside
+	// it, and with a system-wide runtime there is none, so it falls back to PATH.
+	if _, err := utils.SetEnvPath(nodejs.GetNodePathPrefix()); err != nil {
 		return fmt.Errorf("failed to set PATH: %w", err)
 	}
 
@@ -125,8 +129,10 @@ func configureService(nssmPath, serviceName, workDir string, port int, caCertPat
 
 	// Configure environment variables
 	nodeOptions := "NODE_OPTIONS=--max_old_space_size=512"
-	// The AppEnvironmentExtra parameter needs multiple values, which requires a direct command
-	envValues := []string{"set", serviceName, "AppEnvironmentExtra", nodeOptions, os.Getenv("PATH")}
+	// The AppEnvironmentExtra parameter needs multiple values, which requires a direct command.
+	// Each one has to be a KEY=VALUE pair, and os.Getenv returns the bare path list.
+	servicePath := fmt.Sprintf("PATH=%s", os.Getenv("PATH"))
+	envValues := []string{"set", serviceName, "AppEnvironmentExtra", nodeOptions, servicePath}
 	if caCertPath != "" {
 		envValues = append(envValues, "NODE_EXTRA_CA_CERTS="+caCertPath)
 	}
@@ -362,7 +368,7 @@ func downloadNSSM(destPath string) error {
 //   - destPath: The path the archive should be written to
 //
 // Returns:
-//	 - error describing any failure encountered during the download or verification process,
+//   - error describing any failure encountered during the download or verification process,
 //   - nil if the archive was downloaded and verified successfully
 func downloadAndVerify(url, destPath string) error {
 	logger.Debug("Requesting NSSM archive from %s", url)

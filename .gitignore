@@ -2,3 +2,4 @@
 var/
 /installer/go/out/
 flowfuse-device-agent-*.tgz
+/installer/go/resource_windows_amd64.syso

@@ -25,6 +25,13 @@ type InstallerConfig struct {
 	// ServiceInstalled reports whether a system service was created for this
 	// installation. It is nil if the installer was run before this field was added.
 	ServiceInstalled *bool `json:"serviceInstalled,omitempty"`
+	// SystemNodeDir is the directory of the pre-existing, system-wide Node.js this
+	// installation reuses. An empty or absent value means the installer downloaded a
+	// private Node.js into <workDir>/node, which is what every configuration written
+	// before this field existed implies. It records the path rather than a plain
+	// flag so that update and uninstall can reach the same runtime later without
+	// having to detect it again.
+	SystemNodeDir string `json:"systemNodeDir,omitempty"`
 }
 
 // GetConfigPath returns the path to the installer configuration file.
@@ -165,6 +172,7 @@ func LoadConfig(customWorkDir string) (*InstallerConfig, error) {
 //   - "serviceUsername": Updates the ServiceUsername field
 //   - "agentVersion": Updates the AgentVersion field
 //   - "nodeVersion": Updates the NodeVersion field
+//   - "systemNodeDir": Updates the SystemNodeDir field
 //
 // Parameters:
 //   - fieldName: The name of the field to update (case-sensitive)
@@ -200,6 +208,8 @@ func UpdateConfigField(fieldName, value, customWorkDir string) error {
 		cfg.Port = port
 	case "nodeExtraCACerts":
 		cfg.NodeExtraCACerts = value
+	case "systemNodeDir":
+		cfg.SystemNodeDir = value
 	default:
 		logger.LogFunctionExit("UpdateConfigField", "error", fmt.Errorf("unknown field name: %s", fieldName))
 		return fmt.Errorf("unknown field name: %s", fieldName)

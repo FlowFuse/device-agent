@@ -44,7 +44,7 @@ func init() {
 	pflag.BoolVarP(&showVersion, "version", "v", false, "Display installer version")
 	pflag.BoolVarP(&help, "help", "h", false, "Display help information")
 	pflag.BoolVar(&uninstall, "uninstall", false, "Uninstall the device agent")
-	pflag.BoolVar(&updateNode, "update-nodejs", false, "Update bundled Node.js to specified version")
+	pflag.BoolVar(&updateNode, "update-nodejs", false, "Update the bundled Node.js to the specified version (not available when a system-wide Node.js is used)")
 	pflag.BoolVar(&updateAgent, "update-agent", false, "Update the Device Agent package to specified version")
 	pflag.BoolVar(&debugMode, "debug", false, "Enable debug logging")
 	pflag.Parse()

@@ -15,14 +15,16 @@ import (
 
 // LaunchdConfig holds the data for the launchd template
 type LaunchdConfig struct {
-	Label      string
-	WorkDir    string
-	LogFile    string
-	ErrorFile  string
-	User       string
-	NodeBinDir string
-	Port       int
+	Label            string
+	WorkDir          string
+	LogFile          string
+	ErrorFile        string
+	User             string
+	NodeBinDir       string
+	Port             int
 	NodeExtraCACerts string // Optional custom CA bundle path (NODE_EXTRA_CA_CERTS)
+	NodePathPrefix   string // Directories that must precede the inherited PATH
+	NodePath         string // The node binary the job runs, bundled or system-wide
 }
 
 // newsyslogConfig holds the data for the newsyslog configuration
@@ -31,7 +33,6 @@ type newsyslogConfig struct {
 	ErrorFile string
 	User      string
 }
-
 
 // setLabel function maps a service name "flowfuse-device-agent-<port>"
 // to a launchd label "com.flowfuse.device-agent-<port>". The legacy
@@ -113,6 +114,8 @@ func InstallDarwin(serviceName, workDir string, port int, caCertPath string) err
 		ErrorFile:        errorLogFilePath,
 		User:             serviceUser,
 		NodeBinDir:       nodejs.GetNodeBinDir(),
+		NodePathPrefix:   nodejs.GetNodePathPrefix(),
+		NodePath:         nodejs.GetNodePath(),
 		Port:             port,
 		NodeExtraCACerts: caCertPath,
 	}

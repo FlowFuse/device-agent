@@ -21,6 +21,7 @@ const NodeDir = "node"
 var nodeBaseDir string
 var nodeBinPath string
 var npmBinPath string
+var systemNodeDir string
 
 // EnsureNodeJs validates and ensures that the specified Node.js version is installed.
 // It checks if the version string is in a valid semver format and whether the specified
@@ -33,14 +34,20 @@ var npmBinPath string
 // Returns:
 //   - error: nil if Node.js is already installed or successfully installed, otherwise an error
 func EnsureNodeJs(versionStr, baseDir string, update bool) error {
-	// Validate that the version string is in semver format (x.y.z)
-	parts := strings.Split(versionStr, ".")
-	if len(parts) < 1 {
-		logger.Error("Invalid Node.js version format: %s", versionStr)
-		return fmt.Errorf("invalid Node.js version format: %s, expected semver format like 20.19.0", versionStr)
+	if err := ValidateVersion(versionStr); err != nil {
+		logger.Error("%v", err)
+		return err
 	}
 
 	setNodeDirectories(baseDir)
+
+	if systemNodeDir != "" {
+		logger.Info("Using the system Node.js in %s.", systemNodeDir)
+		if err := prepareNpmPrefix(); err != nil {
+			return err
+		}
+		return removeBundledNodeBinaries()
+	}
 
 	if isNodeInstalled(versionStr, baseDir) {
 		logger.Info("Node.js version %s found.", versionStr)
@@ -64,6 +71,13 @@ func isNodeInstalled(versionStr, baseDir string) bool {
 	logger.LogFunctionEntry("isNodeInstalled", map[string]interface{}{
 		"versionStr": versionStr,
 	})
+
+	// Validate that the node binary exists before attempting to get its version.
+	if _, err := os.Stat(nodeBinPath); err != nil {
+		logger.Debug("No Node.js binary at %s: %v", nodeBinPath, err)
+		logger.LogFunctionExit("isNodeInstalled", "not_installed", nil)
+		return false
+	}
 
 	if output, err := getInstalledNodeVersion(baseDir); err != nil {
 		logger.Debug("Failed to get installed Node.js version: %v", err)
@@ -93,20 +107,78 @@ func setNodeDirectories(basedir string) {
 	logger.LogFunctionEntry("setNodeDirectories", map[string]interface{}{
 		"basedir": basedir,
 	})
-	
+
+	// The npm prefix always stays inside the working directory, so the agent shim
+	// keeps its place in both modes. Only the runtime binaries move when a
+	// system-wide Node.js is reused.
 	nodeBaseDir = filepath.Join(basedir, NodeDir)
+
+	binDir := systemNodeDir
+	if binDir == "" {
+		binDir = GetNodeBinDir()
+	}
 	if runtime.GOOS == "windows" {
-		nodeBinPath = filepath.Join(nodeBaseDir, "node.exe")
-		npmBinPath = filepath.Join(nodeBaseDir, "npm.cmd")
+		nodeBinPath = filepath.Join(binDir, "node.exe")
+		npmBinPath = filepath.Join(binDir, "npm.cmd")
 	} else {
-		nodeBinPath = filepath.Join(nodeBaseDir, "bin", "node")
-		npmBinPath = filepath.Join(nodeBaseDir, "bin", "npm")
+		nodeBinPath = filepath.Join(binDir, "node")
+		npmBinPath = filepath.Join(binDir, "npm")
 	}
 	logger.LogFunctionExit("setNodeDirectories", map[string]interface{}{
-		"node.js base dir": nodeBaseDir,
-		"Node.js path": nodeBinPath,
-		"NPM path": npmBinPath,
+		"node.js base dir":   nodeBaseDir,
+		"Node.js path":       nodeBinPath,
+		"NPM path":           npmBinPath,
+		"system Node.js dir": systemNodeDir,
 	}, nil)
+}
+
+// Init points the package at the Node.js installation used by workDir. It must
+// be called before any other function here: the install flow calls it once the
+// user has chosen a runtime, the update and uninstall flows once installer.conf
+// has been read. An empty systemNodeDirectory selects the bundled copy under the
+// working directory.
+//
+// Parameters:
+//   - workDir: The installation directory
+//   - systemNodeDirectory: The directory holding the system-wide node and npm, or "" for the bundled copy
+func Init(workDir, systemNodeDirectory string) {
+	systemNodeDir = systemNodeDirectory
+	setNodeDirectories(workDir)
+}
+
+// GetNodePathPrefix returns the directories that must precede the inherited PATH
+// for node, npm and the Device Agent shim to resolve: the system-wide Node.js
+// directory when one is in use, followed by the npm prefix bin directory that
+// holds the agent shim. With the bundled Node.js both are the same directory and
+// only one entry is returned, so the value is unchanged from before this existed.
+//
+// Returns:
+//   - string: The PATH prefix, separated by the platform's list separator
+func GetNodePathPrefix() string {
+	shimDir := GetNodeBinDir()
+	if systemNodeDir == "" || systemNodeDir == shimDir {
+		return shimDir
+	}
+	return systemNodeDir + string(os.PathListSeparator) + shimDir
+}
+
+// VerifyRuntime checks whether a reused system-wide Node.js is still present in the system.
+// The Init function must be called first.
+//
+// Returns:
+//   - error: An error naming the missing runtime, nil when it is present or bundled
+func VerifyRuntime() error {
+	if systemNodeDir == "" {
+		return nil
+	}
+
+	if _, err := os.Stat(nodeBinPath); err != nil {
+		return fmt.Errorf("the system-wide Node.js this installation uses is no longer present at %s; "+
+			"reinstall it with your operating system's package manager, or run the installer again to switch to a bundled Node.js",
+			nodeBinPath)
+	}
+
+	return nil
 }
 
 // GetNodePath returns the path to the Node.js binary.
@@ -114,12 +186,6 @@ func setNodeDirectories(basedir string) {
 // This function is used to access the Node.js binary location across the application.
 func GetNodePath() string {
 	return nodeBinPath
-}
-
-// GetNpmPath returns the path to the npm binary.
-// The path is determined during initialization and stored in npmBinPath.
-func GetNpmPath() string {
-	return npmBinPath
 }
 
 // GetNodeBinDir returns the path to the Node.js binary directory.
@@ -153,6 +219,71 @@ func getInstalledNodeVersion(baseDir string) (string, error) {
 	return savedNodejsVersion, nil
 }
 
+// prepareNpmPrefix creates the <workDir>/node directory and grants access to it for the service account.
+// Directory is used afterwards as the `npm --prefix` parameter  so it is needed whether or not a Node.js runtime is downloaded into it.
+//
+// Returns:
+//   - error: An error if the directory cannot be created or handed to the service account
+func prepareNpmPrefix() error {
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		logger.Debug("Creating directory %s (requires sudo)...", nodeBaseDir)
+		mkdirCmd := exec.Command("sudo", "mkdir", "-p", nodeBaseDir)
+		if output, err := mkdirCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to create Node.js installation directory: %w\nOutput: %s", err, output)
+		}
+
+		chmodCmd := exec.Command("sudo", "chmod", "755", nodeBaseDir)
+		if output, err := chmodCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to set directory permissions: %w\nOutput: %s", err, output)
+		}
+
+		chownCmd := exec.Command("sudo", "chown", utils.ServiceUsername, nodeBaseDir)
+		if output, err := chownCmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
+		}
+	default:
+		if err := os.MkdirAll(nodeBaseDir, 0755); err != nil {
+			return fmt.Errorf("failed to create Node.js installation directory: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// removeBundledNodeBinaries deletes a previously downloaded Node.js from the npm
+// prefix when a system-wide runtime is used instead.
+//
+// Returns:
+//   - error: An error if an existing binary cannot be removed
+func removeBundledNodeBinaries() error {
+	names := []string{"node", "npm", "npx"}
+	if runtime.GOOS == "windows" {
+		names = []string{"node.exe", "npm.cmd", "npx.cmd"}
+	}
+
+	for _, name := range names {
+		path := filepath.Join(GetNodeBinDir(), name)
+		if _, err := os.Stat(path); err != nil {
+			continue
+		}
+
+		logger.Debug("Removing bundled %s left over at %s", name, path)
+		switch runtime.GOOS {
+		case "linux", "darwin":
+			if output, err := exec.Command("sudo", "rm", "-f", path).CombinedOutput(); err != nil {
+				return fmt.Errorf("failed to remove bundled %s: %w\nOutput: %s", name, err, output)
+			}
+		default:
+			if err := os.Remove(path); err != nil {
+				return fmt.Errorf("failed to remove bundled %s: %w", name, err)
+			}
+		}
+	}
+
+	return nil
+}
+
 // installNodeJs installs the specified version of Node.js.
 // It creates the necessary installation directory with appropriate permissions,
 // downloads the Node.js binary from the official source, and extracts it.
@@ -170,27 +301,8 @@ func installNodeJs(version string, update bool) error {
 		logger.Info("Installing Node.js %s...", version)
 	}
 
-	// Create the installation directory
-	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-		logger.Debug("Creating directory %s (requires sudo)...", nodeBaseDir)
-		mkdirCmd := exec.Command("sudo", "mkdir", "-p", nodeBaseDir)
-		if output, err := mkdirCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to create Node.js installation directory: %w\nOutput: %s", err, output)
-		}
-
-		chmodCmd := exec.Command("sudo", "chmod", "755", nodeBaseDir)
-		if output, err := chmodCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to set directory permissions: %w\nOutput: %s", err, output)
-		}
-
-		chownCmd := exec.Command("sudo", "chown", utils.ServiceUsername, nodeBaseDir)
-		if output, err := chownCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("failed to set directory ownership: %w\nOutput: %s", err, output)
-		}
-	} else {
-		if err := os.MkdirAll(nodeBaseDir, 0755); err != nil {
-			return fmt.Errorf("failed to create Node.js installation directory: %w", err)
-		}
+	if err := prepareNpmPrefix(); err != nil {
+		return err
 	}
 
 	downloadURL, err := getNodeDownloadURL(version)
@@ -383,6 +495,11 @@ func IsNodeUpdateRequired(nodeVersion, workDir string) (bool, error) {
 // Returns:
 //   - error: An error object if the update fails, nil otherwise
 func UpdateNodeJs(nodeVersion, workDir string) error {
+	if systemNodeDir != "" {
+		return fmt.Errorf("this installation uses the system-wide Node.js in %s, which the installer does not manage; "+
+			"update it with your operating system's package manager, or reinstall the Device Agent to use a bundled Node.js", systemNodeDir)
+	}
+
 	setNodeDirectories(workDir)
 
 	// Check if Node.js is installed in the expected location

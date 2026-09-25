@@ -37,7 +37,6 @@ const preserveEnv = "--preserve-env=PATH,NODE_EXTRA_CA_CERTS"
 // - The installation process fails
 func InstallDeviceAgent(version, baseDir string, update bool) error {
 	setNodeDirectories(baseDir)
-	nodeBinDirPath := GetNodeBinDir()
 
 	if _, err := os.Stat(nodeBinPath); os.IsNotExist(err) {
 		return fmt.Errorf("node.js not found, please restart installator script")
@@ -59,7 +58,7 @@ func InstallDeviceAgent(version, baseDir string, update bool) error {
 		packageName += "@" + version
 	}
 
-	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	newPath, err := utils.SetEnvPath(GetNodePathPrefix())
 	if err != nil {
 		logger.Error("Failed to set PATH: %v", err)
 		return fmt.Errorf("failed to set PATH: %w", err)
@@ -67,16 +66,13 @@ func InstallDeviceAgent(version, baseDir string, update bool) error {
 
 	// Create install command
 	var installCmd *exec.Cmd
-	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		installCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "install", "-g", "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), packageName)
-		env := os.Environ()
-		installCmd.Env = append(env, npmPrefix, newPath)
+		installCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "install", "-g", "--prefix", nodeBaseDir, "--cache", filepath.Join(nodeBaseDir, ".npm-cache"), packageName)
+		installCmd.Env = append(os.Environ(), newPath)
 	case "windows":
-		installCmd = exec.Command("cmd", "/C", npmBinPath, "install", "-g", packageName)
-		env := os.Environ()
-		installCmd.Env = append(env, npmPrefix, newPath)
+		installCmd = exec.Command("cmd", "/C", npmBinPath, "install", "-g", "--prefix", nodeBaseDir, packageName)
+		installCmd.Env = append(os.Environ(), newPath)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
@@ -131,8 +127,7 @@ func GetLatestDeviceAgentVersion(baseDir string) (string, error) {
 	serviceUser := utils.ServiceUsername
 
 	setNodeDirectories(baseDir)
-	nodeBinDirPath := GetNodeBinDir()
-	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	newPath, err := utils.SetEnvPath(GetNodePathPrefix())
 	if err != nil {
 		logger.Error("Failed to set PATH: %v", err)
 		return "", fmt.Errorf("failed to set PATH: %w", err)
@@ -209,6 +204,17 @@ func IsAgentUpdateRequired(requestedAgentVersion, baseDir string) (bool, error) 
 	return true, nil
 }
 
+// globalPackageDir returns the directory where the Device Agent package is installed.
+//
+// Returns:
+//   - string: The absolute path to the installed package directory
+func globalPackageDir() string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(nodeBaseDir, "node_modules", packageName)
+	}
+	return filepath.Join(nodeBaseDir, "lib", "node_modules", packageName)
+}
+
 // UninstallDeviceAgent removes the FlowFuse Device Agent package from the system.
 // It uninstalls the package using the local npm, running the uninstall command with
 // It uninstalls the package using the local npm, running the uninstall command with
@@ -221,11 +227,10 @@ func IsAgentUpdateRequired(requestedAgentVersion, baseDir string) (bool, error) 
 //   - error: An error if uninstallation fails or if the operating system is not supported
 func UninstallDeviceAgent(baseDir string) error {
 	setNodeDirectories(baseDir)
-	nodeBinDirPath := GetNodeBinDir()
 
 	serviceUser := utils.ServiceUsername
 
-	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	newPath, err := utils.SetEnvPath(GetNodePathPrefix())
 	if err != nil {
 		logger.Error("Failed to set PATH: %v", err)
 		return fmt.Errorf("failed to set PATH: %w", err)
@@ -233,17 +238,13 @@ func UninstallDeviceAgent(baseDir string) error {
 
 	// Create uninstall command
 	var uninstallCmd *exec.Cmd
-	npmPrefix := fmt.Sprintf("npm_config_prefix=%s", nodeBaseDir)
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		uninstallCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "uninstall", "-g", packageName)
-		env := os.Environ()
-		uninstallCmd.Env = append(env, npmPrefix, newPath)
+		uninstallCmd = exec.Command("sudo", preserveEnv, "-u", serviceUser, npmBinPath, "uninstall", "-g", "--prefix", nodeBaseDir, packageName)
+		uninstallCmd.Env = append(os.Environ(), newPath)
 	case "windows":
-		deviceAgentPath := filepath.Join(baseDir, "node", "node_modules", "@flowfuse", "device-agent")
-		uninstallCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", deviceAgentPath)
-		env := os.Environ()
-		uninstallCmd.Env = append(env, npmPrefix, newPath)
+		uninstallCmd = exec.Command("cmd", "/C", "rmdir", "/S", "/Q", globalPackageDir())
+		uninstallCmd.Env = append(os.Environ(), newPath)
 
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
@@ -253,8 +254,7 @@ func UninstallDeviceAgent(baseDir string) error {
 
 	if _, err := uninstallCmd.CombinedOutput(); err != nil {
 		// try to remove the device agent directory manually
-		deviceAgentPath := filepath.Join(nodeBaseDir, "node_modules", packageName)
-		if err := os.RemoveAll(deviceAgentPath); err != nil {
+		if err := os.RemoveAll(globalPackageDir()); err != nil {
 			logger.Error("Failed to remove device agent directory: %v", err)
 			return fmt.Errorf("failed to remove device agent directory: %w", err)
 		}
@@ -299,7 +299,7 @@ func ConfigureDeviceAgent(url, token, baseDir string, port int) (string, bool, e
 		return "", false, fmt.Errorf("node.js is not installed locally")
 	}
 
-	newPath, err := utils.SetEnvPath(nodeBinDirPath)
+	newPath, err := utils.SetEnvPath(GetNodePathPrefix())
 	if err != nil {
 		logger.Error("Failed to set PATH: %v", err)
 		return "", false, fmt.Errorf("failed to set PATH: %w", err)
