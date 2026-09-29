@@ -5,7 +5,7 @@ ARG VERSION=latest
 ARG FF_UID=2000
 ARG FF_GID=2000
 
-RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python3 openssl
+RUN apk add --no-cache --virtual buildtools build-base linux-headers udev python3 openssl ffmpeg
 
 RUN addgroup -g ${FF_GID} -S flowfuse \
     && adduser -u ${FF_UID} -S -G flowfuse -h /opt/flowfuse-device flowfuse \
