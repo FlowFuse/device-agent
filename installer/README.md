@@ -193,7 +193,7 @@ Specifying `--update-agent` without a version will update to the latest availabl
 
 ### Prerequisites
 
-- Go 1.24 or later ([Install Go](https://go.dev/doc/install))
+- Go 1.25 or later ([Install Go](https://go.dev/doc/install))
 - Make (optional, for using Makefile commands)
 
 Windows users can install `make` and `sed` (used in Makefile) via [WinGet](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget):
