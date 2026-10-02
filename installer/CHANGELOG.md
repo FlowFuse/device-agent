@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/FlowFuse/device-agent/compare/installer-v1.8.0...installer-v1.8.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* adjust the Installer download scripts to match new binary naming pattern ([#767](https://github.com/FlowFuse/device-agent/issues/767)) ([4b9493d](https://github.com/FlowFuse/device-agent/commit/4b9493d121e21c5e9381b0fa279fc38ac24e347b))
+
 ## [1.8.0](https://github.com/FlowFuse/device-agent/compare/installer-v1.7.0...installer-v1.8.0) (2026-09-25)
 
 
