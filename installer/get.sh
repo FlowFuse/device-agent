@@ -75,7 +75,7 @@ download_file() {
 get_download_url() {
     local os="$1"
     local arch="$2"
-    local binary_name="${BINARY_PREFIX}-${os}-${arch}"
+    local binary_name="${BINARY_PREFIX}-${RELEASE}-${os}-${arch}"
     
     echo "https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${RELEASE_TAG}/${binary_name}"
 }
