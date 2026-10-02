@@ -31,7 +31,7 @@ function Get-DownloadUrl {
         [string]$Architecture
     )
     
-    $binaryName = "${BINARY_PREFIX}-windows-${Architecture}.exe"
+    $binaryName = "${BINARY_PREFIX}-${RELEASE}-windows-${Architecture}.exe"
     return "https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${RELEASE_TAG}/${binaryName}"
 }
 
