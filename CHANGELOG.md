@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.3.0](https://github.com/FlowFuse/device-agent/compare/v4.2.2...v4.3.0) (2026-10-07)
+
+
+### Features
+
+* Include ffmpeg binary in the device agent Docker image ([#759](https://github.com/FlowFuse/device-agent/issues/759)) ([e43372f](https://github.com/FlowFuse/device-agent/commit/e43372f5d452ab05cc26e59bcc10a170971deb15))
+* **installer:** Add possibility to re-use existing system-wide Node.js runtime while installing the Device Agent ([#749](https://github.com/FlowFuse/device-agent/issues/749)) ([8041998](https://github.com/FlowFuse/device-agent/commit/804199896a6c290349473c8db42f555eeb78ffb6))
+
 ## [4.2.2](https://github.com/FlowFuse/device-agent/compare/v4.2.1...v4.2.2) (2026-09-22)
 
 
