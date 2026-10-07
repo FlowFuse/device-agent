@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/FlowFuse/device-agent/compare/installer-v1.8.1...installer-v1.8.2) (2026-10-07)
+
+
+### Bug Fixes
+
+* **installer:** don't exit PowerShell session on successful installer download ([#771](https://github.com/FlowFuse/device-agent/issues/771)) ([a8f6169](https://github.com/FlowFuse/device-agent/commit/a8f6169d529e5ac63347fff8a97a1401438eaee3))
+
 ## [1.8.1](https://github.com/FlowFuse/device-agent/compare/installer-v1.8.0...installer-v1.8.1) (2026-10-02)
 
 
