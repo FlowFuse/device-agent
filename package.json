@@ -44,7 +44,7 @@
         "command-line-usage": "^7.0.3",
         "express-session": "^1.18.0",
         "got": "^11.8.6",
-        "http-proxy-agent": "^7.0.2",
+        "http-proxy-agent": "^9.1.0",
         "https-proxy-agent": "^7.0.4",
         "memorystore": "^1.6.7",
         "mnemonist": "^0.40.3",
