@@ -96,8 +96,7 @@ class WebServer {
                 } catch (error) {
                     console.error(error)
                 }
-            }
-            , runtime * 60 * 1000)
+            }, runtime * 60 * 1000)
         }
         return listen(this.server, port, host)
     }
