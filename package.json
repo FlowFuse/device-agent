@@ -43,7 +43,7 @@
         "command-line-args": "^6.0.1",
         "command-line-usage": "^7.0.3",
         "express-session": "^1.18.0",
-        "got": "^11.8.6",
+        "got": "^16.1.0",
         "http-proxy-agent": "^7.0.2",
         "https-proxy-agent": "^7.0.4",
         "memorystore": "^1.6.7",
