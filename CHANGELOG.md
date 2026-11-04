@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.3.1](https://github.com/FlowFuse/device-agent/compare/v4.3.0...v4.3.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* Connect to IPv6 mqtt brokers and keep the broker URL path ([#812](https://github.com/FlowFuse/device-agent/issues/812)) ([28b53cf](https://github.com/FlowFuse/device-agent/commit/28b53cfba4c2c92207f92c0116c6fc5149b75341))
+* Keep the editor tunnel reconnecting and report new affinity cookies ([#813](https://github.com/FlowFuse/device-agent/issues/813)) ([ba421b9](https://github.com/FlowFuse/device-agent/commit/ba421b928d5bc7873e83c5662b4852743be98c27))
+
 ## [4.3.0](https://github.com/FlowFuse/device-agent/compare/v4.2.2...v4.3.0) (2026-10-20)
 
 
