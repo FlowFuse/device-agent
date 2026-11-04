@@ -19,30 +19,6 @@ import (
 // not to the machine, so the service account cannot be expected to reach it.
 var userPathPrefixes = []string{"/home/", "/Users/", "/root", `c:\users\`}
 
-// systemNodeCandidates returns the fixed locations a system-wide Node.js is
-// accepted from, for the current operating system.
-//
-// Returns:
-//   - []string: The absolute candidate paths, empty on an unsupported system
-func systemNodeCandidates() []string {
-	switch runtime.GOOS {
-	case "linux":
-		return []string{"/usr/bin/node", "/usr/local/bin/node"}
-	case "darwin":
-		return []string{"/usr/local/bin/node", "/opt/homebrew/bin/node"}
-	case "windows":
-		var candidates []string
-		for _, envVar := range []string{"ProgramFiles", "ProgramFiles(x86)"} {
-			if programFiles := os.Getenv(envVar); programFiles != "" {
-				candidates = append(candidates, filepath.Join(programFiles, "nodejs", "node.exe"))
-			}
-		}
-		return candidates
-	default:
-		return nil
-	}
-}
-
 // npmExecutableName returns the name of the npm executable on this platform.
 //
 // Returns:
