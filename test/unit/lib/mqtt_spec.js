@@ -728,4 +728,40 @@ describe('MQTT Comms', function () {
             response.payload.should.have.a.property('token', 'token-test')
         })
     })
+
+    describe('Broker address', function () {
+        let connectSpy = null
+        afterEach(function () {
+            connectSpy?.restore()
+            connectSpy = null
+        })
+
+        function connectOptions (brokerURL) {
+            // mqtt 5 exports `connect` as a read only getter that reads it from `MQTT.default`
+            connectSpy = sinon.spy(MQTT.default, 'connect')
+            mqttClient.config.brokerURL = brokerURL
+            mqttClient.start()
+            connectSpy.calledOnce.should.be.true()
+            return connectSpy.args[0][0]
+        }
+
+        it('keeps the path and query of the broker URL', function () {
+            const opts = connectOptions('ws://localhost:9876/some/path?x=1')
+            opts.should.have.property('protocol', 'ws')
+            opts.should.have.property('host', 'localhost')
+            opts.should.have.property('port', '9876')
+            opts.should.have.property('path', '/some/path?x=1')
+        })
+
+        it('keeps the brackets of an ipv6 ws broker hostname', function () {
+            const opts = connectOptions('ws://[::1]:9876')
+            opts.should.have.property('host', '[::1]')
+        })
+
+        it('removes the brackets of an ipv6 mqtt broker hostname', function () {
+            const opts = connectOptions('mqtt://[::1]:9876')
+            opts.should.have.property('protocol', 'mqtt')
+            opts.should.have.property('host', '::1')
+        })
+    })
 })
