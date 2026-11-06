@@ -36,7 +36,7 @@
     "license": "Apache-2.0",
     "dependencies": {
         "@flowfuse/nr-theme": "^1.11.0",
-        "@inquirer/confirm": "^5.1.9",
+        "@inquirer/confirm": "^6.3.5",
         "@inquirer/input": "^4.2.0",
         "@inquirer/select": "^4.2.0",
         "bytes": "^3.1.2",
