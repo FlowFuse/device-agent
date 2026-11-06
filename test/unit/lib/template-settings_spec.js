@@ -18,6 +18,7 @@ describe('template-settings', () => {
     let projectPath
     const config = {
         forgeURL: 'https://forge.flowfuse.io',
+        deviceId: '123456',
         credentialSecret: 'secret',
         port: 1880,
         dir: '',
@@ -162,6 +163,21 @@ describe('template-settings', () => {
         await settings.adminAuth.tokens('ffde_123456')
 
         _got.get.calledOnce.should.be.true()
+    })
+
+    it('should reject an editor token issued for a different device without verifying it', async function () {
+        const settingsFile = await generateSettingsFile()
+        const settings = rewire(settingsFile)
+        should.exist(settings)
+
+        const _got = got.extend({})
+        settings.__set__('got', _got)
+        sandbox.stub(_got, 'get').resolves({ body: JSON.stringify({ username: 'attacker', permissions: ['*'] }) })
+
+        const result = await settings.adminAuth.tokens('ffde_otherdevice_abc123')
+
+        should.not.exist(result)
+        _got.get.called.should.be.false()
     })
 
     it.skip('should not cache invalid token', async function () {
