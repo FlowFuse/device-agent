@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.3.2](https://github.com/FlowFuse/device-agent/compare/v4.3.1...v4.3.2) (2026-11-06)
+
+
+### Bug Fixes
+
+* validate device id in editor tokens ([#819](https://github.com/FlowFuse/device-agent/issues/819)) ([d504fdf](https://github.com/FlowFuse/device-agent/commit/d504fdfaf61563d9e345151e40e1bac2f9b8d6b2))
+
 ## [4.3.1](https://github.com/FlowFuse/device-agent/compare/v4.3.0...v4.3.1) (2026-11-04)
 
 
