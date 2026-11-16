@@ -125,6 +125,24 @@ describe('Launcher', function () {
         settings.flowforge.should.have.property('projectID', 'PROJECTID')
         settings.flowforge.should.not.have.property('projectLink')
     })
+    it('Write Settings - settings file is readable only by its owner', async function () {
+        if (process.platform === 'win32') {
+            this.skip()
+        }
+        const settingsFile = path.join(config.dir, 'project', 'settings.json')
+        const launcher = newLauncher({ config }, null, 'PROJECTID', setup.snapshot)
+        await launcher.writeSettings()
+        const created = await fs.stat(settingsFile)
+        ;(created.mode & 0o777).should.equal(0o600)
+
+        // an existing file with a wider mode is restricted when rewritten
+        await fs.chmod(settingsFile, 0o644)
+        await launcher.writeSettings()
+        const rewritten = await fs.stat(settingsFile)
+        ;(rewritten.mode & 0o777).should.equal(0o600)
+        const settings = JSON.parse(await fs.readFile(settingsFile))
+        settings.should.have.property('credentialSecret', 'secret')
+    })
     it('Write Settings - exposes flowfuse-common values for the editor scripts', async function () {
         const launcher = newLauncher({ config: { ...configWithPlatformInfo, version: '9.9.9' } }, null, 'PROJECTID', setup.snapshot)
         await launcher.writeSettings()
