@@ -202,6 +202,37 @@ my_data:
             AgentManager._provisionDevice.restore()
         }
     })
+    describe('Device file mode', function () {
+        const provisioningData = {
+            id: 'device-hash-id',
+            forgeURL: 'http://localhost:3000',
+            credentials: { token: 'i-am-token', credentialSecret: 'cred-secret' }
+        }
+        before(function () {
+            if (process.platform === 'win32') {
+                this.skip()
+            }
+        })
+        it('writes a new device file readable only by its owner', async function () {
+            const deviceFile = path.join(configDir, 'project', 'device.yml')
+            await fs.writeFile(deviceFile, 'forgeURL: http://localhost:9000\n', { mode: 0o644 })
+            AgentManager.init({ deviceFile })
+            await AgentManager._provisionDevice(provisioningData)
+            const stat = await fs.stat(deviceFile)
+            ;(stat.mode & 0o777).should.equal(0o600)
+        })
+        it('restricts the mode when the device file is rewritten in place', async function () {
+            const deviceFile = path.join(configDir, 'project', 'device.yml')
+            await fs.writeFile(deviceFile, 'forgeURL: http://localhost:9000\n', { mode: 0o644 })
+            sinon.stub(require('fs'), 'renameSync').throws(new Error('EBUSY'))
+            AgentManager.init({ deviceFile })
+            await AgentManager._provisionDevice(provisioningData)
+            const stat = await fs.stat(deviceFile)
+            ;(stat.mode & 0o777).should.equal(0o600)
+            const deviceConfig = await fs.readFile(deviceFile, 'utf8')
+            deviceConfig.should.match(/deviceId: device-hash-id/)
+        })
+    })
     it('Agent Manager should request config from FlowFuse when started in Quick Connect mode', async function () {
         const deviceFile = path.join(configDir, 'project', 'device.yml')
         // setup a web server to mock the FlowFuse server
